@@ -834,3 +834,40 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 495: 拆分 useThreadActions 启动动作测试
+
+**Date**: 2026-05-19
+**Task**: 拆分 useThreadActions 启动动作测试
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+将 useThreadActions.test.tsx 中 start/fork 动作测试拆到 useThreadActions.start-fork.test.tsx，使原测试文件从 2755 行降至 2433 行并退出 near-threshold watch 列表。
+
+### Main Changes
+
+- Moved startThread/forkThread behavior tests into src/features/threads/hooks/useThreadActions.start-fork.test.tsx.
+- Kept production code unchanged and preserved independent service/global notice mocks in the new test file.
+- Validation: npm run typecheck; targeted vitest for useThreadActions.test.tsx and useThreadActions.start-fork.test.tsx; npm run check:large-files:near-threshold; npm run check:large-files:gate; git diff --check.
+- Result: near-threshold watch count dropped from 26 to 25; useThreadActions.test.tsx is now below the test-file warning threshold.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5b1bafbd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-14.md`
-- **Total Sessions**: 494
+- **Total Sessions**: 495
 - **Last Active**: 2026-05-19
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-14.md` | ~836 | Active |
+| `journal-14.md` | ~873 | Active |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
 | `journal-11.md` | ~1985 | Archived |
@@ -42,6 +42,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 495 | 2026-05-19 | 拆分 useThreadActions 启动动作测试 | `5b1bafbd` | `feature/v0.5.0-md` |
 | 494 | 2026-05-19 | 解除 useThreadActions 大文件门禁阻塞 | `c382433f` | `feature/v0.5.0-md` |
 | 493 | 2026-05-19 | 收口 harness 剩余治理提案 | `867a4156` | `feature/v0.5.0-md` |
 | 492 | 2026-05-19 | 收口 harness 治理证据只读桥接 | `667af011` | `feature/v0.5.0-md` |
