@@ -1,6 +1,6 @@
 # Harness Governance Layer — mossx 战略架构文档
 
-> **状态**：v1.9（95%-99% release-grade execution hardening 版）
+> **状态**：v1.10（production review closure 版）
 > **作者**：陈湘宁 × AI Co-Architect
 > **日期**：2026-05-17
 > **类型**：架构战略文档（Strategic Architecture）

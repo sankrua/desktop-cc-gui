@@ -91,7 +91,7 @@ Virtualization and chunking are implemented enough to support growth, but releas
 
 - 90% floor: live snapshot injection, gate result evidence, one domain-event runtime path, structural evidence recorded.
 - 95% target: the same loop also has provenance, replay fixtures, degraded-state recovery tests, and operator handoff notes.
-- 99% evidence-complete: the same target is validated across Windows/macOS/Linux or carries explicit external-CI qualifiers for any platform not locally observable.
+- 99% evidence-complete: the same target has actual Windows/macOS/Linux result evidence with no unresolved platform qualifier.
 
 100% is intentionally out of scope because it would require long-running production telemetry, release-channel evidence, and real user workload data that this local change cannot truthfully provide.
 
