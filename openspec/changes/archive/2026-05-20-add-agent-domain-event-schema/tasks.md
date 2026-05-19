@@ -2,7 +2,7 @@
 
 Current branch source of truth: `feature/v0.5.0-md`.
 
-This change is implementation-unstarted on the current branch. Prior `feature/v0.5` domain-event modules, fixtures, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-derive event fixtures from the current reducer and projection behavior.
+Closure recalibration on 2026-05-20 confirmed current-branch implementation evidence is present for domain event types, pure factories, derivation fixtures, checker wiring, reducer non-integration guard, and OpenSpec validation. Prior `feature/v0.5` evidence remains non-authoritative; the authoritative evidence for this branch is the current `implementation-evidence.md`, current code facts, and the validation commands recorded below.
 
 ## 1. Schema Type Layer
 

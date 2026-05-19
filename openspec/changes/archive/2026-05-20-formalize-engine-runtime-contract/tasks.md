@@ -2,7 +2,7 @@
 
 Current branch source of truth: `feature/v0.5.0-md`.
 
-This change is implementation-unstarted on the current branch. Any implementation files, completed task marks, checker scripts, CI wiring, or `implementation-evidence.md` that existed on `feature/v0.5` are intentionally discarded and MUST NOT be treated as evidence for this branch. Reimplementation must start from the unchecked tasks below.
+Closure recalibration on 2026-05-20 confirmed current-branch implementation evidence is present for the runtime contract inventory, parity tests, local gates, and OpenSpec validation. Prior `feature/v0.5` evidence remains non-authoritative; the authoritative evidence for this branch is the current `implementation-evidence.md`, current code facts, and the validation commands recorded below.
 
 ## 1. Contract Inventory
 
@@ -41,6 +41,11 @@ This change is implementation-unstarted on the current branch. Any implementatio
 
 ## 6. Completion Review
 
-- [ ] 6.1 [P0][depends:5.6][I: validation 输出][O: residual risk 列表][V: 跳过的检查附原因与影响] 记录验证证据与残余风险。
-- [ ] 6.2 [P1][depends:6.1][I: 触及边界][O: follow-up backlog][V: 显式列出本 change 不做的 capability / cost / policy / domain event 工作] 列出后续 change 接力清单。
-- [ ] 6.3 [P0][depends:6.1][I: 提案对照][O: 范围未漂移说明][V: 与 `stabilize-core-runtime-and-realtime-contracts` 已交付证据无冲突] 校准本 change 与主干交付物的范围边界。
+- [x] 6.1 [P0][depends:5.6][I: validation 输出][O: residual risk 列表][V: 跳过的检查附原因与影响] 记录验证证据与残余风险。
+- [x] 6.2 [P1][depends:6.1][I: 触及边界][O: follow-up backlog][V: 显式列出本 change 不做的 capability / cost / policy / domain event 工作] 列出后续 change 接力清单。
+- [x] 6.3 [P0][depends:6.1][I: 提案对照][O: 范围未漂移说明][V: 与 `stabilize-core-runtime-and-realtime-contracts` 已交付证据无冲突] 校准本 change 与主干交付物的范围边界。
+
+### Closure Notes
+
+- 4.1 remains unchecked because this local closure pass cannot directly observe remote ubuntu/macos/windows CI runner results. Local equivalent gates and workflow wiring are recorded in `implementation-evidence.md`.
+- This change is otherwise ready for archive after remote CI evidence is attached or the archive note explicitly records remote CI as externally verified.

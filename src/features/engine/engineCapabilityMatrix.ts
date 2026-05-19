@@ -1,5 +1,5 @@
 import type { EngineFeatures, EngineStatus, EngineType } from "../../types";
-import matrixFixture from "../../../openspec/changes/add-engine-capability-matrix-spec/specs/engine-capability-matrix/fixtures/matrix.json";
+import matrixFixture from "../../../openspec/specs/engine-capability-matrix/fixtures/matrix.json";
 
 const ENGINE_CAPABILITY_KEY_VALUES = [
   "streaming.text",

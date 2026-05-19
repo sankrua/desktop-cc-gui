@@ -5,7 +5,7 @@ import process from "node:process";
 const ROOT = process.cwd();
 const FIXTURE_PATH = path.join(
   ROOT,
-  "openspec/changes/add-engine-capability-matrix-spec/specs/engine-capability-matrix/fixtures/matrix.json",
+  "openspec/specs/engine-capability-matrix/fixtures/matrix.json",
 );
 const TS_PATH = path.join(ROOT, "src/features/engine/engineCapabilityMatrix.ts");
 const RUST_PATH = path.join(ROOT, "src-tauri/src/engine/capability_matrix.rs");

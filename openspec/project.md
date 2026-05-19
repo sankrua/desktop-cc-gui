@@ -1,7 +1,7 @@
 # Project Context
 
 - Type: OpenSpec Workspace
-- Updated At: 2026-05-19T00:00:00+08:00
+- Updated At: 2026-05-20T00:00:00+08:00
 - Scope: governance snapshot for the current `mossx` repository workspace
 
 ## Domain
@@ -13,7 +13,7 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 - Spec artifacts: `openspec/specs/*`
 - Change workflow artifacts: `openspec/changes/<change-id>/{proposal,design,tasks,verification}.md`
 - Archive: `openspec/changes/archive/*`
-- Current workspace state: active changes = `20`, archive changes = `307`, main specs = `260`
+- Current workspace state: active changes = `11`, archive changes = `316`, main specs = `269`
 
 ## Entry Surfaces
 
@@ -41,21 +41,25 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 
 ## Active Changes
 
-### Branch Calibration Snapshot (2026-05-19)
+### Branch Calibration Snapshot (2026-05-20)
 
 Current implementation branch for this workspace snapshot is `feature/v0.5.0-md`.
 
-The harness governance design set below MUST be treated as design-ready with current-branch implementation traces present. Earlier `feature/v0.5` completion evidence remains non-authoritative by itself, but the current `feature/v0.5.0-md` codebase now contains matching runtime, checker, test, and CI artifacts that must be re-inventoried before archive.
+The harness governance core set was synced into main specs and archived on 2026-05-20 after proposal-local strict validation and a closure evidence pass. Earlier `feature/v0.5` completion evidence remains non-authoritative; authoritative evidence now lives in the archived change directories plus main specs.
 
-Next execution pass should reconcile each harness governance proposal against current `feature/v0.5.0-md` code facts, refresh or replace stale `implementation-evidence.md` where needed, run the proposal-specific validation commands, and only then decide whether to sync/archive.
+The archive included `formalize-engine-runtime-contract` with an explicit external-CI qualifier: local validation and workflow wiring were recorded, but remote three-platform CI results were not directly observable from the local closure session.
 
-### Harness Governance Core Set
+### Archived Harness Governance Core Set
 
-- `formalize-engine-runtime-contract`
-- `add-engine-capability-matrix-spec`
-- `evolve-context-ledger-to-cost-budget`
-- `evolve-checkpoint-to-policy-chain`
-- `add-agent-domain-event-schema`
+- `2026-05-20-formalize-engine-runtime-contract`
+- `2026-05-20-add-engine-capability-matrix-spec`
+- `2026-05-20-evolve-context-ledger-to-cost-budget`
+- `2026-05-20-evolve-checkpoint-to-policy-chain`
+- `2026-05-20-add-agent-domain-event-schema`
+- `2026-05-20-add-capability-aware-policy-router`
+- `2026-05-20-add-policy-decision-audit-surface`
+- `2026-05-20-add-governance-telemetry-loop`
+- `2026-05-20-wire-agent-domain-event-runtime`
 
 ### Harness Governance Substrate Set
 
@@ -66,13 +70,9 @@ Next execution pass should reconcile each harness governance proposal against cu
 
 ### Harness Governance Extension / Follow-up Set
 
-- `add-capability-aware-policy-router`
 - `add-cross-workspace-cost-admin-view`
 - `add-engine-plugin-onboarding-kit`
-- `add-governance-telemetry-loop`
-- `add-policy-decision-audit-surface`
 - `integrate-openspec-trellis-bridge-into-status-panel`
-- `wire-agent-domain-event-runtime`
 
 ### Other Active Changes
 
@@ -81,11 +81,11 @@ Next execution pass should reconcile each harness governance proposal against cu
 - `add-file-markdown-math-preview`
 - `harden-claude-sidebar-list-timeout-fallback`
 
-> Harness governance set status on `feature/v0.5.0-md`: proposal/design/tasks/spec deltas are present and should be treated as the current design baseline. Current code contains implementation traces for the core and substrate work, while some tasks/evidence files still reflect branch-calibration drift. Treat task checkboxes and existing `implementation-evidence.md` as review inputs, not final completion proof, until current-branch validation is rerun.
+> Harness governance closure status on 2026-05-20: the archived core and extension changes listed above were synchronized into `openspec/specs/**` and moved to `openspec/changes/archive/**`. Deferred contracts intentionally preserve their no-telemetry and no-EventBus boundaries.
 
 > Current status should be read from each change directory itself. `project.md` tracks workspace inventory and governance boundaries, not task-by-task execution detail.
 
-### Code Fact Snapshot (2026-05-19)
+### Code Fact Snapshot (2026-05-20)
 
 Current-branch code inventory shows harness/governance implementation traces in:
 
@@ -105,7 +105,7 @@ Current-branch code inventory shows harness/governance implementation traces in:
 - `scripts/realtime-perf-report.ts`
 - `.github/workflows/ci.yml`
 
-This snapshot is intentionally evidence-oriented, not a completion declaration. Each matching change still needs proposal-local validation before archive.
+This snapshot is intentionally evidence-oriented. Archived harness governance completion evidence now lives in the archived change directories and main specs.
 
 ## Namespace Policy
 
@@ -149,6 +149,7 @@ This snapshot is intentionally evidence-oriented, not a completion declaration. 
 
 ## Update History
 
+- 2026-05-20: Archived nine harness governance changes (`formalize-engine-runtime-contract`, `add-engine-capability-matrix-spec`, `evolve-context-ledger-to-cost-budget`, `evolve-checkpoint-to-policy-chain`, `add-agent-domain-event-schema`, `add-capability-aware-policy-router`, `add-policy-decision-audit-surface`, `add-governance-telemetry-loop`, `wire-agent-domain-event-runtime`) after syncing delta specs into main specs and recording closure evidence. `formalize-engine-runtime-contract` carries an explicit external-CI qualifier because remote three-platform CI was not directly observable from the local closure session. Refreshed inventory to active=11, archive=316, specs=269.
 - 2026-05-19: Recalibrated `project.md` against current `feature/v0.5.0-md` code and active proposal inventory. Workspace counts are now active=20, archive=307, specs=260. Harness governance is no longer described as implementation-unstarted; current-branch code traces exist and must be reconciled through fresh validation before sync/archive.
 - 2026-05-19: Recalibrated the harness governance proposal set for `feature/v0.5.0-md` only. Prior `feature/v0.5` implementation artifacts are explicitly excluded from the current baseline; all harness governance implementation must be redone from the current branch facts.
 - 2026-05-17: Hardened harness governance implementation constraints to v1.6 by making heavy-test-noise sentry, large-file governance sentry, and Win/macOS/Linux compatibility explicit requirements across the governance change set; corrected `formalize-engine-runtime-contract` task wording so runtime contract legislation is not confused with capability matrix work.

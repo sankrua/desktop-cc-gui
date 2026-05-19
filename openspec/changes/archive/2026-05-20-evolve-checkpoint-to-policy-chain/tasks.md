@@ -2,7 +2,7 @@
 
 Current branch source of truth: `feature/v0.5.0-md`.
 
-This change is implementation-unstarted on the current branch. Prior `feature/v0.5` policy modules, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-inventory the current checkpoint verdict logic and StatusPanel hosts before coding.
+Closure recalibration on 2026-05-20 confirmed current-branch implementation evidence is present for policy types, core policy extraction, registry composition, bounded audit buffer, first-batch validation policies, UI wiring, checker wiring, and OpenSpec validation. Prior `feature/v0.5` evidence remains non-authoritative; the authoritative evidence for this branch is the current `implementation-evidence.md`, current code facts, and the validation commands recorded below.
 
 ## 1. Core Policy Extraction (Behavior-Equivalent)
 

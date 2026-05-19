@@ -2,7 +2,7 @@
 
 Current branch source of truth: `feature/v0.5.0-md`.
 
-This change is implementation-unstarted on the current branch. Prior `feature/v0.5` matrix files, fixtures, scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-run inventory against the current branch before creating any TS/Rust matrix.
+Closure recalibration on 2026-05-20 confirmed current-branch implementation evidence is present for the matrix fixture, TS/Rust helpers, checker, UI pilot, CI wiring, and OpenSpec validation. Prior `feature/v0.5` evidence remains non-authoritative; the authoritative evidence for this branch is the current `implementation-evidence.md`, current code facts, and the validation commands recorded below.
 
 ## 1. Capability Inventory
 

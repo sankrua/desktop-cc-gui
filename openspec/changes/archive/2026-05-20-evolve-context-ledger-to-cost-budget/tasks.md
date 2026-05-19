@@ -2,7 +2,7 @@
 
 Current branch source of truth: `feature/v0.5.0-md`.
 
-This change is implementation-unstarted on the current branch. Prior `feature/v0.5` pricing/cost/budget modules, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-check current `ThreadTokenUsage`, context-ledger state, StatusPanel hosts, and i18n files before coding.
+Closure recalibration on 2026-05-20 confirmed current-branch implementation evidence is present for pricing fixtures, cost projection, budget thresholds, StatusPanel integration, checker wiring, and OpenSpec validation. Prior `feature/v0.5` evidence remains non-authoritative; the authoritative evidence for this branch is the current `implementation-evidence.md`, current code facts, and the validation commands recorded below.
 
 ## 1. Pricing Source
 
