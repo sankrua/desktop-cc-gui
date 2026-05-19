@@ -523,3 +523,66 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 488: 收口运行时能力与性能治理
+
+**Date**: 2026-05-19
+**Task**: 收口运行时能力与性能治理
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+收口 engine capability matrix、context ledger cost/budget、checkpoint policy chain、realtime batching、messages timeline virtualization、bundle chunking 与 CI governance gates；补充边界修复并完成 typecheck、large-file、heavy-test-noise 验证。
+
+### Main Changes
+
+## 本次提交
+
+- Commit: 403eef7d feat(governance): 收口运行时能力与性能治理
+- Branch: feature/v0.5.0-md
+
+## 主要改动
+
+- 新增 engine capability matrix TS/Rust contract 与 fixture gate。
+- 新增 context ledger pricing/cost/budget projection，并在 Status Panel checkpoint 区展示 session cost。
+- 将 checkpoint verdict 演进为 policy chain，补充 policy audit 展示与 validation policy 测试。
+- 抽离 messages streaming complexity、timeline projection、timeline virtualization，降低长消息/长历史渲染压力。
+- 新增 realtime event batcher，合并 delta 并保持 first-token/terminal flush 语义。
+- 新增 domain event schema scaffolding 与 governance check scripts。
+- 更新 Vite manualChunks，将 mermaid/docs/ui-heavy 依赖拆为独立 chunk。
+- 新增 CI contract gates，并更新 perf baseline/history evidence 与 OpenSpec implementation evidence。
+- Review 修复：audit buffer 非法 limit 防 hang；budget threshold 非法值防误触发。
+
+## 验证
+
+- npm run typecheck：通过。
+- npm run check:large-files:gate：通过，found=0。
+- npm run check:large-files:near-threshold：仅 watch 告警，无 fail。
+- node --test scripts/check-large-files.test.mjs：通过，7 tests。
+- node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs：通过，15 tests。
+- npm run check:heavy-test-noise：通过，496 test files completed；environment warnings=1，act warnings=0，stdout payload lines=0，stderr payload lines=0。
+- npx vitest run src/features/status-panel/utils/policies/policyRegistry.test.ts src/features/context-ledger/cost/costProjection.test.ts：通过，2 files / 13 tests。
+
+## 后续建议
+
+- large-file near-threshold 的 26 个 watch 项建议单独开结构性任务处理，不混入本次治理收口提交。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `403eef7d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
