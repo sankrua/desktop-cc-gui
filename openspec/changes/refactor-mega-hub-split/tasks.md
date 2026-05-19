@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior branch measurements or implementation attempts are discarded. Reimplementation must re-measure current hub sizes, imports, call sites, and relevant perf baselines before selecting a target.
+
 ## 1. Target Selection
 
 - [ ] 1.1 [P0][depends:none][I: proposal hub list][O: current size table][V: target files measured] Measure listed hub sizes.

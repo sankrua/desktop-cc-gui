@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior `feature/v0.5` policy modules, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-inventory the current checkpoint verdict logic and StatusPanel hosts before coding.
+
 ## 1. Core Policy Extraction (Behavior-Equivalent)
 
 - [ ] 1.1 [P0][depends:none][I: `src/features/status-panel/utils/checkpoint.ts`][O: 现有判决逻辑分解清单][V: 每个判决分支可被映射到 PolicyDecision] inventory 现有 checkpoint 判决路径。

@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior branch measurements or implementation attempts are discarded. Reimplementation must re-inventory current message/timeline row rendering, tool-call fallback rows, scroll restoration, and long-list baseline before coding.
+
 ## 1. Rendering Inventory
 
 - [ ] 1.1 [P0][depends:none][I: `MessagesRows.tsx` / message row components][O: row rendering map][V: row identity/order path documented] Inventory row rendering path.

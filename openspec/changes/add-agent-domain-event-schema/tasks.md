@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior `feature/v0.5` domain-event modules, fixtures, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-derive event fixtures from the current reducer and projection behavior.
+
 ## 1. Schema Type Layer
 
 - [ ] 1.1 [P0][depends:none][I: 10 个事件名][O: `src/features/threads/domain-events/eventTypes.ts`][V: Readonly type union；type 字段 literal] 定义 DomainEvent type union。

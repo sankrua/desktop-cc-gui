@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+当前变更只以 `feature/v0.5.0-md` 为事实源。`feature/v0.5` 上曾出现的 pricing/cost/budget core、checker、CI wiring、task 勾选与 `implementation-evidence.md` 不再作为本变更依据；后续必须在当前分支重新实现。
+
+当前分支状态：context-ledger 现有能力仍是事实基础，但 cost/budget/pricing 扩展未落地。近两天当前分支的 session display projection 与 sidebar fallback 只影响可见 session 事实，不改变本 change 的 cost projection 输入边界：第一版仍以 `ThreadTokenUsage` 为权威输入，不从 UI 投影反推成本。
+
 ## Why
 
 `src/features/context-ledger/` 已经存在 block / group / projection / governance utils，但**只解决了"上下文账本"，没有解决"成本/预算视图"**。

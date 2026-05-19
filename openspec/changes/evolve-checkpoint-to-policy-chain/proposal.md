@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+当前变更只以 `feature/v0.5.0-md` 为事实源。`feature/v0.5` 上曾出现的 policy chain core、checker、CI wiring、task 勾选与 `implementation-evidence.md` 不再作为本变更依据；后续必须在当前分支重新实现。
+
+当前分支状态：Checkpoint 仍以现有 `status-panel` 判决逻辑为事实基础，policy chain 尚未落地。近两天当前分支的 sidebar timeout fallback 与 session display projection 可作为未来 checkpoint evidence 的候选事实，但本 change 第一版仍只插件化既有 validation evidence，不直接消费 sidebar/runtime 外部信号。
+
 ## Why
 
 `src/features/status-panel/utils/checkpoint.ts` 是当前 SLA 判决引擎：

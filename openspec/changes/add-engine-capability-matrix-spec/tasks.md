@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior `feature/v0.5` matrix files, fixtures, scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-run inventory against the current branch before creating any TS/Rust matrix.
+
 ## 1. Capability Inventory
 
 - [ ] 1.1 [P0][depends:none][I: `src/types.ts` `EngineFeatures`][O: TS 现有 capability 字段清单][V: 字段与默认值列表完整] 抓取 TS 现有 EngineFeatures 实测字段。

@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior `feature/v0.5` pricing/cost/budget modules, checker scripts, CI wiring, completed task marks, and implementation evidence are discarded. Reimplementation must re-check current `ThreadTokenUsage`, context-ledger state, StatusPanel hosts, and i18n files before coding.
+
 ## 1. Pricing Source
 
 - [ ] 1.1 [P0][depends:none][I: 4 引擎公开 pricing 文档 + 已有 model 列表][O: pricing fixture（per-engine 拆分）][V: 每引擎独立 fixture 文件，不创建近阈值大文件] 落地初始 pricing fixture。

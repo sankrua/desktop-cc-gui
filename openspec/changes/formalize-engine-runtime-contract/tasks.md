@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Any implementation files, completed task marks, checker scripts, CI wiring, or `implementation-evidence.md` that existed on `feature/v0.5` are intentionally discarded and MUST NOT be treated as evidence for this branch. Reimplementation must start from the unchecked tasks below.
+
 ## 1. Contract Inventory
 
 - [ ] 1.1 [P0][depends:none][I: `conversationCurtainContracts.ts`][O: canonical type inventory][V: 文档化 `RealtimeAdapter` / `HistoryLoader` / `NormalizedThreadEvent` 字段清单] 列出现有 contract 类型与字段。

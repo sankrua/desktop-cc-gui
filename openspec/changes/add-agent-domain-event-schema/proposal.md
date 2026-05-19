@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+当前变更只以 `feature/v0.5.0-md` 为事实源。`feature/v0.5` 上曾出现的 domain-events 类型、factory、derivation fixtures、checker、task 勾选与 `implementation-evidence.md` 不再作为本变更依据；后续必须在当前分支重新实现。
+
+当前分支状态：domain event schema 未落地。近两天当前分支新增/调整的 session display projection、user-input question card 与 tool-call fallback 是后续 event derivation 需要重新评估的事实输入，但第一版仍坚持 type/factory/derivation-only，不接 runtime、不建 bus。
+
 ## Why
 
 mossx 当前的事件流是分散的：

@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+本设计面向当前 `feature/v0.5.0-md` 分支重新实施。`feature/v0.5` 中曾出现的 TS matrix、Rust matrix、spec fixture、checker 与 validation evidence 视为废弃实现，不得作为当前分支完成状态。
+
+当前定位：**design-ready / implementation-unstarted**。后续实施需要重新 inventory 当前分支的 `EngineFeatures`、Rust engine metadata、UI hard-coded engine branches 与 adapter/loader tests，再生成 matrix。
+
 ## Context
 
 本变更是治理战略 v1.4 §4.2 "第 2 件 Quick Win"。

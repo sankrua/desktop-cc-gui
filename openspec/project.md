@@ -41,6 +41,14 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 
 ## Active Changes
 
+### Branch Calibration Snapshot (2026-05-19)
+
+Current implementation branch for this workspace snapshot is `feature/v0.5.0-md`.
+
+The harness governance design set below MUST be treated as design-ready but implementation-unstarted on this branch. Any harness governance implementation artifacts that existed on `feature/v0.5` (core code, checker scripts, task completion marks, CI wiring, or `implementation-evidence.md`) are intentionally not part of the current branch baseline and MUST NOT be used as completion evidence.
+
+Next execution pass should reimplement the harness governance proposals from the current `feature/v0.5.0-md` code facts, starting with fresh inventory and validation.
+
 ### Harness Governance Design Set
 
 - `formalize-engine-runtime-contract`
@@ -61,7 +69,7 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 - `stabilize-core-runtime-and-realtime-contracts`
 - `add-codex-structured-launch-profile`
 
-> Harness governance set status: proposal/design/tasks/spec deltas are present and should be treated as the current design baseline. Implementation remains unstarted (`0/x tasks`) and should begin with the contract/legal layer before feature integration. All governance changes MUST preserve `.github/workflows/heavy-test-noise-sentry.yml`, `.github/workflows/large-file-governance.yml`, and ubuntu/macos/windows cross-platform parity.
+> Harness governance set status on `feature/v0.5.0-md`: proposal/design/tasks/spec deltas are present and should be treated as the current design baseline. Implementation remains unstarted (`0/x tasks`) and should begin with the contract/legal layer before feature integration. All governance changes MUST preserve `.github/workflows/heavy-test-noise-sentry.yml`, `.github/workflows/large-file-governance.yml`, and ubuntu/macos/windows cross-platform parity.
 
 > Current status should be read from each change directory itself. `project.md` tracks workspace inventory and governance boundaries, not task-by-task execution detail.
 
@@ -107,6 +115,7 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 
 ## Update History
 
+- 2026-05-19: Recalibrated the harness governance proposal set for `feature/v0.5.0-md` only. Prior `feature/v0.5` implementation artifacts are explicitly excluded from the current baseline; all harness governance implementation must be redone from the current branch facts.
 - 2026-05-17: Hardened harness governance implementation constraints to v1.6 by making heavy-test-noise sentry, large-file governance sentry, and Win/macOS/Linux compatibility explicit requirements across the governance change set; corrected `formalize-engine-runtime-contract` task wording so runtime contract legislation is not confused with capability matrix work.
 - 2026-05-17: Added and calibrated the harness governance design set (`formalize-engine-runtime-contract`, `add-engine-capability-matrix-spec`, `evolve-context-ledger-to-cost-budget`, `evolve-checkpoint-to-policy-chain`, `add-agent-domain-event-schema`) plus substrate blockers (`refactor-mega-hub-split`, `optimize-realtime-event-batching`, `optimize-long-list-virtualization`, `optimize-bundle-chunking`); refreshed workspace inventory after the v1.5 governance design closure (specs=258, archive=303, active=11).
 - 2026-05-15: Archived eight verified changes (`fix-claude-repeat-turn-first-token-latency`, `harden-claude-stream-json-liveness`, `fix-claude-pending-transcript-reconciliation`, `repair-project-memory-reference-retrieval-integrity`, `harden-codex-silent-turn-liveness`, `harden-session-start-and-claude-list-window`, `fix-claude-sidebar-native-session-continuity`, `improve-progressive-file-tree-loading`) after syncing their delta specs into main specs; resolved the overlapping `claude-session-sidebar-state-parity` updates by preserving both sidebar continuity and configured display-window requirements; refreshed workspace inventory (specs=257, archive=302, active=1).

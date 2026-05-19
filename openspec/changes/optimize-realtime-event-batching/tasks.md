@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior `feature/v0.5` batching contract files, checker scripts, completed task marks, and implementation evidence are discarded. Reimplementation must re-measure the current realtime path before coding.
+
 ## 1. Realtime Path Inventory
 
 - [ ] 1.1 [P0][depends:none][I: realtime adapter/hook path][O: propagation map][V: delta/status/tool paths identified] Map realtime event propagation.

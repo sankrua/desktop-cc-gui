@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+当前变更只以 `feature/v0.5.0-md` 为事实源。`feature/v0.5` 上曾出现的 capability matrix core、TS/Rust matrix、checker、CI wiring、task 勾选与 `implementation-evidence.md` 不再作为本变更依据；后续必须在当前分支重新设计核对并重新实现。
+
+当前分支状态：OpenSpec artifacts 已可作为设计草案使用，但 implementation 未开始。当前分支已有的 sidebar timeout fallback、session display projection、tool-call fallback 与 user-input question card 不能被倒推出新的 capability cell；新增 capability 仍必须按 TS / Rust / UI / adapter evidence 四源核验。
+
 ## Why
 
 mossx 当前支持 4 个引擎（Claude / Codex / Gemini / OpenCode），但**引擎能力差异是隐式的**：

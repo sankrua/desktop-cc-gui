@@ -1,3 +1,9 @@
+## 0. Branch Calibration
+
+Current branch source of truth: `feature/v0.5.0-md`.
+
+This change is implementation-unstarted on the current branch. Prior branch measurements or implementation attempts are discarded. Reimplementation must rerun current build/cold-start inventory before choosing lazy or manual chunk boundaries.
+
 ## 1. Bundle Inventory
 
 - [ ] 1.1 [P0][depends:none][I: `docs/perf/cold-start-baseline.json`][O: current S-CS-COLD snapshot][V: baseline values recorded] Capture current cold-start bundle baseline.

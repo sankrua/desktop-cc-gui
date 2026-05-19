@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+当前变更只以 `feature/v0.5.0-md` 为事实源。`feature/v0.5` 上曾出现的 runtime contract 实现、task 勾选、checker 脚本与 `implementation-evidence.md` 不再作为本变更依据；后续实施必须在当前分支重新完成，不得恢复或引用废弃分支产物作为完成证据。
+
+当前分支状态：proposal / design / tasks / spec delta 已存在，implementation 未开始。近两天当前分支新增的 sidebar timeout fallback、session display projection、tool-call fallback、user-input question card 只作为 runtime 事实背景，不扩大本 change 范围。
+
 ## Why
 
 `stabilize-core-runtime-and-realtime-contracts` 已经把 realtime event 与 runtime lifecycle 主干打成钢筋，但落地形态仍然是**事实契约**：

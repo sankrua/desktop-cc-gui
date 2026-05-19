@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+本设计面向当前 `feature/v0.5.0-md` 分支重新实施。`feature/v0.5` 中曾出现的 policy registry、validation policies、audit buffer、checker 与 evidence 均视为废弃实现，不作为当前完成状态。
+
+当前定位：**design-ready / implementation-unstarted**。后续实施必须重新 inventory 当前分支的 `checkpoint.ts`、`CheckpointPanel` 双宿主、validation evidence shape 与 i18n 文件。
+
 ## Context
 
 本变更是治理战略 v1.4 §4.2 第 4 件 Quick Win 的落地。

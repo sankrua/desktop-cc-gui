@@ -1,3 +1,9 @@
+## Branch Calibration / 分支校准（2026-05-19）
+
+本设计面向当前 `feature/v0.5.0-md` 分支重新实施。任何来自 `feature/v0.5` 的已实现 core、validation evidence、task completion 或 `implementation-evidence.md` 均视为废弃分支历史，不作为当前设计的完成状态。
+
+因此，本 design 的定位是 **design-ready / implementation-unstarted**：先保留治理法律文本与实施边界，再由后续全链路实施重新落地 tests、checker、CI wiring 与 evidence。
+
 ## Context
 
 本变更是 `stabilize-core-runtime-and-realtime-contracts` 的**正式化后续**，不是平行项目。
