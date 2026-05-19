@@ -7,6 +7,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+#[cfg(test)]
+mod capability_matrix;
 pub mod claude;
 pub mod claude_history;
 #[cfg(test)]
@@ -21,8 +23,6 @@ pub(crate) mod claude_history_subagents;
 pub(crate) mod claude_message_content;
 pub(crate) mod codex_prompt_service;
 pub mod commands;
-#[cfg(test)]
-mod capability_matrix;
 pub(crate) mod error_mapper;
 pub mod events;
 pub mod gemini;
