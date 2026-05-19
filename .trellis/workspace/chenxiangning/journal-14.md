@@ -1678,3 +1678,47 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 515: 细化 harness 证据实施约束
+
+**Date**: 2026-05-20
+**Task**: 细化 harness 证据实施约束
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+补充提交 harness governance evidence 实施约束细化。
+
+提交内容：
+- 明确 large-file gate 优先使用 structured JSON report，除非现有输出已被证明稳定。
+- 明确 heavy-test-noise log parsing 脆弱时需要结构化 summary。
+- 明确 S3 默认从 turn completed/failed domain event 开始，偏离默认需写 implementation evidence。
+- 明确 99% 平台证据不能只依赖可复现命令，必须有三平台实际结果。
+
+验证：
+- 该提交为 OpenSpec 文档约束补丁。
+- 前置全量本地 CI 已通过。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `249862a8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
