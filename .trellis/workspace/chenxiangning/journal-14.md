@@ -466,3 +466,60 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 487: 提交消息工具调用卡片与会话投影修复
+
+**Date**: 2026-05-19
+**Task**: 提交消息工具调用卡片与会话投影修复
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+按功能批次提交三组变更：消息区残留 tool call XML fallback 卡片、Claude 会话侧栏稳定投影、Tauri subagent 泛化 Agent 标题过滤。
+
+### Main Changes
+
+本次会话完成本地分批提交，保持中文 Conventional Commits：
+
+1. cb261490 feat(messages): 渲染残留工具调用 XML 为可交互卡片
+- 新增 tool call XML parser，支持 function_calls、invoke 与 antml 前缀变体。
+- 新增 ToolCallBlock、样式、Markdown 分段集成与 zh/en i18n。
+- 归档 add-message-tool-call-card-fallback，并同步 message-assistant-tool-call-card-fallback spec。
+
+2. d3327f0f fix(threads): 稳定 Claude 会话侧栏展示投影
+- 新增 sessionDisplayProjection，统一弱标题判断与 stable projection merge。
+- 避免 Agent N 或 Claude Session 覆盖有意义标题。
+- 调整 Claude pending finalize 解析，减少 ambiguous finalize 产生重复弱标题行。
+- 归档 refactor-session-display-projection，并更新 claude-session-sidebar-state-parity spec。
+
+3. 4f40920b fix(tauri): 过滤 Claude subagent 泛化 Agent 标题
+- Rust 侧过滤 subagent metadata 中 Agent N 这类泛化标题。
+- 当 agentName/description 只有泛化标题时，保留 transcript 首条用户消息作为 first_message。
+- 新增 focused Rust tests 覆盖 agentName 与 description 污染场景。
+
+验证情况：
+- 本次提交过程中未重新运行测试。
+- 相关 OpenSpec tasks 文件显示作者此前已完成 focused Vitest、Rust tests、typecheck 与 openspec validate。
+- commit 后工作区已确认 clean。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cb261490` | (see git log) |
+| `d3327f0f` | (see git log) |
+| `4f40920b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
