@@ -1636,3 +1636,45 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 514: 校准 harness 平台证据门槛
+
+**Date**: 2026-05-20
+**Task**: 校准 harness 平台证据门槛
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+补充提交 harness governance readiness 的平台证据门槛校准。
+
+提交内容：
+- 明确 95% readiness 需要 macOS 本地证据以及 Windows/Linux CI qualifier 或实际证据。
+- 明确 99% readiness 必须具备 Windows、macOS、Linux actual evidence；未解除平台 qualifier 时不得宣称 99%。
+
+验证：
+- 该提交为 OpenSpec 文档约束补丁。
+- 前置全量本地 CI 已通过：lint、typecheck、npm test、cargo test、large-file gate、heavy-test-noise gate、doctor:win、Tauri debug build。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a1f799cd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

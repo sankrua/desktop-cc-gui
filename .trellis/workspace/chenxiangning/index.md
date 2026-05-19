@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-14.md`
-- **Total Sessions**: 513
+- **Total Sessions**: 514
 - **Last Active**: 2026-05-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-14.md` | ~1638 | Active |
+| `journal-14.md` | ~1680 | Active |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
 | `journal-11.md` | ~1985 | Archived |
@@ -42,6 +42,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 514 | 2026-05-20 | 校准 harness 平台证据门槛 | `a1f799cd` | `feature/v0.5.0-md` |
 | 513 | 2026-05-20 | 拆分前端大文件模块边界 | `187fd30b` | `feature/v0.5.0-md` |
 | 512 | 2026-05-20 | 拆分 harness 运行时治理模块 | `fab60797` | `feature/v0.5.0-md` |
 | 511 | 2026-05-20 | 收口 harness 治理层90分提案 | `6b11f21d` | `feature/v0.5.0-md` |
