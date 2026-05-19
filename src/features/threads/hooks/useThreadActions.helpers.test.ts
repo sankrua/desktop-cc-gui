@@ -221,6 +221,35 @@ describe("useThreadActions.helpers", () => {
     expect(merged.find((thread) => thread.id === "claude:session-1")?.name).toBe("稳定命名");
   });
 
+  it("does not let ordinal Agent catalog titles overwrite meaningful existing titles", () => {
+    const merged = mergeCodexCatalogSessionSummaries(
+      [
+        {
+          id: "claude:session-1",
+          name: "帮我审核一下这个 PR",
+          updatedAt: 100,
+          engineSource: "claude",
+          threadKind: "native",
+        },
+      ],
+      [
+        {
+          sessionId: "claude:session-1",
+          title: "Agent 202",
+          updatedAt: 120,
+          engine: "claude",
+        },
+      ],
+      "workspace-1",
+      {},
+      () => undefined,
+    );
+
+    expect(merged.find((thread) => thread.id === "claude:session-1")?.name).toBe(
+      "帮我审核一下这个 PR",
+    );
+  });
+
   it("does not resurrect excluded Claude rows during degraded continuity", () => {
     const merged = mergeDegradedClaudeContinuitySummaries(
       [],
