@@ -311,3 +311,47 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 528: 切换同工作区会话保留编辑器
+
+**Date**: 2026-05-20
+**Task**: 切换同工作区会话保留编辑器
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 问题 | 桌面 editor split 中切换同 workspace session 时，`exitDiffView()` 会把 `centerMode` 强制切回 `chat`，导致右侧已打开文件被隐藏，体验像文件被关闭。 |
+| 修复 | 抽出 `shouldPreserveEditorOnThreadSelect` 和 `getThreadSelectDiffCleanupAction`，在同 workspace、非 compact、当前 editor split 且存在 active file 时，只清理 selected diff，不调用会切 chat 的 `exitDiffView()`。 |
+| 边界 | 跨 workspace、compact、非 editor split、无 active file 时保持原有回 chat / exit diff 行为。 |
+| 验证 | `npm run lint`、`npm run typecheck`、目标 Vitest、目标 ESLint、`git diff --check` 均通过。 |
+
+**Updated Files**:
+- `src/app-shell-parts/useAppShellLayoutNodesSection.tsx`
+- `src/app-shell-parts/threadEditorPreservation.ts`
+- `src/app-shell-parts/useAppShellLayoutNodesSection.test.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e4479078` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
