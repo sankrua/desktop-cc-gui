@@ -1806,3 +1806,48 @@ Notes:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 518: 修复 domain event runtime 测试 Storage 兼容性
+
+**Date**: 2026-05-20
+**Task**: 修复 domain event runtime 测试 Storage 兼容性
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 目标 | 修复 CI Vitest node 环境中 `Storage is not defined` 导致 `eventRuntime.test.ts` 失败的问题 |
+| 改动 | 在 `src/features/threads/domain-events/eventRuntime.test.ts` 增加测试内 `createStorageWriteProbe()`，优先 spy 真实 `Storage.prototype.setItem`，无 `Storage` 时 stub 最小 `localStorage.setItem` probe |
+| 范围 | 仅测试兼容性修复；未修改 domain event runtime 产品实现 |
+| 验证 | `npx vitest run src/features/threads/domain-events/eventRuntime.test.ts` 通过 |
+| 验证 | `npx vitest run src/features/threads/hooks/threadReducerTextMerge.test.ts src/features/threads/domain-events/eventRuntime.test.ts src/features/threads/hooks/threadReducerReasoningGuards.test.ts src/features/threads/domain-events/eventFactories.test.ts` 通过 |
+| 验证 | `npx eslint src/features/threads/domain-events/eventRuntime.test.ts` 通过 |
+| 验证 | `npm run typecheck` 通过 |
+
+**Updated Files**:
+- `src/features/threads/domain-events/eventRuntime.test.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `29f589bc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
