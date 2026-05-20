@@ -673,3 +673,41 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 536: 升级发布版本到 v0.5.0
+
+**Date**: 2026-05-21
+**Task**: 升级发布版本到 v0.5.0
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+Task goal: 修复 GitHub release job 因 v0.4.18 tag/release 已存在而失败的问题。
+Main changes: 将项目发布版本源从 0.4.18 统一升级到 0.5.0，覆盖 package.json、package-lock.json、src-tauri/tauri.conf.json。
+Affected modules: release/version metadata only；未修改 release workflow 和应用运行逻辑。
+Validation: 检查三处版本源均为 0.5.0；确认 upstream/origin 均无 refs/tags/v0.5.0；git diff 仅包含版本号变更。
+Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0af58d83` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
