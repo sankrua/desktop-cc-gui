@@ -284,3 +284,23 @@ return {
   evidenceArtifactPath: sourceEvidence.provenance?.artifactPath,
 };
 ```
+
+## Scenario: StatusPanel Evidence / Cost Dense Typography
+
+### 1. Scope / Trigger
+
+- Trigger：修改 `GovernanceEvidenceSection`、`CostBudgetSection`、`src/styles/status-panel.css` 中 `sp-governance-evidence` / `sp-cost-budget` 相关 selector，或调整 checkpoint typography 变量。
+- 目标：`治理证据` 与 `成本 / Budget` 是 dense operational evidence surface，必须保持低视觉噪音，避免被 checkpoint 通用字号回归带大。
+
+### 2. Contracts
+
+- `.sp-governance-evidence` MUST own local typography vars: `--sp-governance-label-size`、`--sp-governance-copy-size`、`--sp-governance-meta-size`。
+- `.sp-cost-budget` MUST own local typography vars: `--sp-cost-budget-label-size`、`--sp-cost-budget-copy-size`、`--sp-cost-budget-meta-size`。
+- Evidence / cost section MAY override `--sp-checkpoint-label-size` and `--sp-checkpoint-copy-size` only inside its own scoped root.
+- Global `.sp-checkpoint-*` typography MUST NOT be enlarged to fix or restyle evidence/cost rows.
+- Evidence title, summary, source/action chips, cost badges, token breakdown labels, budget bar, and degradation guides MUST remain compact, use one coherent local font-size scale inside the same section, and wrap horizontally; they must not become hero-scale or dominate the dock.
+
+### 3. Validation
+
+- CSS review MUST confirm the dense section overrides remain scoped to `.sp-governance-evidence` / `.sp-cost-budget`.
+- Visual QA SHOULD check that evidence rows and cost badges remain smaller than the main checkpoint headline and do not crowd the dock.

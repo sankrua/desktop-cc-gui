@@ -1864,9 +1864,11 @@
 }
 
 .sp-governance-evidence {
-  --sp-governance-label-size: 10px;
-  --sp-governance-copy-size: 10px;
-  --sp-governance-meta-size: 9px;
+  --sp-checkpoint-label-size: 12px;
+  --sp-checkpoint-copy-size: 12px;
+  --sp-governance-label-size: 12px;
+  --sp-governance-copy-size: 12px;
+  --sp-governance-meta-size: 12px;
   --sp-governance-success: color-mix(
     in srgb,
     var(--status-success) 88%,
@@ -1995,6 +1997,31 @@
   background: var(--sp-governance-chip-bg);
 }
 
+.sp-cost-budget {
+  --sp-checkpoint-label-size: 12px;
+  --sp-checkpoint-copy-size: 12px;
+  --sp-cost-budget-label-size: 12px;
+  --sp-cost-budget-copy-size: 12px;
+  --sp-cost-budget-meta-size: 12px;
+}
+
+.sp-cost-budget .sp-checkpoint-section-title,
+.sp-cost-budget .sp-checkpoint-action-hint,
+.sp-cost-budget .sp-checkpoint-validation-guide-label {
+  font-size: var(--sp-cost-budget-copy-size);
+  line-height: 1.2;
+}
+
+.sp-cost-budget .sp-checkpoint-section-title {
+  font-size: var(--sp-cost-budget-label-size);
+}
+
+.sp-cost-budget .sp-checkpoint-evidence-badge {
+  padding: 1px 5px;
+  font-size: var(--sp-cost-budget-meta-size);
+  line-height: 1.2;
+}
+
 .sp-cost-token-breakdown {
   display: flex;
   flex-direction: column;
@@ -2031,7 +2058,7 @@
   flex-wrap: wrap;
   gap: 5px;
   color: var(--text-muted);
-  font-size: 9px;
+  font-size: var(--sp-cost-budget-meta-size, 12px);
 }
 
 .sp-cost-v2-card {
@@ -2039,7 +2066,7 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 5px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--sp-cost-budget-copy-size, 12px);
 }
 
 .sp-budget-bar {
@@ -2047,7 +2074,7 @@
   align-items: center;
   gap: 7px;
   color: var(--text-muted);
-  font-size: 10px;
+  font-size: var(--sp-cost-budget-copy-size, 12px);
 }
 
 .sp-budget-bar-track {
