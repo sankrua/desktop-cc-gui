@@ -13,6 +13,7 @@ import {
 import { OPENCODE_VARIANT_OPTIONS } from "./utils";
 import type { WorkspaceInfo } from "../types";
 import { archiveWorkspaceSessions } from "../services/tauri";
+import { shouldEnableMainFileExternalChangeMonitoring } from "./fileExternalMonitoring";
 
 type WorkspaceAliasPromptState = {
   workspaceId: string;
@@ -162,10 +163,12 @@ export function useAppShellLayoutNodesSection(ctx: any) {
       updateSharedSessionEngineSelection,
     ],
   );
-  const enableMainFileExternalChangeMonitoring = Boolean(
-    activeWorkspace &&
+  const enableMainFileExternalChangeMonitoring =
+    shouldEnableMainFileExternalChangeMonitoring({
+      activeWorkspace,
       activeEditorFilePath,
-  );
+      liveEditPreviewEnabled,
+    });
   const handleRenameWorkspaceAlias = useCallback(
     (workspace: WorkspaceInfo) => {
       const currentAlias =

@@ -40,6 +40,7 @@ import { formatCodeAnnotationLineRange } from "../../code-annotations/utils/code
 
 type FileMarkdownPreviewProps = {
   value: string;
+  documentKey?: string;
   className?: string;
   onAnnotationStart?: (lineRange: CodeAnnotationLineRange) => void;
   annotationDraft?: { lineRange: CodeAnnotationLineRange; body: string } | null;
@@ -62,6 +63,8 @@ type MermaidRenderState =
   | { status: "rendering" }
   | { status: "success"; svg: string }
   | { status: "error"; message: string };
+
+type MermaidBlockTab = "source" | "render";
 
 type FrontmatterField = {
   key: string;
@@ -98,6 +101,51 @@ const ANNOTATABLE_MARKDOWN_NODE_TAGS = new Set<string>([
   "table",
   "ul",
 ]);
+
+const MAX_CACHED_MERMAID_DOCUMENTS = 50;
+const mermaidTabSessionCache = new Map<string, Record<string, MermaidBlockTab>>();
+
+function hashStableString(value: string): string {
+  let hash = 0;
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+  }
+  return hash.toString(36);
+}
+
+function readCachedMermaidTabs(documentKey: string): Record<string, MermaidBlockTab> {
+  return { ...(mermaidTabSessionCache.get(documentKey) ?? {}) };
+}
+
+function writeCachedMermaidTab(
+  documentKey: string,
+  blockKey: string,
+  activeTab: MermaidBlockTab,
+) {
+  const nextTabs = {
+    ...(mermaidTabSessionCache.get(documentKey) ?? {}),
+    [blockKey]: activeTab,
+  };
+  mermaidTabSessionCache.delete(documentKey);
+  mermaidTabSessionCache.set(documentKey, nextTabs);
+  while (mermaidTabSessionCache.size > MAX_CACHED_MERMAID_DOCUMENTS) {
+    const oldestDocumentKey = mermaidTabSessionCache.keys().next().value;
+    if (!oldestDocumentKey) {
+      break;
+    }
+    mermaidTabSessionCache.delete(oldestDocumentKey);
+  }
+}
+
+function createMermaidBlockKey(
+  node: MarkdownPositionTreeNode,
+  value: string,
+): string {
+  const startLine = node?.position?.start.line ?? 0;
+  const endLine = node?.position?.end.line ?? 0;
+  return `${startLine}:${endLine}:${hashStableString(value)}`;
+}
+
 function extractLanguageTag(className?: string) {
   if (!className) {
     return null;
@@ -430,14 +478,17 @@ function FileMarkdownMathBlock({
 }
 
 function FileMarkdownMermaidBlock({
+  activeTab,
   className,
+  onActiveTabChange,
   value,
 }: {
+  activeTab: MermaidBlockTab;
   className?: string;
+  onActiveTabChange: (activeTab: MermaidBlockTab) => void;
   value: string;
 }) {
   const { t } = useTranslation();
-  const [activeTab, setActiveTab] = useState<"source" | "render">("source");
   const [renderState, setRenderState] = useState<MermaidRenderState>({
     status: "idle",
   });
@@ -510,7 +561,7 @@ function FileMarkdownMermaidBlock({
             role="tab"
             aria-selected={activeTab === "source"}
             className={`fvp-file-markdown-mermaid-tab${activeTab === "source" ? " is-active" : ""}`}
-            onClick={() => setActiveTab("source")}
+            onClick={() => onActiveTabChange("source")}
           >
             {t("files.markdownMermaidSource")}
           </button>
@@ -519,7 +570,7 @@ function FileMarkdownMermaidBlock({
             role="tab"
             aria-selected={activeTab === "render"}
             className={`fvp-file-markdown-mermaid-tab${activeTab === "render" ? " is-active" : ""}`}
-            onClick={() => setActiveTab("render")}
+            onClick={() => onActiveTabChange("render")}
           >
             {t("files.markdownMermaidRender")}
           </button>
@@ -554,6 +605,7 @@ function FileMarkdownMermaidBlock({
 
 export function FileMarkdownPreview({
   value,
+  documentKey,
   className = "fvp-file-markdown",
   onAnnotationStart,
   annotationDraft = null,
@@ -563,6 +615,31 @@ export function FileMarkdownPreview({
   annotationActionLabel = "Annotate",
 }: FileMarkdownPreviewProps) {
   const { t } = useTranslation();
+  const mermaidDocumentKey = useMemo(
+    () => documentKey ?? `inline:${hashStableString(value)}`,
+    [documentKey, value],
+  );
+  const [mermaidBlockTabs, setMermaidBlockTabs] = useState<Record<string, MermaidBlockTab>>(
+    () => readCachedMermaidTabs(mermaidDocumentKey),
+  );
+  useEffect(() => {
+    setMermaidBlockTabs(readCachedMermaidTabs(mermaidDocumentKey));
+  }, [mermaidDocumentKey]);
+  const handleMermaidBlockTabChange = useCallback((
+    blockKey: string,
+    activeTab: MermaidBlockTab,
+  ) => {
+    writeCachedMermaidTab(mermaidDocumentKey, blockKey, activeTab);
+    setMermaidBlockTabs((currentTabs) => {
+      if (currentTabs[blockKey] === activeTab) {
+        return currentTabs;
+      }
+      return {
+        ...currentTabs,
+        [blockKey]: activeTab,
+      };
+    });
+  }, [mermaidDocumentKey]);
   const frontmatter = useMemo(() => extractFrontmatter(value), [value]);
   const normalizedMarkdown = useMemo(
     () => normalizeMarkdownMathForFilePreview(frontmatter.body),
@@ -715,11 +792,15 @@ export function FileMarkdownPreview({
       }
       const languageTag = extractLanguageTag(codeClassName);
       if (languageTag === "mermaid") {
+        const mermaidBlockKey = createMermaidBlockKey(node, codeValue);
         return renderAnnotatableBlock(
           "div",
           node,
           <FileMarkdownMermaidBlock
+            activeTab={mermaidBlockTabs[mermaidBlockKey] ?? "source"}
             className={codeClassName}
+            onActiveTabChange={(nextActiveTab) =>
+              handleMermaidBlockTabChange(mermaidBlockKey, nextActiveTab)}
             value={codeValue}
           />,
         );
@@ -743,7 +824,12 @@ export function FileMarkdownPreview({
         />,
       );
     },
-  }), [handleAnchorClick, renderAnnotatableBlock]);
+  }), [
+    handleAnchorClick,
+    handleMermaidBlockTabChange,
+    mermaidBlockTabs,
+    renderAnnotatableBlock,
+  ]);
 
   return (
     <div className={className} data-testid="file-markdown-preview">

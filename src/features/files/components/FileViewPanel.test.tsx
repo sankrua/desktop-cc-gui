@@ -1601,6 +1601,50 @@ describe("FileViewPanel markdown modes", () => {
     });
   });
 
+  it("keeps mermaid rendered view after the same markdown preview remounts", async () => {
+    vi.mocked(readWorkspaceFile).mockResolvedValue({
+      content: "```mermaid\ngraph TD\nA-->B\n```",
+      truncated: false,
+    });
+    mermaidInitialize.mockClear();
+    mermaidRender.mockClear();
+
+    const panelProps = {
+      workspaceId: "ws-md-mermaid-stable",
+      workspacePath: "/repo",
+      filePath: "README.md",
+      openTargets: [] as Parameters<typeof FileViewPanel>[0]["openTargets"],
+      openAppIconById: {},
+      selectedOpenAppId: "",
+      onSelectOpenAppId: vi.fn(),
+      onClose: vi.fn(),
+    };
+
+    const { rerender } = render(
+      <FileViewPanel
+        key="stable-mermaid-before"
+        {...panelProps}
+      />,
+    );
+
+    await screen.findByTestId("file-markdown-preview");
+    fireEvent.click(screen.getByRole("tab", { name: "Render" }));
+    await screen.findByTestId("file-markdown-mermaid-preview");
+    expect(screen.getByRole("tab", { name: "Render" }).getAttribute("aria-selected")).toBe("true");
+
+    rerender(
+      <FileViewPanel
+        key="stable-mermaid-after"
+        {...panelProps}
+      />,
+    );
+
+    await screen.findByTestId("file-markdown-mermaid-preview");
+    expect(screen.getByRole("tab", { name: "Render" }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tab", { name: "Source" }).getAttribute("aria-selected")).toBe("false");
+    expect(mermaidRender.mock.calls.length).toBeGreaterThanOrEqual(2);
+  });
+
   it("renders markdown math formulas while keeping mermaid blocks lazy", async () => {
     await loadKatexAssets();
     vi.mocked(readWorkspaceFile).mockResolvedValue({
