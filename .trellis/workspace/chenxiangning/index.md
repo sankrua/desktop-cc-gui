@@ -7,8 +7,8 @@
 ## Current Status
 
 <!-- @@@auto:current-status -->
-- **Active File**: `journal-14.md`
-- **Total Sessions**: 520
+- **Active File**: `journal-15.md`
+- **Total Sessions**: 521
 - **Last Active**: 2026-05-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,8 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-14.md` | ~1969 | Active |
+| `journal-15.md` | ~45 | Active |
+| `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
 | `journal-11.md` | ~1985 | Archived |
@@ -42,6 +43,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 521 | 2026-05-20 | Fix Codex deferred completion after assistant ingress | `1b75eb0b` | `feature/v0.5.0-md` |
 | 520 | 2026-05-20 | 修复 Markdown 预览自动刷新 | `4c2afcfa` | `feature/v0.5.0-md` |
 | 519 | 2026-05-20 | 收口 harness 治理 release-grade 闭环 | `6e64c779` | `feature/v0.5.0-md` |
 | 518 | 2026-05-20 | 修复 domain event runtime 测试 Storage 兼容性 | `29f589bc` | `feature/v0.5.0-md` |
