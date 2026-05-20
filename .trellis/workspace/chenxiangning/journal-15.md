@@ -207,3 +207,64 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 526: 修复会话管理边界条件
+
+**Date**: 2026-05-20
+**Task**: 修复会话管理边界条件
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次完成代码 review 后的修复提交。
+
+| 项目 | 内容 |
+|------|------|
+| Code commit | `50574fac fix(settings): 修复会话窗超时与文件夹统计边界` |
+| 修复 1 | Codex session curtain 超时后，迟到的空数据源不会错误清掉 timeout notice；迟到的有效消息仍可替换 timeout notice。 |
+| 修复 2 | session folder 继承与统计改为 workspace-scoped key，避免不同 workspace 复用相同 sessionId 时串桶。 |
+| 修复 3 | workspace/folder 排序使用 deterministic collator，降低 macOS/Windows locale 差异导致的顺序漂移。 |
+| 修复 4 | 关闭、重载、重新打开 curtain 时清理旧 timer，避免 stale timeout 写回。 |
+
+**Updated Files**:
+- `src/features/settings/components/settings-view/sections/SessionManagementSection.tsx`
+- `src/features/settings/components/settings-view/sections/SessionManagementSection.test.tsx`
+- `src/features/settings/components/settings-view/sections/sessionManagementSectionUtils.ts`
+- `src/features/settings/components/settings-view/sections/sessionManagementSectionUtils.test.ts`
+
+**Validation**:
+- `npx vitest run src/features/settings/components/settings-view/sections/SessionManagementSection.test.tsx src/features/settings/components/settings-view/sections/sessionManagementSectionUtils.test.ts src/features/settings/components/settings-view/hooks/useWorkspaceSessionCatalog.test.tsx`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run check:large-files`
+- `npm run check:large-files:near-threshold`
+- `npm run check:large-files:gate`
+- `node --test scripts/check-large-files.test.mjs`
+- `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs`
+- `npm run check:heavy-test-noise`
+- `openspec validate refactor-workspace-session-management --strict --no-interactive`
+- `git diff --check`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `50574fac` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
