@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-15.md`
-- **Total Sessions**: 521
+- **Total Sessions**: 522
 - **Last Active**: 2026-05-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-15.md` | ~45 | Active |
+| `journal-15.md` | ~84 | Active |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
@@ -43,6 +43,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 522 | 2026-05-20 | 收口项目会话管理幕布 | `1f3fe6df` | `feature/v0.5.0-md` |
 | 521 | 2026-05-20 | Fix Codex deferred completion after assistant ingress | `1b75eb0b` | `feature/v0.5.0-md` |
 | 520 | 2026-05-20 | 修复 Markdown 预览自动刷新 | `4c2afcfa` | `feature/v0.5.0-md` |
 | 519 | 2026-05-20 | 收口 harness 治理 release-grade 闭环 | `6e64c779` | `feature/v0.5.0-md` |
