@@ -583,3 +583,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 534: 修复同工作区会话切换保留编辑器
+
+**Date**: 2026-05-20
+**Task**: 修复同工作区会话切换保留编辑器
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+扩展同 workspace session navigation 的 editor-preservation policy：notification/status、search、latest/sidebar-style selection 与 keyboard cycle 切换时不再触发 full diff exit 或折叠面板导致编辑器闪回 chat；补充 OpenSpec follow-up 与 Vitest 回归。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2a2af6e1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
