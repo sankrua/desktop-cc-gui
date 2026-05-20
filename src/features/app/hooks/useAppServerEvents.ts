@@ -205,11 +205,18 @@ type AppServerEventHandlers = {
    * 奶奶请看：这就是那个"智能收件室"的功能，当信没有收件人时，它会自动查找正在使用的房间
    */
   getActiveCodexThreadId?: (workspaceId: string) => string | null;
+  resolveCodexThreadIdForTurn?: (
+    workspaceId: string,
+    turnId: string,
+  ) => string | null;
 };
 
 type UseAppServerEventsOptions = {
   useNormalizedRealtimeAdapters?: boolean;
 };
+
+const MAX_TURN_THREAD_OWNERSHIP_ENTRIES = 400;
+const TURN_THREAD_OWNERSHIP_SEPARATOR = "\u0000";
 
 function asString(value: unknown): string {
   return typeof value === "string" ? value : value ? String(value) : "";
@@ -307,6 +314,45 @@ function extractTurnIdFromParams(params: Record<string, unknown>): string {
       turn.turn_id ??
       "",
   ).trim();
+}
+
+function buildTurnThreadOwnershipKey(workspaceId: string, turnId: string) {
+  return `${workspaceId}${TURN_THREAD_OWNERSHIP_SEPARATOR}${turnId}`;
+}
+
+function rememberTurnThreadOwnership(
+  trackerRef: MutableRefObject<Map<string, string>>,
+  workspaceId: string,
+  threadId: string,
+  turnId: string | null | undefined,
+) {
+  const normalizedThreadId = threadId.trim();
+  const normalizedTurnId = turnId?.trim() ?? "";
+  if (!workspaceId || !normalizedThreadId || !normalizedTurnId) {
+    return;
+  }
+  const key = buildTurnThreadOwnershipKey(workspaceId, normalizedTurnId);
+  trackerRef.current.delete(key);
+  trackerRef.current.set(key, normalizedThreadId);
+  while (trackerRef.current.size > MAX_TURN_THREAD_OWNERSHIP_ENTRIES) {
+    const oldestKey = trackerRef.current.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    trackerRef.current.delete(oldestKey);
+  }
+}
+
+function resolveTurnThreadOwnership(
+  trackerRef: MutableRefObject<Map<string, string>>,
+  workspaceId: string,
+  turnId: string,
+) {
+  const normalizedTurnId = turnId.trim();
+  if (!workspaceId || !normalizedTurnId) {
+    return "";
+  }
+  return trackerRef.current.get(buildTurnThreadOwnershipKey(workspaceId, normalizedTurnId)) ?? "";
 }
 
 function extractItemIdFromParams(params: Record<string, unknown>): string {
@@ -1109,6 +1155,7 @@ function tryRouteNormalizedRealtimeEvent({
   message,
   engineOverride,
   threadIdOverride,
+  turnThreadOwnershipRef,
   threadAgentDeltaSeenRef,
   threadAgentCompletedSeenRef,
   threadAgentSnapshotSeenRef,
@@ -1118,6 +1165,7 @@ function tryRouteNormalizedRealtimeEvent({
   message: Record<string, unknown>;
   engineOverride?: "claude" | "codex" | "gemini" | "opencode";
   threadIdOverride?: string;
+  turnThreadOwnershipRef: MutableRefObject<Map<string, string>>;
   threadAgentDeltaSeenRef: MutableRefObject<Record<string, true>>;
   threadAgentCompletedSeenRef: MutableRefObject<ThreadAgentCompletedItemTracker>;
   threadAgentSnapshotSeenRef: MutableRefObject<ThreadAgentSnapshotItemTracker>;
@@ -1164,6 +1212,14 @@ function tryRouteNormalizedRealtimeEvent({
       };
     }
   }
+  if (rawThreadId) {
+    rememberTurnThreadOwnership(
+      turnThreadOwnershipRef,
+      workspaceId,
+      normalized.threadId,
+      normalized.turnId ?? null,
+    );
+  }
   return routeNormalizedRealtimeEvent({
     handlers,
     workspaceId,
@@ -1181,6 +1237,7 @@ export function useAppServerEvents(
   const threadAgentDeltaSeenRef = useRef<Record<string, true>>({});
   const threadAgentCompletedSeenRef = useRef<ThreadAgentCompletedItemTracker>({});
   const threadAgentSnapshotSeenRef = useRef<ThreadAgentSnapshotItemTracker>({});
+  const turnThreadOwnershipRef = useRef<Map<string, string>>(new Map());
   useEffect(() => {
     const useNormalizedRealtimeAdapters = options.useNormalizedRealtimeAdapters === true;
     const unlisten = subscribeAppServerEvents((payload) => {
@@ -1384,6 +1441,7 @@ export function useAppServerEvents(
                     : {}),
                 }
               : {}),
+          turnThreadOwnershipRef,
           threadAgentDeltaSeenRef,
           threadAgentCompletedSeenRef,
           threadAgentSnapshotSeenRef,
@@ -1395,6 +1453,12 @@ export function useAppServerEvents(
       const agentDeltaPayload = extractAgentMessageDeltaPayload(method, params);
       if (agentDeltaPayload) {
         const effectiveThreadId = sharedBridge?.sharedThreadId ?? agentDeltaPayload.threadId;
+        rememberTurnThreadOwnership(
+          turnThreadOwnershipRef,
+          workspace_id,
+          effectiveThreadId,
+          agentDeltaPayload.turnId,
+        );
         threadAgentDeltaSeenRef.current[effectiveThreadId] = true;
         handlers.onAgentMessageDelta?.({
           workspaceId: workspace_id,
@@ -1415,6 +1479,12 @@ export function useAppServerEvents(
         const threadId = sharedBridge?.sharedThreadId ?? rawTurnThreadId;
         const turnId = asString(params.turnId ?? params.turn_id ?? turn?.id ?? "").trim();
         if (threadId) {
+          rememberTurnThreadOwnership(
+            turnThreadOwnershipRef,
+            workspace_id,
+            threadId,
+            turnId,
+          );
           delete threadAgentDeltaSeenRef.current[threadId];
           delete threadAgentCompletedSeenRef.current[threadId];
           delete threadAgentSnapshotSeenRef.current[threadId];
@@ -1730,9 +1800,23 @@ export function useAppServerEvents(
         const rawCompletedThreadId = String(
           params.threadId ?? params.thread_id ?? turn?.threadId ?? turn?.thread_id ?? "",
         );
-        const threadId = sharedBridge?.sharedThreadId ?? rawCompletedThreadId;
         const turnId = asString(params.turnId ?? params.turn_id ?? turn?.id ?? "").trim();
+        const ownedThreadId =
+          rawCompletedThreadId ||
+          resolveTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, turnId) ||
+          (turnId ? handlers.resolveCodexThreadIdForTurn?.(workspace_id, turnId) ?? "" : "");
+        const completedBridge = ownedThreadId
+          ? resolveSharedSessionBindingByNativeThread(workspace_id, ownedThreadId)
+          : null;
+        const threadId =
+          sharedBridge?.sharedThreadId ?? completedBridge?.sharedThreadId ?? ownedThreadId;
         if (threadId) {
+          rememberTurnThreadOwnership(
+            turnThreadOwnershipRef,
+            workspace_id,
+            threadId,
+            turnId,
+          );
           const seenDelta = Boolean(threadAgentDeltaSeenRef.current[threadId]);
           const seenCompleted = hasThreadAgentCompletion(
             threadAgentCompletedSeenRef,
@@ -2035,6 +2119,12 @@ export function useAppServerEvents(
             params,
             itemBridge?.engine,
           );
+          rememberTurnThreadOwnership(
+            turnThreadOwnershipRef,
+            workspace_id,
+            threadId,
+            asString(contextualItem.turnId ?? contextualItem.turn_id).trim(),
+          );
           handlers.onItemCompleted?.(workspace_id, threadId, contextualItem);
 
           // Try to extract usage data from item/completed (Codex may include it here)
@@ -2130,6 +2220,12 @@ export function useAppServerEvents(
             params,
             itemBridge?.engine,
           );
+          rememberTurnThreadOwnership(
+            turnThreadOwnershipRef,
+            workspace_id,
+            threadId,
+            asString(contextualItem.turnId ?? contextualItem.turn_id).trim(),
+          );
           if (
             shouldIgnoreAgentMessageSnapshot({
               threadId,
@@ -2171,6 +2267,12 @@ export function useAppServerEvents(
             params,
             itemBridge?.engine,
           );
+          rememberTurnThreadOwnership(
+            turnThreadOwnershipRef,
+            workspace_id,
+            threadId,
+            asString(contextualItem.turnId ?? contextualItem.turn_id).trim(),
+          );
           if (
             shouldIgnoreAgentMessageSnapshot({
               threadId,
@@ -2202,7 +2304,8 @@ export function useAppServerEvents(
       ) {
         const params = message.params as Record<string, unknown>;
         const fallbackThreadId = handlers.getActiveCodexThreadId?.(workspace_id) ?? "";
-        const resolvedThreadId = extractThreadIdFromParams(params) || fallbackThreadId;
+        const rawReasoningThreadId = extractThreadIdFromParams(params);
+        const resolvedThreadId = rawReasoningThreadId || fallbackThreadId;
         const sharedBridge = resolveSharedSessionBindingByNativeThread(
           workspace_id,
           resolvedThreadId,
@@ -2212,6 +2315,9 @@ export function useAppServerEvents(
         const delta = extractReasoningDeltaFromParams(params);
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId && delta) {
+          if (rawReasoningThreadId) {
+            rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
+          }
           const engineHint = inferGeminiReasoningHintFromThreadId(resolvedThreadId);
           emitReasoningSummaryDelta(
             handlers,
@@ -2232,7 +2338,8 @@ export function useAppServerEvents(
       ) {
         const params = message.params as Record<string, unknown>;
         const fallbackThreadId = handlers.getActiveCodexThreadId?.(workspace_id) ?? "";
-        const resolvedThreadId = extractThreadIdFromParams(params) || fallbackThreadId;
+        const rawReasoningThreadId = extractThreadIdFromParams(params);
+        const resolvedThreadId = rawReasoningThreadId || fallbackThreadId;
         const sharedBridge = resolveSharedSessionBindingByNativeThread(
           workspace_id,
           resolvedThreadId,
@@ -2241,6 +2348,9 @@ export function useAppServerEvents(
         const itemId = extractItemIdFromParams(params);
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId) {
+          if (rawReasoningThreadId) {
+            rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
+          }
           const engineHint = inferGeminiReasoningHintFromThreadId(resolvedThreadId);
           emitReasoningSummaryBoundary(
             handlers,
@@ -2261,7 +2371,8 @@ export function useAppServerEvents(
       ) {
         const params = message.params as Record<string, unknown>;
         const fallbackThreadId = handlers.getActiveCodexThreadId?.(workspace_id) ?? "";
-        const resolvedThreadId = extractThreadIdFromParams(params) || fallbackThreadId;
+        const rawReasoningThreadId = extractThreadIdFromParams(params);
+        const resolvedThreadId = rawReasoningThreadId || fallbackThreadId;
         const sharedBridge = resolveSharedSessionBindingByNativeThread(
           workspace_id,
           resolvedThreadId,
@@ -2271,6 +2382,9 @@ export function useAppServerEvents(
         const delta = extractReasoningDeltaFromParams(params);
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId && delta) {
+          if (rawReasoningThreadId) {
+            rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
+          }
           const engineHint = inferGeminiReasoningHintFromThreadId(resolvedThreadId);
           emitReasoningTextDelta(
             handlers,
@@ -2290,7 +2404,8 @@ export function useAppServerEvents(
       if (method === "item/reasoning/delta") {
         const params = message.params as Record<string, unknown>;
         const fallbackThreadId = handlers.getActiveCodexThreadId?.(workspace_id) ?? "";
-        const resolvedThreadId = extractThreadIdFromParams(params) || fallbackThreadId;
+        const rawReasoningThreadId = extractThreadIdFromParams(params);
+        const resolvedThreadId = rawReasoningThreadId || fallbackThreadId;
         const sharedBridge = resolveSharedSessionBindingByNativeThread(
           workspace_id,
           resolvedThreadId,
@@ -2300,6 +2415,9 @@ export function useAppServerEvents(
         const delta = extractReasoningDeltaFromParams(params);
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId && delta) {
+          if (rawReasoningThreadId) {
+            rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
+          }
           const engineHint = inferGeminiReasoningHintFromThreadId(resolvedThreadId);
           emitReasoningTextDelta(
             handlers,
@@ -2324,6 +2442,7 @@ export function useAppServerEvents(
         const delta = String(params.delta ?? "");
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId && delta) {
+          rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
           emitCommandOutputDelta(handlers, workspace_id, threadId, itemId, delta, turnId);
         }
         return;
@@ -2339,6 +2458,7 @@ export function useAppServerEvents(
         const stdin = String(params.stdin ?? "");
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId) {
+          rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
           emitTerminalInteraction(handlers, workspace_id, threadId, itemId, stdin, turnId);
         }
         return;
@@ -2351,6 +2471,7 @@ export function useAppServerEvents(
         const delta = String(params.delta ?? "");
         const turnId = extractTurnIdFromParams(params) || null;
         if (threadId && itemId && delta) {
+          rememberTurnThreadOwnership(turnThreadOwnershipRef, workspace_id, threadId, turnId);
           emitFileChangeOutputDelta(handlers, workspace_id, threadId, itemId, delta, turnId);
         }
         return;

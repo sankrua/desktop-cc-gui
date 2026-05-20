@@ -453,6 +453,27 @@ export function useThreads({
     [state.threadsByWorkspace],
   );
 
+  const resolveCodexThreadIdForTurn = useCallback(
+    (workspaceId: string, turnId: string): string | null => {
+      const normalizedTurnId = turnId.trim();
+      if (!workspaceId || !normalizedTurnId) {
+        return null;
+      }
+      const candidates = (threadsByWorkspaceRef.current[workspaceId] ?? []).filter((thread) => {
+        if (activeTurnIdByThreadRef.current[thread.id] !== normalizedTurnId) {
+          return false;
+        }
+        return isNativeCodexTerminalDriftThread({
+          threadId: thread.id,
+          engine: thread.engineSource,
+          kind: thread.threadKind === "shared" ? "shared" : "native",
+        });
+      });
+      return candidates.length === 1 ? candidates[0]?.id ?? null : null;
+    },
+    [],
+  );
+
   const updateSharedSessionEngineSelection = useCallback(
     (
       workspaceId: string,
@@ -2349,7 +2370,15 @@ export function useThreads({
     },
   });
 
-  useAppServerEvents(handlers, {
+  const appServerHandlers = useMemo(
+    () => ({
+      ...handlers,
+      resolveCodexThreadIdForTurn,
+    }),
+    [handlers, resolveCodexThreadIdForTurn],
+  );
+
+  useAppServerEvents(appServerHandlers, {
     useNormalizedRealtimeAdapters,
   });
 

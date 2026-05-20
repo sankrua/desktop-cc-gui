@@ -93,7 +93,7 @@ describe("useThreadRealtimeHistoryReconcile Codex terminal drift", () => {
     });
   });
 
-  it("does not reconcile Codex assistant completion without a turn id", async () => {
+  it("reconciles Codex assistant completion without a turn id through a thread-scoped unknown turn", async () => {
     const itemsByThreadRef = {
       current: {
         "thread-a": [createAssistantFinalItem("assistant-a", "done")],
@@ -135,11 +135,16 @@ describe("useThreadRealtimeHistoryReconcile Codex terminal drift", () => {
     });
 
     await act(async () => {
-      await vi.advanceTimersByTimeAsync(4_500);
+      await vi.advanceTimersByTimeAsync(1_200);
     });
 
-    expect(refreshThread).not.toHaveBeenCalled();
-    expect(settleCodexTerminalDrift).not.toHaveBeenCalled();
+    expect(refreshThread).toHaveBeenCalledWith("ws-1", "thread-a");
+    expect(settleCodexTerminalDrift).toHaveBeenCalledWith({
+      workspaceId: "ws-1",
+      threadId: "thread-a",
+      turnId: "__unknown_turn__",
+      source: "assistant-completed",
+    });
   });
 
   it("deduplicates activation terminal-drift reconciliation per thread and turn", async () => {

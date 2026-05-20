@@ -113,6 +113,7 @@ describe("useAppServerEvents completion turn identity", () => {
   it("does not settle turn/completed against the highlighted Codex thread when thread identity is missing", async () => {
     const handlers: Handlers = {
       getActiveCodexThreadId: vi.fn(() => "thread-highlighted"),
+      resolveCodexThreadIdForTurn: vi.fn(() => null),
       onTurnCompleted: vi.fn(),
     };
     const { root } = await mount(handlers);
@@ -131,7 +132,96 @@ describe("useAppServerEvents completion turn identity", () => {
     });
 
     expect(handlers.getActiveCodexThreadId).not.toHaveBeenCalled();
+    expect(handlers.resolveCodexThreadIdForTurn).toHaveBeenCalledWith(
+      "ws-1",
+      "turn-without-thread",
+    );
     expect(handlers.onTurnCompleted).not.toHaveBeenCalled();
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("settles missing-thread turn/completed from prior turn ownership", async () => {
+    const handlers: Handlers = {
+      getActiveCodexThreadId: vi.fn(() => "thread-highlighted"),
+      onTurnCompleted: vi.fn(),
+      onTurnStarted: vi.fn(),
+    };
+    const { root } = await mount(handlers);
+
+    act(() => {
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "turn/started",
+          params: {
+            threadId: "thread-owned",
+            turnId: "turn-owned",
+          },
+        },
+      });
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "turn/completed",
+          params: {
+            turnId: "turn-owned",
+            result: { text: "final response" },
+          },
+        },
+      });
+    });
+
+    expect(handlers.getActiveCodexThreadId).not.toHaveBeenCalled();
+    expect(handlers.onTurnStarted).toHaveBeenCalledWith(
+      "ws-1",
+      "thread-owned",
+      "turn-owned",
+    );
+    expect(handlers.onTurnCompleted).toHaveBeenCalledWith(
+      "ws-1",
+      "thread-owned",
+      "turn-owned",
+    );
+
+    await act(async () => {
+      root.unmount();
+    });
+  });
+
+  it("settles missing-thread turn/completed from unique active turn ownership resolver", async () => {
+    const handlers: Handlers = {
+      getActiveCodexThreadId: vi.fn(() => "thread-highlighted"),
+      resolveCodexThreadIdForTurn: vi.fn(() => "thread-owned"),
+      onTurnCompleted: vi.fn(),
+    };
+    const { root } = await mount(handlers);
+
+    act(() => {
+      listener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "turn/completed",
+          params: {
+            turnId: "turn-owned",
+            result: { text: "final response" },
+          },
+        },
+      });
+    });
+
+    expect(handlers.getActiveCodexThreadId).not.toHaveBeenCalled();
+    expect(handlers.resolveCodexThreadIdForTurn).toHaveBeenCalledWith(
+      "ws-1",
+      "turn-owned",
+    );
+    expect(handlers.onTurnCompleted).toHaveBeenCalledWith(
+      "ws-1",
+      "thread-owned",
+      "turn-owned",
+    );
 
     await act(async () => {
       root.unmount();

@@ -709,6 +709,64 @@ describe("useThreads UX integration", () => {
     }
   });
 
+  it("settles thread-owned Codex assistant completion even when the completion lacks a turn id", async () => {
+    vi.useFakeTimers();
+    vi.mocked(resumeThread).mockImplementation(async (_workspaceId, threadId) => ({
+      result: {
+        thread: {
+          id: threadId,
+          preview: `${threadId} preview`,
+          updated_at: 9999,
+          turns: [
+            {
+              items: [
+                {
+                  type: "agentMessage",
+                  id: `history-${threadId}`,
+                  text: `${threadId} history`,
+                },
+              ],
+            },
+          ],
+        },
+      },
+    }));
+    let unmountHook: (() => void) | null = null;
+    try {
+      const { result, unmount } = renderHook(() =>
+        useThreads({
+          activeWorkspace: workspace,
+          onWorkspaceConnected: vi.fn(),
+        }),
+      );
+      unmountHook = unmount;
+
+      await act(async () => {
+        handlers?.onTurnStarted?.("ws-1", "thread-a", "turn-a");
+        handlers?.onAgentMessageCompleted?.({
+          workspaceId: "ws-1",
+          threadId: "thread-a",
+          itemId: "assistant-a",
+          text: "done without turn id",
+        });
+      });
+
+      expect(result.current.threadStatusById["thread-a"]?.isProcessing).toBe(true);
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_200);
+      });
+
+      expect(vi.mocked(resumeThread)).toHaveBeenCalledWith("ws-1", "thread-a");
+      expect(result.current.threadStatusById["thread-a"]?.isProcessing).toBe(false);
+    } finally {
+      unmountHook?.();
+      vi.clearAllTimers();
+      vi.mocked(resumeThread).mockReset();
+      vi.useRealTimers();
+    }
+  });
+
   it("does not use a previous Codex final answer as activation drift evidence for a new live turn", async () => {
     vi.useFakeTimers();
     vi.mocked(resumeThread).mockResolvedValue({
