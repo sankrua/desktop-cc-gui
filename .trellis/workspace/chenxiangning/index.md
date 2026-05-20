@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-15.md`
-- **Total Sessions**: 530
+- **Total Sessions**: 531
 - **Last Active**: 2026-05-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-15.md` | ~463 | Active |
+| `journal-15.md` | ~496 | Active |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
@@ -43,6 +43,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 531 | 2026-05-20 | 保持桌面编辑器分栏对话体验 | `47878ca0` | `feature/v0.5.0-md` |
 | 530 | 2026-05-20 | 动态治理证据与成本预算收口 | `0b83493d` | `feature/v0.5.0-md` |
 | 529 | 2026-05-20 | 记录会话切换保留编辑器契约 | `bc5ff2fd` | `feature/v0.5.0-md` |
 | 528 | 2026-05-20 | 切换同工作区会话保留编辑器 | `e4479078` | `feature/v0.5.0-md` |

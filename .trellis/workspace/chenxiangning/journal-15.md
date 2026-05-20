@@ -461,3 +461,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 531: 保持桌面编辑器分栏对话体验
+
+**Date**: 2026-05-20
+**Task**: 保持桌面编辑器分栏对话体验
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `47878ca0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
