@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-15.md`
-- **Total Sessions**: 526
+- **Total Sessions**: 527
 - **Last Active**: 2026-05-20
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-15.md` | ~270 | Active |
+| `journal-15.md` | ~313 | Active |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
@@ -43,6 +43,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 527 | 2026-05-20 | Git 文件单击打开编辑器 | `3ce64477` | `feature/v0.5.0-md` |
 | 526 | 2026-05-20 | 修复会话管理边界条件 | `50574fac` | `feature/v0.5.0-md` |
 | 525 | 2026-05-20 | 修复会话管理 heavy gate 遗留问题 | `a59ceac2`, `ae19ab3d` | `feature/v0.5.0-md` |
 | 524 | 2026-05-20 | 收口 harness advisory governance | `9b6c4b09` | `feature/v0.5.0-md` |

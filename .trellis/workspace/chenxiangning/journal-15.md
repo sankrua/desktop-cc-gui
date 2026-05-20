@@ -268,3 +268,46 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 527: Git 文件单击打开编辑器
+
+**Date**: 2026-05-20
+**Task**: Git 文件单击打开编辑器
+**Branch**: `feature/v0.5.0-md`
+
+### Summary
+
+调整 Git diff 面板文件行普通单击行为，改为打开文件编辑器；保留显式 diff 预览入口并补充回归测试。
+
+### Main Changes
+
+- 将 `GitDiffPanel` 普通文件行 click 从 diff selection 改为优先调用现有 `onOpenFile(path)`，进入 editor 文件视图。
+- 保留 `onSelectFile` 作为 fallback，并继续服务 Enter 键和显式 inline diff preview 按钮，避免误伤现有 diff 入口。
+- 在 `useLayoutNodes` 中把现有 `options.onOpenFile` 传入 Git 面板。
+- 增加 `GitDiffPanel` 回归测试，断言普通 row click 调用 `onOpenFile` 且不触发 `onSelectFile`。
+
+验证：
+- `npm run typecheck`
+- `npx vitest run src/features/git/components/GitDiffPanel.test.tsx --maxWorkers 1 --minWorkers 1`
+- `git diff --check -- src/features/git/components/GitDiffPanelTypes.ts src/features/git/components/GitDiffPanel.tsx src/features/layout/hooks/useLayoutNodes.tsx src/features/git/components/GitDiffPanel.test.tsx`
+- `npx eslint src/features/git/components/GitDiffPanelTypes.ts src/features/git/components/GitDiffPanel.tsx src/features/layout/hooks/useLayoutNodes.tsx src/features/git/components/GitDiffPanel.test.tsx`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3ce64477` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
