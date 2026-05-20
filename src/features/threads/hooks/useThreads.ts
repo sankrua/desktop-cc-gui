@@ -1633,7 +1633,8 @@ export function useThreads({
         }
         const shouldRefreshLoaded =
           isLoaded && !isProcessing && now - lastRefreshAt >= THREAD_SWITCH_LOADED_REFRESH_MS;
-        const shouldScheduleResume = !isLoaded || shouldRefreshLoaded;
+        const shouldScheduleResume =
+          (!isLoaded && !isProcessing) || shouldRefreshLoaded;
         if (!shouldScheduleResume) {
           clearHistoryLoadingForThread(canonicalThreadId);
           return;
