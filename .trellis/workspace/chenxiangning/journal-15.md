@@ -923,3 +923,69 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 541: 邮件驱动 session 闭环收口
+
+**Date**: 2026-05-21
+**Task**: 邮件驱动 session 闭环收口
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 本次交付
+
+完成邮件驱动 session continuation 的产品与技术闭环，并在收口阶段补齐边界条件、跨平台与门禁验证。
+
+## 主要改动
+
+- 新增 OpenSpec change `add-email-driven-session-continuation`，覆盖完成邮件通知、邮件回复继续 session、邮箱设置与邮件会话管理。
+- 后端新增邮件 session continuation ledger、IMAP 收信、reply token/signature 校验、允许发件人过滤、重复邮件过滤、命令队列与 session 控制。
+- 前端设置页新增邮件发送、收信监听、邮件会话管理 tab，并支持查看邮件、打开关联 session、刷新会话与清理已处理记录。
+- 完成邮件正文改为面向用户阅读：包含本轮用户请求、最终文本结果、下一步建议和 Moss context，过滤工具调用、file changes、思考内容与卡片噪音。
+- 完成邮件标题优化为包含 Moss tag、引擎/会话关键信息，便于邮箱列表快速识别。
+- 邮件回复解析支持自然语言继续/暂停/停止/状态，也支持结构化 ACTION 指令；默认收到回复后继续对应 session，并自动 arm 下一轮邮件通知。
+
+## 收口修复
+
+- 修复命令 claim 后发送失败会永久卡在 Running 的问题，失败时落定为 `needs_confirmation/send_failed`。
+- 修复 IMAP reader 乱序返回 UID 时 cursor 可能回退的问题，cursor 只推进到最大 numeric UID。
+- 修复 malformed email address 可能触发 Rust UTF-8 slicing panic 的问题。
+- 修复 React polling unmount 后异步 finally 重新调度 timer 的问题。
+- 补齐 useThreads 相关测试中的 email tauri mock，避免 heavy-test-noise 被 mock export 缺失噪音打爆。
+
+## 验证结果
+
+- `npx vitest run` 邮件与线程目标测试通过。
+- `cargo test --manifest-path src-tauri/Cargo.toml email::session_continuation` 通过。
+- `npm run lint` 通过。
+- `npm run typecheck` 通过。
+- `npm run check:runtime-contracts` 通过。
+- `npm run check:large-files:near-threshold` 通过，仅保留已有 near-threshold warnings。
+- `npm run check:large-files:gate` 通过。
+- `npm run check:heavy-test-noise` 通过，stderr payload lines 为 0。
+- `openspec validate add-email-driven-session-continuation --strict --no-interactive` 通过。
+- `git diff --check` 通过。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `32d990a6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

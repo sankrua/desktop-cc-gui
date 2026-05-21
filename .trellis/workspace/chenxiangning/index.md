@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-15.md`
-- **Total Sessions**: 540
+- **Total Sessions**: 541
 - **Last Active**: 2026-05-21
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-15.md` | ~925 | Active |
+| `journal-15.md` | ~991 | Active |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
 | `journal-12.md` | ~1971 | Archived |
@@ -43,6 +43,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 541 | 2026-05-21 | 邮件驱动 session 闭环收口 | `32d990a6` | `feature/v0.5.1` |
 | 540 | 2026-05-21 | 稳定 Markdown 预览刷新与大文档渲染 | `f5515768` | `feature/v0.5.0-md` |
 | 539 | 2026-05-21 | 对齐成本分段文本颜色 | `d099f94c` | `feature/v0.5.0-md` |
 | 538 | 2026-05-21 | 回滚 Codex 终止漂移恢复链路 | `4456ed67` | `feature/v0.5.0-md` |
