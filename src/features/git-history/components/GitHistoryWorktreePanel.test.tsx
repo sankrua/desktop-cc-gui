@@ -407,6 +407,7 @@ describe("GitHistoryWorktreePanel", () => {
 
     render(<GitHistoryWorktreePanel workspaceId="w1" listView="tree" />);
 
+    expect(await screen.findByText("only-unstaged.ts", { selector: ".diff-name-base" })).toBeTruthy();
     const commitButton = await screen.findByRole("button", { name: "Commit" });
     expect((commitButton as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Select files to commit first")).toBeTruthy();

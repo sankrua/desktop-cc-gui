@@ -1523,3 +1523,47 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 553: 稳定 GitHistory worktree 未暂存提交测试
+
+**Date**: 2026-05-22
+**Task**: 稳定 GitHistory worktree 未暂存提交测试
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+修复 GitHistoryWorktreePanel 未暂存提交用例的异步等待竞态，只调整测试等待条件，不改业务代码。
+
+### Main Changes
+
+## 完成内容
+- 仅修改 `src/features/git-history/components/GitHistoryWorktreePanel.test.tsx`。
+- 在 “only unstaged files” 用例中，先等待 `only-unstaged.ts` 文件行渲染，再断言 Commit 按钮 disabled 与 `Select files to commit first` 提示。
+
+## 根因
+测试原先用 `findByRole("button", { name: "Commit" })` 作为等待条件，但 Commit 按钮在初始空状态也会存在。CI 有机会在 `getGitStatus` 异步返回前完成按钮查询，随后看到初始 `No changes`，导致文案断言不稳定。
+
+## 验证
+- `npm exec vitest run src/features/git-history/components/GitHistoryWorktreePanel.test.tsx src/features/git/components/GitDiffPanel.test.tsx`
+- `npm run typecheck`
+- `npm run lint`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `75b9cd12` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
