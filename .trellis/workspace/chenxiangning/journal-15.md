@@ -1352,3 +1352,42 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 549: 稳定 WebService daemon 启动测试
+
+**Date**: 2026-05-22
+**Task**: 稳定 WebService daemon 启动测试
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|---|---|
+| 代码提交 | `1fd8ef0e test(settings): 稳定 WebService daemon 启动测试` |
+| 主要改动 | 将 `WebServiceSettings.test.tsx` 的 mock 清理从 `vi.clearAllMocks()` 收紧为 `vi.resetAllMocks()`；daemon 启动测试明确 mock mount refresh 与启动后 refresh 两次 `getWebServerStatus()`；点击前等待按钮可用，点击后等待 daemon running UI 与 refresh 调用收尾。 |
+| 验证 | `npx vitest run src/features/settings/components/settings-view/sections/WebServiceSettings.test.tsx --reporter verbose` 通过；settings 相关 4 文件组合 Vitest 通过。 |
+| 影响范围 | test-only，未改业务逻辑。 |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1fd8ef0e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
