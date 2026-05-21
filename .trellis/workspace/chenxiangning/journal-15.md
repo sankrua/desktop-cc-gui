@@ -1214,3 +1214,58 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 546: 实现记忆引用持续模式
+
+**Date**: 2026-05-21
+**Task**: 实现记忆引用持续模式
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+为 Composer Memory Reference 增加单次/持续引用模式，调整弹层文案与选中态样式，并补充 OpenSpec change 与 focused tests。
+
+### Main Changes
+
+## 本次完成
+
+- 创建 OpenSpec change: `add-memory-reference-persistent-mode`，记录 single / always Memory Reference 行为契约。
+- 将 Composer Memory Reference 从 boolean armed 状态升级为 `off | single | always` mode。
+- 保持下游发送 contract 不变：mode 非 `off` 时仍只传 `memoryReferenceEnabled: true`。
+- 增加弹层双按钮：`单次开启引用` / `一直开启引用`。
+- 调整按钮视觉：未选中保持中性，只有当前 mode 才高亮。
+- 同步中英文 i18n、composer CSS、ChatInputBox prop 链路与测试。
+
+## 验证
+
+- `openspec validate "add-memory-reference-persistent-mode" --type change --strict --no-interactive`
+- `pnpm vitest run src/features/composer/components/ChatInputBox/ButtonArea.test.tsx src/features/composer/components/Composer.memory-reference.test.tsx`
+- `pnpm vitest run src/features/composer/components/ChatInputBox/ButtonArea.test.tsx`
+- `pnpm typecheck`
+- `pnpm lint`
+- `npm run check:large-files`
+- `git diff --check`
+
+## Review 结论
+
+未发现阻断问题。引用生命周期被限制在 Composer UI 状态内，未扩大 Memory Scout / Tauri / backend contract。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `637c5474` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
