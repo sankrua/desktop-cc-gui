@@ -48,3 +48,40 @@ npm run typecheck
 npm run check:large-files
 git diff --check
 ```
+
+## Implementation Evidence: Selected Context Chips Row
+
+Date: 2026-05-22
+
+### Scope
+
+- Move selected skill / command / agent chips from the bottom toolbar into a dedicated row above the editable composer body.
+- Keep `ContextBar surface="external"` and existing `onRemoveContextChip` behavior.
+- Remove the `contextSurface` prop path from `ChatInputBoxFooter` and `ButtonArea`.
+- Move bottom-toolbar-specific selected chip CSS into `.chat-input-context-surface` styling.
+
+### Review Notes
+
+- UI-only change: no send payload, queue, runtime lifecycle, backend, Tauri command, database, or persisted setting changed.
+- Selected chip state still originates from the existing composer selection data and removal callbacks.
+- `ButtonArea` no longer owns selected context chips, reducing the chance that future toolbar changes reintroduce chip/tool crowding.
+- The new row uses standard React DOM and CSS only; no OS-specific selector, file path, shell command, native menu, or platform API is involved.
+
+### Compatibility Matrix
+
+| Surface | Windows Compatibility | macOS Compatibility | Result |
+| --- | --- | --- | --- |
+| Context chip row | Standard flex/DOM/CSS; no platform API | Standard flex/DOM/CSS; no platform API | Pass |
+| Bottom toolbar | Removes chip rendering only; tool callbacks unchanged | Removes chip rendering only; tool callbacks unchanged | Pass |
+| Chip remove action | Existing callback path preserved | Existing callback path preserved | Pass |
+| Theme | Uses existing `ContextBar` styles and tokens | Uses existing `ContextBar` styles and tokens | Pass |
+| Input behavior | Editable wrapper and keyboard handling unchanged | Editable wrapper and keyboard handling unchanged | Pass |
+
+### Verification
+
+Commands run during closure:
+
+```bash
+pnpm -s vitest run src/features/composer/components/ChatInputBox/ButtonArea.test.tsx
+pnpm -s tsc -p . --noEmit
+```

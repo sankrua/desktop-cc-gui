@@ -826,8 +826,6 @@ export interface ButtonAreaProps {
   shortcutActions?: ShortcutAction[];
   /** High-signal status controls rendered on the main toolbar row */
   mainSurface?: ReactNode;
-  /** Context chips rendered after reasoning on the main toolbar row */
-  contextSurface?: ReactNode;
   /** Additional low-frequency tools rendered inside the tool popover */
   toolSurface?: ReactNode;
   /** Status panel toggle rendered inside the tool popover icon row */

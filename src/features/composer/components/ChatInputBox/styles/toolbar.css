@@ -63,14 +63,6 @@
   height: 32px;
 }
 
-.button-area-context-surface {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--composer-toolbar-icon-gap);
-  flex: 0 1 auto;
-  min-width: 0;
-}
-
 .button-area-main-token {
   display: inline-flex;
   align-items: center;

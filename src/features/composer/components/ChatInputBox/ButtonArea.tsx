@@ -54,7 +54,6 @@ export const ButtonArea = ({
   onOpenAgentSettings,
   shortcutActions,
   mainSurface,
-  contextSurface,
   toolSurface,
   panelToggleSurface,
 }: ButtonAreaProps) => {
@@ -252,11 +251,6 @@ export const ButtonArea = ({
                 </div>
               ) : null}
               {panelToggleSurface}
-              {contextSurface ? (
-                <div className="button-area-context-surface">
-                  {contextSurface}
-                </div>
-              ) : null}
               {onSetMemoryReferenceMode ? (
                 <div
                   ref={memoryReferenceRootRef}

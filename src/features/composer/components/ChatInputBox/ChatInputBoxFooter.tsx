@@ -273,7 +273,6 @@ export function ChatInputBoxFooter({
   selectedNoteCardIds = [],
   shortcutActions,
   mainSurface,
-  contextSurface,
   toolSurface,
   panelToggleSurface,
   tooltip,
@@ -337,7 +336,6 @@ export function ChatInputBoxFooter({
   selectedNoteCardIds?: string[];
   shortcutActions?: ShortcutAction[];
   mainSurface?: React.ReactNode;
-  contextSurface?: React.ReactNode;
   toolSurface?: React.ReactNode;
   panelToggleSurface?: React.ReactNode;
   tooltip: TooltipState | null;
@@ -554,7 +552,6 @@ export function ChatInputBoxFooter({
         onClearAgent={onClearAgent}
         shortcutActions={shortcutActions}
         mainSurface={mainSurface}
-        contextSurface={contextSurface}
         toolSurface={toolSurface}
         panelToggleSurface={panelToggleSurface}
       />

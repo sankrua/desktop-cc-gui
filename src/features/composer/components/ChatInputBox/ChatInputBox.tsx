@@ -1537,6 +1537,12 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
             />
           )}
 
+          {!isInputBoxCollapsed && shouldShowContextToolbarSurface ? (
+            <div className="chat-input-context-surface" aria-live="polite">
+              {contextToolbarSurface}
+            </div>
+          ) : null}
+
           {/* Input area */}
           {!isInputBoxCollapsed && (
             <div
@@ -1713,7 +1719,6 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
               selectedNoteCardIds={selectedNoteCardIds}
               shortcutActions={settingsShortcutActions}
               mainSurface={mainToolbarSurface}
-              contextSurface={shouldShowContextToolbarSurface ? contextToolbarSurface : undefined}
               panelToggleSurface={panelToggleSurface}
               toolSurface={(
                 <ContextBar

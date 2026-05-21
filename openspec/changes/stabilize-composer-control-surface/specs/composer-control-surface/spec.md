@@ -14,7 +14,7 @@ Composer MUST expose the effective provider/model target through the readiness b
 
 - **WHEN** the Composer bottom toolbar renders
 - **THEN** it MUST NOT render a second model selector
-- **AND** the bottom toolbar SHOULD reserve space for tools, context, reasoning, usage, and send/stop controls
+- **AND** the bottom toolbar SHOULD reserve space for tools, context tools, reasoning, usage, and send/stop controls
 
 ### Requirement: Model Selector MUST Use Compact Provider Groups
 
@@ -59,6 +59,22 @@ Composer secondary controls MUST be managed by a single bottom inline tool strip
 - **WHEN** context tools render inside the inline strip
 - **THEN** duplicate context usage indicators in that tool surface MAY be hidden
 - **AND** the primary composer usage indicator MUST remain available in the main strip
+
+### Requirement: Selected Context Chips MUST Live Above The Editor
+
+Selected skill, command, and agent context chips MUST render as input context above the editable text area, not as controls inside the bottom toolbar.
+
+#### Scenario: selected chips render in a separate context row
+
+- **WHEN** skill, command, or agent context chips are selected
+- **THEN** the Composer MUST render those chips above the editable text area in a dedicated context row
+- **AND** the bottom toolbar MUST NOT render those selected context chips
+
+#### Scenario: chip behavior is unchanged
+
+- **WHEN** the user removes a selected context chip from the context row
+- **THEN** the existing remove callback and selected state update MUST be used
+- **AND** the move MUST NOT change message payload assembly, command selection, skill selection, agent selection, or send behavior
 
 ### Requirement: Inline Tool Icons MUST Be Theme-Safe And Icon-Only
 

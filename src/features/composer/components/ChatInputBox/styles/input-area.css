@@ -135,6 +135,22 @@
   opacity: 1;
 }
 
+.chat-input-context-surface {
+  padding: 6px 18px 2px;
+}
+
+.chat-input-context-surface .context-bar--external {
+  margin-top: 0;
+  margin-bottom: 0;
+  min-height: 30px;
+  border-top: none;
+  padding: 0;
+}
+
+.chat-input-context-surface .context-bar--external .context-item {
+  max-width: 148px;
+}
+
 /* Tooltip for code snippet tags */
 .code-snippet-tag.has-tooltip:hover::after {
   content: attr(data-tooltip);

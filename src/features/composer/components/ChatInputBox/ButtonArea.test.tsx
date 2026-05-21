@@ -208,7 +208,7 @@ describe("ButtonArea custom model storage refresh", () => {
     expect(toggle.getAttribute("aria-expanded")).toBe("false");
   });
 
-  it("places context, memory reference, reasoning, and token surface in visual order", () => {
+  it("places memory reference, reasoning, and token surface in visual order", () => {
     render(
       <ButtonArea
         currentProvider="claude"
@@ -221,7 +221,6 @@ describe("ButtonArea custom model storage refresh", () => {
         memoryReferenceMode="off"
         onSetMemoryReferenceMode={vi.fn()}
         mainSurface={<span data-testid="main-surface">token</span>}
-        contextSurface={<span data-testid="context-surface">ctx</span>}
       />,
     );
 
@@ -229,10 +228,8 @@ describe("ButtonArea custom model storage refresh", () => {
 
     const mainSurface = screen.getByTestId("main-surface");
     const reasoningSelect = screen.getByTestId("reasoning-select");
-    const contextSurface = screen.getByTestId("context-surface");
     const memoryReferenceToggle = screen.getByRole("button", { name: "composer.memoryReferenceToggle" });
 
-    expect(contextSurface.compareDocumentPosition(memoryReferenceToggle) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(memoryReferenceToggle.compareDocumentPosition(reasoningSelect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(reasoningSelect.compareDocumentPosition(mainSurface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });

@@ -19,6 +19,7 @@
 - [x] 3.4 Hide duplicate context usage in tool surface while retaining main usage.
 - [x] 3.5 Keep send button small rounded-square.
 - [x] 3.6 Normalize selected/armed inline tools with one overlay check affordance and one selected color token.
+- [x] 3.7 Move selected skill / command / agent context chips above the editor and remove `contextSurface` from ButtonArea.
 
 ## 4. Theme And Visual Geometry
 

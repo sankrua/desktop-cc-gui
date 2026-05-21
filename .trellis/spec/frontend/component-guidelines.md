@@ -315,7 +315,8 @@ return {
 ### 2. Signatures
 
 - `ModelSelect` MAY receive `triggerVariant: "readiness"` and `modelGroups?: ProviderModelGroup[]` to render the readiness target trigger and provider-grouped compact list.
-- `ButtonArea` SHOULD receive already-built surfaces (`toolSurface`、`contextSurface`、`panelToggleSurface`、`mainSurface`) and place secondary controls inside `.button-area-inline-tools` when expanded.
+- `ButtonArea` SHOULD receive already-built toolbar surfaces (`toolSurface`、`panelToggleSurface`、`mainSurface`) and place secondary controls inside `.button-area-inline-tools` when expanded.
+- selected skill / command / agent context chips MUST be rendered by `ChatInputBox` above `.input-editable-wrapper` inside a dedicated context row; `ButtonArea` MUST NOT receive or render selected chip surfaces.
 - `ContextBar` MAY receive `showUsage?: boolean`; when embedded as tool surface, duplicate usage can be hidden while the main usage indicator remains available.
 - `modelOptions` or equivalent pure helper SHOULD own provider model merging, selected fallback, custom models, and provider availability fallback.
 
@@ -325,6 +326,7 @@ return {
 - Model selector options SHOULD be provider-grouped and compact: one visible row per model, no long descriptions in the primary list.
 - Gemini availability (`providerAvailability.gemini === true` or equivalent) MUST produce a Gemini group even before runtime model hydration returns a non-empty list.
 - `.button-area-inline-tools` MUST be the scoped owner for compact tool chrome. New secondary composer controls SHOULD enter this strip instead of staying as trailing right-side buttons.
+- selected context chips MUST NOT enter `.button-area-inline-tools`; they belong to the input context row above the editor.
 - Inline tools MUST be icon-only in collapsed toolbar chrome. Selected mode/reasoning states MUST show icon, not text replacement.
 - Inline tool hit area SHOULD remain approximately `28px x 32px`, gap `1px-2px`, icon size around `17px`, background/border/shadow transparent by default.
 - Boolean or armed inline tools such as completion email, live follow, live collapse, and memory reference MUST share one selected affordance: icon remains visible, compact check overlays the icon, and icon/check color comes from one shared theme-safe selected color token.
@@ -340,6 +342,7 @@ return {
 | readiness target clicked | 打开统一模型选择器，选择结果进入 send target | 顶部展示一个模型、底部另有另一个模型选择器 |
 | Gemini detected | selector 中出现 Gemini group | 只因 models 数组暂为空就隐藏 Gemini |
 | inline strip expanded | 工具保持 icon-only、紧凑、同排 | 部分工具留在右侧，导致间距和对齐漂移 |
+| selected context chips present | skill / command / agent chip 在 editor 上方独立 context row 展示 | chip 回到底部 toolbar 并挤压工具按钮 |
 | dark theme | 所有 toolbar icon 可见 | 固定黑色 SVG 融进背景 |
 | light theme / home composer | inline tools 不恢复大 pill/circle 背景 | 被 `.home-chat-composer-host .selector-button` 覆盖成 34px 胶囊 |
 | selected mode/reasoning | 仍显示语义 icon | 用文本替代 icon 或撑宽按钮 |
@@ -349,10 +352,12 @@ return {
 ### 5. Good / Base / Bad Cases
 
 - Good：`ComposerReadinessBar` 将 `ModelSelect triggerVariant="readiness"` 放在 provider/model target 中，`ButtonArea` 只渲染 tool toggle、inline tools、send/stop。
+- Good：`ChatInputBox` 在 `.input-editable-wrapper` 上方渲染 `.chat-input-context-surface`，selected context chips 不经过 `ButtonArea`。
 - Good：`ModeSelect` 使用 `codicon ${mode.icon}` 并让 CSS 通过 `currentColor` 控制 dark/light theme。
 - Good：`ContextBar` / `ButtonArea` 使用 `--composer-tool-selected-color` 统一 selected/armed inline tool 的 icon 和 overlay check 颜色。
 - Base：`ContextBar surface="tool-popover" showUsage={false}` 嵌入 inline tools，主 usage 由 `mainSurface` 保留。
 - Bad：新增工具时直接放到 `.button-area-right`，绕过 inline strip。
+- Bad：把 selected skill / command / agent chips 作为 `contextSurface` 重新传回 `ButtonArea`。
 - Bad：为了让 light theme 更明显，给 inline tool 加固定黑色 SVG 或局部 `color: #000`。
 - Bad：为了强调某个 active 状态，给单个 inline tool 重新加圆点、发光 badge、边框或底色，导致 selected 语言分裂。
 - Bad：只改普通 ChatInputBox CSS，忘记 `home-chat.css` 的更高优先级 override。
@@ -360,6 +365,7 @@ return {
 ### 6. Tests Required
 
 - `ButtonArea.test.tsx` MUST cover inline tool visual order and absence of duplicate bottom model selector when readiness target owns model selection.
+- Composer / ChatInputBox review MUST confirm selected skill / command / agent chips render above the editor and are absent from `ButtonArea`.
 - `modelOptions.test.ts` MUST cover provider groups, selected fallback, custom model merge, and Gemini availability fallback.
 - `ModelSelect.test.tsx` MUST cover readiness trigger and compact grouped option rendering.
 - `ModeSelect.test.tsx` MUST cover codicon trigger rendering and mode selection behavior.
