@@ -1479,3 +1479,47 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 552: 对齐 StatusPanel dock 样式测试
+
+**Date**: 2026-05-22
+**Task**: 对齐 StatusPanel dock 样式测试
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+按现有 CSS 实现调整 status-panel-theme 测试断言，只更新测试 contract，不修改样式代码。
+
+### Main Changes
+
+## 完成内容
+- 按用户要求“不改代码，只改测试”，撤回对 `src/styles/status-panel.css` 与 `src/styles/main.css` 的尺寸改动。
+- 将 `src/styles/status-panel-theme.test.ts` 中 dock 高度、折叠高度、toggle 宽度断言对齐当前 CSS 实现：`28px` / `34px`。
+
+## 验证
+- `npm exec vitest run src/styles/status-panel-theme.test.ts src/styles/terminal-theme.test.ts src/styles/sidebar-titlebar-drag-region.test.ts src/test-fixtures/perf/fixtures.test.ts`
+- `npm run typecheck`
+- `npm run lint`
+
+## 说明
+本次提交是 test-only，当前工作区在提交前确认只修改 `src/styles/status-panel-theme.test.ts`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `506cf1e5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -14,7 +14,7 @@ const mainCss = readFileSync(
 describe("status panel theme colors", () => {
   it("keeps dock tabs as a flat bottom panel bar", () => {
     expect(statusPanelCss).toMatch(
-      /\.sp-tabs--dock\s*\{[^}]*min-height:\s*30px/s,
+      /\.sp-tabs--dock\s*\{[^}]*min-height:\s*28px/s,
     );
     expect(statusPanelCss).toMatch(
       /\.sp-tabs--dock\s*\{[^}]*border-radius:\s*0/s,
@@ -35,19 +35,19 @@ describe("status panel theme colors", () => {
 
   it("keeps the dock collapse control as the left tab bar cell", () => {
     expect(statusPanelCss).toMatch(
-      /\.sp-root--dock-collapsed\s*\{[^}]*min-height:\s*30px/s,
+      /\.sp-root--dock-collapsed\s*\{[^}]*min-height:\s*28px/s,
     );
     expect(mainCss).toMatch(
-      /\.right-panel-bottom:has\(\.sp-root--dock-collapsed\)\s*\{[^}]*height:\s*30px/s,
+      /\.right-panel-bottom:has\(\.sp-root--dock-collapsed\)\s*\{[^}]*height:\s*28px/s,
     );
     expect(mainCss).toMatch(
       /\.right-panel:has\(\.sp-root--dock-collapsed\) \.right-panel-divider\s*\{[^}]*display:\s*none/s,
     );
     expect(statusPanelCss).toMatch(
-      /\.sp-dock-panel-toggle\s*\{[^}]*flex:\s*0 0 38px/s,
+      /\.sp-dock-panel-toggle\s*\{[^}]*flex:\s*0 0 34px/s,
     );
     expect(statusPanelCss).toMatch(
-      /\.sp-dock-panel-toggle\s*\{[^}]*min-height:\s*30px/s,
+      /\.sp-dock-panel-toggle\s*\{[^}]*min-height:\s*28px/s,
     );
     expect(statusPanelCss).toMatch(
       /\.sp-dock-panel-toggle\s*\{[^}]*border-right:\s*1px solid var\(--sp-dock-tab-border\)/s,
