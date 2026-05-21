@@ -1319,3 +1319,36 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 548: 收口底部 dock 与运行按钮样式
+
+**Date**: 2026-05-22
+**Task**: 收口底部 dock 与运行按钮样式
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+回写 Composer control surface 提案和实现证据；收口 StatusPanel/Terminal 底部 dock 样式、StatusPanel 折叠吸底行为，以及 Composer 运行态 stop button 正圆火花 icon；补充 CSS/组件回归测试并完成 OpenSpec、lint、typecheck 与大文件检查。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cfd6dc0f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
