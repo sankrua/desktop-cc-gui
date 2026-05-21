@@ -1391,3 +1391,44 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 550: 上移 Composer 上下文芯片
+
+**Date**: 2026-05-22
+**Task**: 上移 Composer 上下文芯片
+**Branch**: `feature/v0.5.1`
+
+### Summary
+
+将 selected skill/command/agent 上下文芯片从底部工具栏移到输入框上方独立行，并同步 OpenSpec/Trellis 契约防止后续回退。
+
+### Main Changes
+
+- UI: `ChatInputBox` 新增 `.chat-input-context-surface`，在 editor 上方渲染 `ContextBar surface="external"`。
+- UI: `ButtonArea` / `ChatInputBoxFooter` / `ButtonAreaProps` 移除 `contextSurface` 传递和底部渲染，避免 selected chips 回到底部 toolbar。
+- CSS: 删除 `.button-area-context-surface` 样式，新增输入区 context row 样式。
+- Tests: 更新 `ButtonArea.test.tsx` 的视觉顺序断言，匹配新的职责边界。
+- Specs: 回写 `openspec/changes/stabilize-composer-control-surface/**` proposal/design/tasks/spec/evidence，明确 selected context chips 属于 editor 上方 context row。
+- Trellis: 更新 `.trellis/spec/frontend/component-guidelines.md`，声明 `ButtonArea` 不再接收或渲染 selected chip surface。
+- Compatibility: Win/mac review 结论为标准 React DOM/CSS 变更，无 Tauri/backend/database/native API 改动。
+- Verification: `openspec validate stabilize-composer-control-surface --strict --no-interactive`; `pnpm -s vitest run src/features/composer/components/ChatInputBox/ButtonArea.test.tsx`; `pnpm -s tsc -p . --noEmit`; `git diff --check`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `45a721c2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
