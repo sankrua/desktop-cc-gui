@@ -11,6 +11,8 @@ import type { ComposerSendReadiness } from '../../utils/composerSendReadiness';
 // Core Entity Types
 // ============================================================
 
+export type MemoryReferenceMode = 'off' | 'single' | 'always';
+
 /**
  * File tag information for backend context injection (Codex mode)
  */
@@ -568,10 +570,10 @@ export interface ChatInputBoxProps {
   onCodexReviewQuickStart?: () => void;
   /** Trigger fork quick action (codex/claude only) */
   onForkQuickStart?: () => void;
-  /** Whether one-shot project memory reference is armed */
-  memoryReferenceArmed?: boolean;
-  /** Toggle one-shot project memory reference */
-  onToggleMemoryReference?: () => void;
+  /** Current explicit project memory reference mode */
+  memoryReferenceMode?: MemoryReferenceMode;
+  /** Set explicit project memory reference mode */
+  onSetMemoryReferenceMode?: (mode: MemoryReferenceMode) => void;
   /** Whether always thinking is enabled */
   alwaysThinkingEnabled?: boolean;
   /** Attachment list */
@@ -781,10 +783,10 @@ export interface ButtonAreaProps {
   onCodexReviewQuickStart?: () => void;
   /** Trigger fork quick action (codex/claude only) */
   onForkQuickStart?: () => void;
-  /** Whether one-shot project memory reference is armed */
-  memoryReferenceArmed?: boolean;
-  /** Toggle one-shot project memory reference */
-  onToggleMemoryReference?: () => void;
+  /** Current explicit project memory reference mode */
+  memoryReferenceMode?: MemoryReferenceMode;
+  /** Set explicit project memory reference mode */
+  onSetMemoryReferenceMode?: (mode: MemoryReferenceMode) => void;
 
   // Event callbacks
   onSubmit?: () => void;

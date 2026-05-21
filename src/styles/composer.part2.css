@@ -678,6 +678,10 @@
   background: color-mix(in srgb, var(--input-focus-border, var(--accent-primary, currentColor)) 14%, transparent);
 }
 
+.composer-memory-reference-toggle.is-always {
+  background: color-mix(in srgb, var(--input-focus-border, var(--accent-primary, currentColor)) 22%, transparent);
+}
+
 .composer-memory-reference-toggle:disabled {
   cursor: not-allowed;
   opacity: 0.55;
@@ -688,7 +692,7 @@
   right: 0;
   bottom: calc(100% + 6px);
   z-index: 45;
-  width: min(252px, calc(100vw - 24px));
+  width: min(312px, calc(100vw - 24px));
   padding: 0;
   border: 1px solid var(--composer-tool-popover-border, var(--border-strong, var(--border-subtle)));
   border-radius: 9px;
@@ -781,13 +785,14 @@
 .composer-memory-reference-popover-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 6px;
   margin-top: 7px;
   padding: 0 8px 8px;
 }
 
 .composer-memory-reference-popover-secondary,
-.composer-memory-reference-popover-primary {
+.composer-memory-reference-popover-mode {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -796,25 +801,28 @@
   line-height: 1;
   min-height: 24px;
   padding: 6px 8px;
+  white-space: nowrap;
 }
 
-.composer-memory-reference-popover-secondary {
+.composer-memory-reference-popover-secondary,
+.composer-memory-reference-popover-mode {
   background: transparent;
   color: var(--text-muted);
 }
 
-.composer-memory-reference-popover-secondary:hover {
+.composer-memory-reference-popover-secondary:hover,
+.composer-memory-reference-popover-mode:hover {
   color: var(--text-primary);
   background: color-mix(in srgb, var(--selector-pill-hover, transparent) 70%, transparent);
 }
 
-.composer-memory-reference-popover-primary {
+.composer-memory-reference-popover-mode.is-selected {
   background: var(--button-primary, var(--input-focus-border, var(--accent-primary)));
   color: #ffffff;
   box-shadow: none;
 }
 
-.composer-memory-reference-popover-primary:hover {
+.composer-memory-reference-popover-mode.is-selected:hover {
   background: color-mix(in srgb, var(--button-primary, var(--input-focus-border, var(--accent-primary))) 88%, var(--text-primary) 12%);
 }
 

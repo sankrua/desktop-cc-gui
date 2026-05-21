@@ -25,26 +25,42 @@ vi.mock("./ChatInputBox/ChatInputBoxAdapter", () => ({
     text,
     onTextChange,
     onSend,
-    memoryReferenceArmed,
-    onToggleMemoryReference,
+    memoryReferenceMode = "off",
+    onSetMemoryReferenceMode,
   }: {
     text: string;
     onTextChange: (next: string, cursor: number | null) => void;
     onSend: () => void;
-    memoryReferenceArmed?: boolean;
-    onToggleMemoryReference?: () => void;
+    memoryReferenceMode?: "off" | "single" | "always";
+    onSetMemoryReferenceMode?: (mode: "off" | "single" | "always") => void;
   }) => (
     <div>
       <button
         type="button"
-        aria-pressed={memoryReferenceArmed}
+        aria-pressed={memoryReferenceMode !== "off"}
         aria-label="composer.memoryReferenceToggle"
-        onClick={onToggleMemoryReference}
+        onClick={() => onSetMemoryReferenceMode?.(memoryReferenceMode === "off" ? "single" : "off")}
       >
-        {memoryReferenceArmed
-          ? "composer.memoryReferenceOn"
-          : "composer.memoryReferenceOff"}
+        {memoryReferenceMode === "always"
+          ? "composer.memoryReferenceAlwaysOn"
+          : memoryReferenceMode === "single"
+            ? "composer.memoryReferenceSingleOn"
+            : "composer.memoryReferenceOff"}
       </button>
+      <button
+        type="button"
+        data-testid="enable-always-memory"
+        onClick={() => onSetMemoryReferenceMode?.("always")}
+      >
+        composer.memoryReferenceEnableAlways
+      </button>
+      <span data-testid="memory-reference-mode">
+        {memoryReferenceMode === "always"
+          ? "always"
+          : memoryReferenceMode === "single"
+            ? "single"
+          : "composer.memoryReferenceOff"}
+      </span>
       <textarea
         aria-label="chat draft"
         value={text}
@@ -100,17 +116,17 @@ describe("Composer Memory Reference toggle", () => {
     cleanup();
   });
 
-  it("defaults off, toggles on and clears after send", async () => {
+  it("defaults off, toggles single-send reference and clears after send", async () => {
     const onSend = vi.fn(() => Promise.resolve());
     renderComposer(onSend);
 
     const toggle = screen.getByRole("button", { name: "composer.memoryReferenceToggle" });
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
-    expect(screen.getByText("composer.memoryReferenceOff")).toBeTruthy();
+    expect(toggle.textContent).toBe("composer.memoryReferenceOff");
 
     fireEvent.click(toggle);
     expect(toggle.getAttribute("aria-pressed")).toBe("true");
-    expect(screen.getByText("composer.memoryReferenceOn")).toBeTruthy();
+    expect(screen.getByText("composer.memoryReferenceSingleOn")).toBeTruthy();
 
     fireEvent.change(screen.getByLabelText("chat draft"), {
       target: { value: "hello memory" },
@@ -126,5 +142,43 @@ describe("Composer Memory Reference toggle", () => {
       expect.objectContaining({ memoryReferenceEnabled: true }),
     );
     expect(toggle.getAttribute("aria-pressed")).toBe("false");
+  });
+
+  it("keeps always-on memory reference after send", async () => {
+    const onSend = vi.fn(() => Promise.resolve());
+    renderComposer(onSend);
+
+    fireEvent.click(screen.getByTestId("enable-always-memory"));
+    expect(screen.getByTestId("memory-reference-mode").textContent).toBe("always");
+
+    fireEvent.change(screen.getByLabelText("chat draft"), {
+      target: { value: "first always memory" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("send-message"));
+      await Promise.resolve();
+    });
+
+    expect(onSend).toHaveBeenCalledWith(
+      "first always memory",
+      [],
+      expect.objectContaining({ memoryReferenceEnabled: true }),
+    );
+    expect(screen.getByTestId("memory-reference-mode").textContent).toBe("always");
+
+    fireEvent.change(screen.getByLabelText("chat draft"), {
+      target: { value: "second always memory" },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId("send-message"));
+      await Promise.resolve();
+    });
+
+    expect(onSend).toHaveBeenLastCalledWith(
+      "second always memory",
+      [],
+      expect.objectContaining({ memoryReferenceEnabled: true }),
+    );
+    expect(screen.getByTestId("memory-reference-mode").textContent).toBe("always");
   });
 });

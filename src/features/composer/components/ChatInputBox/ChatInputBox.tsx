@@ -195,8 +195,8 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       onCodexSpeedModeChange,
       onCodexReviewQuickStart,
       onForkQuickStart,
-      memoryReferenceArmed = false,
-      onToggleMemoryReference,
+      memoryReferenceMode = 'off',
+      onSetMemoryReferenceMode,
       attachments: externalAttachments,
       placeholder = '', // Will be passed from parent via t('chat.inputPlaceholder')
       disabled = false,
@@ -1589,8 +1589,8 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
               onCodexSpeedModeChange={onCodexSpeedModeChange}
               onCodexReviewQuickStart={onCodexReviewQuickStart}
               onForkQuickStart={onForkQuickStart}
-              memoryReferenceArmed={memoryReferenceArmed}
-              onToggleMemoryReference={onToggleMemoryReference}
+              memoryReferenceMode={memoryReferenceMode}
+              onSetMemoryReferenceMode={onSetMemoryReferenceMode}
               onSubmit={handleSubmit}
               onStop={onStop}
               onModeSelect={handleModeSelect}

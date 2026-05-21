@@ -2,7 +2,7 @@ import { useCallback, useId, useMemo, useRef, useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next';
 import DatabaseZap from 'lucide-react/dist/esm/icons/database-zap';
 import X from 'lucide-react/dist/esm/icons/x';
-import type { ButtonAreaProps, ModelInfo, PermissionMode, ReasoningEffort } from './types';
+import type { ButtonAreaProps, MemoryReferenceMode, ModelInfo, PermissionMode, ReasoningEffort } from './types';
 import { ConfigSelect, ModelSelect, ModeSelect, ProviderSelect, ReasoningSelect, ShortcutActionsSelect } from './selectors';
 import { CODEX_MODELS } from './types';
 import { isValidModelId, STORAGE_KEYS, validateCodexCustomModels } from '../../types/provider';
@@ -214,8 +214,8 @@ export const ButtonArea = ({
   onCodexSpeedModeChange,
   onCodexReviewQuickStart,
   onForkQuickStart,
-  memoryReferenceArmed = false,
-  onToggleMemoryReference,
+  memoryReferenceMode = 'off',
+  onSetMemoryReferenceMode,
   onSubmit,
   onStop,
   onModeSelect,
@@ -258,6 +258,13 @@ export const ButtonArea = ({
   const memoryReferencePopoverId = useId();
   const toolDockRootRef = useRef<HTMLDivElement>(null);
   const memoryReferenceRootRef = useRef<HTMLDivElement>(null);
+  const isMemoryReferenceEnabled = memoryReferenceMode !== 'off';
+  const memoryReferenceStateLabel =
+    memoryReferenceMode === 'always'
+      ? t('composer.memoryReferenceAlwaysOn')
+      : memoryReferenceMode === 'single'
+        ? t('composer.memoryReferenceSingleOn')
+        : t('composer.memoryReferenceToggle');
 
   useEffect(() => {
     const refreshModelStorageSnapshot = () => {
@@ -429,25 +436,25 @@ export const ButtonArea = ({
   }, [currentProvider, onRefreshModelConfig]);
 
   const handleMemoryReferenceToggleClick = useCallback(() => {
-    if (!onToggleMemoryReference) {
+    if (!onSetMemoryReferenceMode) {
       return;
     }
-    if (memoryReferenceArmed) {
-      onToggleMemoryReference();
+    if (memoryReferenceMode !== 'off') {
+      onSetMemoryReferenceMode('off');
       setIsMemoryReferencePopoverOpen(false);
       return;
     }
     setIsMemoryReferencePopoverOpen((current) => !current);
-  }, [memoryReferenceArmed, onToggleMemoryReference]);
+  }, [memoryReferenceMode, onSetMemoryReferenceMode]);
 
-  const handleConfirmMemoryReference = useCallback(() => {
-    if (!onToggleMemoryReference || memoryReferenceArmed) {
+  const handleSelectMemoryReferenceMode = useCallback((nextMode: MemoryReferenceMode) => {
+    if (!onSetMemoryReferenceMode || memoryReferenceMode !== 'off') {
       setIsMemoryReferencePopoverOpen(false);
       return;
     }
-    onToggleMemoryReference();
+    onSetMemoryReferenceMode(nextMode);
     setIsMemoryReferencePopoverOpen(false);
-  }, [memoryReferenceArmed, onToggleMemoryReference]);
+  }, [memoryReferenceMode, onSetMemoryReferenceMode]);
 
   const supportsModelConfigActions = MODEL_CONFIG_PROVIDERS.has(currentProvider);
   const toolDockToggleLabel = t('chat.toolDockToggle', {
@@ -514,7 +521,7 @@ export const ButtonArea = ({
         </div>
 
         <div className="button-area-right">
-          {onToggleMemoryReference ? (
+          {onSetMemoryReferenceMode ? (
             <div
               ref={memoryReferenceRootRef}
               className="composer-memory-reference-control"
@@ -522,18 +529,16 @@ export const ButtonArea = ({
               <button
                 type="button"
                 className={`composer-memory-reference-toggle${
-                  memoryReferenceArmed ? ' is-armed' : ''
+                  isMemoryReferenceEnabled ? ' is-armed' : ''
+                }${
+                  memoryReferenceMode === 'always' ? ' is-always' : ''
                 }`}
                 onClick={handleMemoryReferenceToggleClick}
-                aria-pressed={memoryReferenceArmed}
+                aria-pressed={isMemoryReferenceEnabled}
                 aria-expanded={isMemoryReferencePopoverOpen}
                 aria-controls={memoryReferencePopoverId}
                 aria-label={t('composer.memoryReferenceToggle')}
-                title={
-                  memoryReferenceArmed
-                    ? t('composer.memoryReferenceOn')
-                    : t('composer.memoryReferenceToggle')
-                }
+                title={memoryReferenceStateLabel}
                 disabled={disabled}
               >
                 <DatabaseZap size={17} aria-hidden />
@@ -563,14 +568,14 @@ export const ButtonArea = ({
                   <div className="composer-memory-reference-popover-body">
                     <div className="composer-memory-reference-popover-row">
                       <span className="composer-memory-reference-popover-label">
-                        {t('composer.memoryReferenceScope')}
+                        {t('composer.memoryReferenceMode')}
                       </span>
                       <span className="composer-memory-reference-popover-value">
-                        {t('composer.memoryReferenceOff')}
+                        {t('composer.memoryReferenceModeChoice')}
                       </span>
                     </div>
                     <div className="composer-memory-reference-popover-copy">
-                      {t('composer.memoryReferenceOffHint')}
+                      {t('composer.memoryReferenceModeHint')}
                     </div>
                   </div>
                   <div className="composer-memory-reference-popover-actions">
@@ -583,10 +588,23 @@ export const ButtonArea = ({
                     </button>
                     <button
                       type="button"
-                      className="composer-memory-reference-popover-primary"
-                      onClick={handleConfirmMemoryReference}
+                      className={`composer-memory-reference-popover-mode${
+                        memoryReferenceMode === 'single' ? ' is-selected' : ''
+                      }`}
+                      aria-pressed={memoryReferenceMode === 'single'}
+                      onClick={() => handleSelectMemoryReferenceMode('single')}
                     >
-                      {t('composer.memoryReferenceConfirm')}
+                      {t('composer.memoryReferenceEnableSingle')}
+                    </button>
+                    <button
+                      type="button"
+                      className={`composer-memory-reference-popover-mode${
+                        memoryReferenceMode === 'always' ? ' is-selected' : ''
+                      }`}
+                      aria-pressed={memoryReferenceMode === 'always'}
+                      onClick={() => handleSelectMemoryReferenceMode('always')}
+                    >
+                      {t('composer.memoryReferenceEnableAlways')}
                     </button>
                   </div>
                 </div>

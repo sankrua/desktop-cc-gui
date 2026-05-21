@@ -25,6 +25,7 @@ import type {
   ClaudeContextUsageViewModel,
   ContextSelectionChip,
   DualContextUsageViewModel,
+  MemoryReferenceMode,
   PermissionMode,
   ReasoningEffort,
   SelectedAgent,
@@ -376,8 +377,8 @@ export interface ChatInputBoxAdapterProps {
   selectedCollaborationModeId?: string | null;
   onSelectCollaborationMode?: (id: string | null) => void;
   onCodexQuickCommand?: (command: string) => void | Promise<void>;
-  memoryReferenceArmed?: boolean;
-  onToggleMemoryReference?: () => void;
+  memoryReferenceMode?: MemoryReferenceMode;
+  onSetMemoryReferenceMode?: (mode: MemoryReferenceMode) => void;
 
   // Queue
   queuedMessages?: ComposerQueuedMessage[];
@@ -830,8 +831,8 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
       selectedCollaborationModeId,
       onSelectCollaborationMode,
       onCodexQuickCommand,
-      memoryReferenceArmed,
-      onToggleMemoryReference,
+      memoryReferenceMode,
+      onSetMemoryReferenceMode,
       queuedMessages,
       sendReadiness,
       onJumpToRequest,
@@ -1738,8 +1739,8 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
         codexSpeedMode={codexSpeedMode}
         onCodexSpeedModeChange={handleCodexSpeedModeChange}
         onCodexReviewQuickStart={handleCodexReviewQuickStart}
-        memoryReferenceArmed={memoryReferenceArmed}
-        onToggleMemoryReference={onToggleMemoryReference}
+        memoryReferenceMode={memoryReferenceMode}
+        onSetMemoryReferenceMode={onSetMemoryReferenceMode}
         messageQueue={messageQueue}
         sendReadiness={sendReadiness}
         onJumpToRequest={onJumpToRequest}

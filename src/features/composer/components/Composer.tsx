@@ -50,6 +50,7 @@ import type {
   ClaudeContextUsageViewModel,
   CodexCompactionSource,
   ContextSelectionChip,
+  MemoryReferenceMode,
   PermissionMode,
   SelectedAgent as ChatInputSelectedAgent,
 } from "./ChatInputBox/types";
@@ -613,7 +614,7 @@ export const Composer = memo(function Composer({
   const [selectedCommonsNames, setSelectedCommonsNames] = useState<string[]>([]);
   const [selectedManualMemories, setSelectedManualMemories] = useState<ManualMemorySelection[]>([]);
   const [selectedNoteCards, setSelectedNoteCards] = useState<NoteCardSelection[]>([]);
-  const [memoryReferenceArmed, setMemoryReferenceArmed] = useState(false);
+  const [memoryReferenceMode, setMemoryReferenceMode] = useState<MemoryReferenceMode>("off");
   const [carryOverManualMemoryIds, setCarryOverManualMemoryIds] = useState<string[]>([]);
   const [retainedManualMemoryIds, setRetainedManualMemoryIds] = useState<string[]>([]);
   const [carryOverNoteCardIds, setCarryOverNoteCardIds] = useState<string[]>([]);
@@ -776,7 +777,7 @@ export const Composer = memo(function Composer({
     setRetainedNoteCardIds(keepArrayWhenEmpty);
     setCarryOverContextChipKeys(keepArrayWhenEmpty);
     setRetainedContextChipKeys(keepArrayWhenEmpty);
-    setMemoryReferenceArmed(false);
+    setMemoryReferenceMode("off");
   }, []);
   const resetContextLedgerSessionState = useCallback(() => {
     clearComposerContextSelections();
@@ -1333,10 +1334,11 @@ export const Composer = memo(function Composer({
       const selectedMemoryIds = selectedManualMemories.map((entry) => entry.id);
       const selectedNoteCardIds = selectedNoteCards.map((entry) => entry.id);
       const selectedMemoryInjectionMode = getManualMemoryInjectionMode();
+      const shouldReferenceMemory = memoryReferenceMode !== "off";
       const sendOptions =
-        selectedMemoryIds.length > 0 || selectedNoteCardIds.length > 0 || memoryReferenceArmed
+        selectedMemoryIds.length > 0 || selectedNoteCardIds.length > 0 || shouldReferenceMemory
           ? {
-              ...(memoryReferenceArmed ? { memoryReferenceEnabled: true } : {}),
+              ...(shouldReferenceMemory ? { memoryReferenceEnabled: true } : {}),
               ...(selectedMemoryIds.length > 0
                 ? { selectedMemoryIds, selectedMemoryInjectionMode }
                 : {}),
@@ -1387,7 +1389,9 @@ export const Composer = memo(function Composer({
         setCarryOverManualMemoryIds([]);
         setCarryOverNoteCardIds([]);
         setCarryOverContextChipKeys([]);
-        setMemoryReferenceArmed(false);
+        setMemoryReferenceMode((currentMode) =>
+          currentMode === "single" ? "off" : currentMode,
+        );
       });
       resetHistoryNavigation();
       setComposerText("");
@@ -1405,7 +1409,7 @@ export const Composer = memo(function Composer({
       onClearCodeAnnotations,
       selectedManualMemories,
       selectedNoteCards,
-      memoryReferenceArmed,
+      memoryReferenceMode,
       onSend,
       inlineCompletion,
       recordHistory,
@@ -2273,8 +2277,8 @@ export const Composer = memo(function Composer({
               onRefreshAccountRateLimits={onRefreshAccountRateLimits}
               onCodexQuickCommand={handleCodexQuickCommand}
               onForkQuickStart={handleForkQuickStart}
-              memoryReferenceArmed={memoryReferenceArmed}
-              onToggleMemoryReference={() => setMemoryReferenceArmed((value) => !value)}
+              memoryReferenceMode={memoryReferenceMode}
+              onSetMemoryReferenceMode={setMemoryReferenceMode}
               hasMessages={items.length > 0}
               onRewind={handleRewind}
               showRewindEntry={canRewindSession}

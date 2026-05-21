@@ -472,8 +472,8 @@ describe("ButtonArea custom model storage refresh", () => {
     expect(reasoningSelect.compareDocumentPosition(mainSurface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
-  it("confirms memory reference before arming it", () => {
-    const onToggleMemoryReference = vi.fn();
+  it("confirms single-send memory reference before enabling it", () => {
+    const onSetMemoryReferenceMode = vi.fn();
 
     render(
       <ButtonArea
@@ -483,25 +483,27 @@ describe("ButtonArea custom model storage refresh", () => {
         hasInputContent
         onSubmit={vi.fn()}
         shortcutActions={[]}
-        memoryReferenceArmed={false}
-        onToggleMemoryReference={onToggleMemoryReference}
+        memoryReferenceMode="off"
+        onSetMemoryReferenceMode={onSetMemoryReferenceMode}
       />,
     );
 
     const toggle = screen.getByRole("button", { name: "composer.memoryReferenceToggle" });
     fireEvent.click(toggle);
 
-    expect(onToggleMemoryReference).not.toHaveBeenCalled();
+    expect(onSetMemoryReferenceMode).not.toHaveBeenCalled();
     expect(screen.getByRole("dialog", { name: "composer.memoryReferenceDialogTitle" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "composer.memoryReferenceEnableSingle" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: "composer.memoryReferenceEnableAlways" }).getAttribute("aria-pressed")).toBe("false");
 
-    fireEvent.click(screen.getByRole("button", { name: "composer.memoryReferenceConfirm" }));
+    fireEvent.click(screen.getByRole("button", { name: "composer.memoryReferenceEnableSingle" }));
 
-    expect(onToggleMemoryReference).toHaveBeenCalledTimes(1);
+    expect(onSetMemoryReferenceMode).toHaveBeenCalledWith("single");
     expect(screen.queryByRole("dialog", { name: "composer.memoryReferenceDialogTitle" })).toBeNull();
   });
 
-  it("turns off armed memory reference directly from the icon", () => {
-    const onToggleMemoryReference = vi.fn();
+  it("can enable always-on memory reference from the popover", () => {
+    const onSetMemoryReferenceMode = vi.fn();
 
     render(
       <ButtonArea
@@ -511,14 +513,37 @@ describe("ButtonArea custom model storage refresh", () => {
         hasInputContent
         onSubmit={vi.fn()}
         shortcutActions={[]}
-        memoryReferenceArmed
-        onToggleMemoryReference={onToggleMemoryReference}
+        memoryReferenceMode="off"
+        onSetMemoryReferenceMode={onSetMemoryReferenceMode}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "composer.memoryReferenceToggle" }));
+    fireEvent.click(screen.getByRole("button", { name: "composer.memoryReferenceEnableAlways" }));
+
+    expect(onSetMemoryReferenceMode).toHaveBeenCalledWith("always");
+    expect(screen.queryByRole("dialog", { name: "composer.memoryReferenceDialogTitle" })).toBeNull();
+  });
+
+  it("turns off enabled memory reference directly from the icon", () => {
+    const onSetMemoryReferenceMode = vi.fn();
+
+    render(
+      <ButtonArea
+        currentProvider="codex"
+        models={[]}
+        selectedModel=""
+        hasInputContent
+        onSubmit={vi.fn()}
+        shortcutActions={[]}
+        memoryReferenceMode="always"
+        onSetMemoryReferenceMode={onSetMemoryReferenceMode}
       />,
     );
 
     fireEvent.click(screen.getByRole("button", { name: "composer.memoryReferenceToggle" }));
 
-    expect(onToggleMemoryReference).toHaveBeenCalledTimes(1);
+    expect(onSetMemoryReferenceMode).toHaveBeenCalledWith("off");
     expect(screen.queryByRole("dialog", { name: "composer.memoryReferenceDialogTitle" })).toBeNull();
   });
 
