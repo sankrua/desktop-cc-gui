@@ -38,8 +38,10 @@ type FileViewBodyProps = {
   previewPayloadLoading: boolean;
   previewPayloadError: string | null;
   viewSurface: FileViewSurface;
-  content: string;
-  setContent: (value: string) => void;
+    content: string;
+    setContent: (value: string) => void;
+    markdownPreviewSnapshotMode: "stable" | "live";
+    markdownPreviewRefreshKey?: number | null;
   cmRef: RefObject<ReactCodeMirrorRef | null>;
   handleCodeMirrorCreate: NonNullable<ReactCodeMirrorProps["onCreateEditor"]>;
   onActiveFileLineRangeChange?: (range: { startLine: number; endLine: number } | null) => void;
@@ -334,8 +336,10 @@ export function FileViewBody({
   previewPayloadLoading,
   previewPayloadError,
   viewSurface,
-  content,
-  setContent,
+    content,
+    setContent,
+    markdownPreviewSnapshotMode,
+    markdownPreviewRefreshKey,
   cmRef,
   handleCodeMirrorCreate,
   onActiveFileLineRangeChange,
@@ -369,6 +373,55 @@ export function FileViewBody({
   );
   const previewDraft =
     annotationDraft?.source === "file-preview-mode" ? annotationDraft : null;
+  const previousViewSurfaceKindRef = useRef(viewSurface.kind);
+  const [stableMarkdownPreviewSnapshot, setStableMarkdownPreviewSnapshot] =
+    useState(() => ({
+      documentKey,
+      content,
+    }));
+
+  useEffect(() => {
+    const previousKind = previousViewSurfaceKindRef.current;
+    previousViewSurfaceKindRef.current = viewSurface.kind;
+    if (isLoading) {
+      return;
+    }
+    setStableMarkdownPreviewSnapshot((currentSnapshot) => {
+      const documentChanged = currentSnapshot.documentKey !== documentKey;
+      const enteringMarkdownPreview =
+        previousKind !== "markdown-preview" && viewSurface.kind === "markdown-preview";
+      const needsInitialSnapshot =
+        viewSurface.kind === "markdown-preview" &&
+        currentSnapshot.content.length === 0 &&
+        content.length > 0;
+        const shouldUseLatestContent =
+          documentChanged ||
+          markdownPreviewSnapshotMode === "live" ||
+          Boolean(markdownPreviewRefreshKey) ||
+          enteringMarkdownPreview ||
+          needsInitialSnapshot;
+      if (!shouldUseLatestContent) {
+        return currentSnapshot;
+      }
+      if (
+        currentSnapshot.documentKey === documentKey &&
+        currentSnapshot.content === content
+      ) {
+        return currentSnapshot;
+      }
+      return {
+        documentKey,
+        content,
+      };
+    });
+  }, [
+    content,
+    documentKey,
+      isLoading,
+      markdownPreviewRefreshKey,
+      markdownPreviewSnapshotMode,
+    viewSurface.kind,
+  ]);
 
   const selectPreviewLineRange = useCallback((anchor: number, lineNumber: number) => {
     setPreviewLineSelection({
@@ -592,12 +645,19 @@ export function FileViewBody({
   }
 
   if (viewSurface.kind === "markdown-preview") {
+    const markdownPreviewContent =
+      markdownPreviewSnapshotMode === "live"
+        ? content
+        : stableMarkdownPreviewSnapshot.documentKey === documentKey &&
+            stableMarkdownPreviewSnapshot.content.length > 0
+          ? stableMarkdownPreviewSnapshot.content
+          : content;
     return (
       <div className="fvp-preview-scroll">
         <FileMarkdownPreview
           key={filePath}
           documentKey={documentKey}
-          value={content}
+          value={markdownPreviewContent}
           className="fvp-file-markdown fvp-markdown-github"
           onAnnotationStart={onPreviewAnnotationStart}
           annotationDraft={previewDraft}

@@ -583,6 +583,9 @@ const enPart2 = {
     markdownMermaidRender: "Render",
     markdownMermaidRendering: "Rendering diagram...",
     markdownMermaidRenderFailed: "Render failed: {{message}}",
+    markdownHeavyBlockDeferred: "Heavy block will render when visible.",
+    markdownRenderBudgetBounded:
+      "Showing the first {{visibleCount}} of {{totalCount}} lines to keep preview bounded.",
     annotationStartLine: "Start line",
     annotationEndLine: "End line",
     annotationSelectionToolbar: "Code selection annotation",
@@ -598,8 +601,13 @@ const enPart2 = {
     saved: "Saved",
     unsavedChanges: "Unsaved changes",
     saveShortcut: "⌘S to save",
-    externalChangeAutoSynced: "File changed on disk and has been synced.",
-    externalChangeConflictTitle: "File changed on disk",
+      externalChangeAutoSynced: "File changed on disk and has been synced.",
+      externalChangePendingTitle: "File changed on disk",
+      externalChangePendingBody:
+        "{{count}} external update available. Current preview is kept stable until you refresh.",
+      externalChangeRefreshPreview: "Refresh preview",
+      externalChangeKeepCurrent: "Keep current preview",
+      externalChangeConflictTitle: "File changed on disk",
     externalChangeConflictBody:
       "Unsaved local edits detected. {{count}} external update pending review.",
     externalChangeReload: "Reload from disk",

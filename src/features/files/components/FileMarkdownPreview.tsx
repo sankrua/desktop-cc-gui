@@ -1,9 +1,8 @@
 import {
-  Children,
   createElement,
-  isValidElement,
   useCallback,
   useEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -23,9 +22,12 @@ import {
   detectMathContent,
   getCachedRehypeKatex,
   loadKatexAssets,
-  normalizeMarkdownMathForFilePreview,
   renderLatexFormula,
 } from "../../markdown/markdownMath";
+import {
+  compileFileMarkdownDocument,
+  hashStableString,
+} from "../utils/fileMarkdownDocument";
 import { highlightLine } from "../../../utils/syntax";
 import {
   isThemeMutationAttribute,
@@ -65,10 +67,11 @@ type MermaidRenderState =
   | { status: "error"; message: string };
 
 type MermaidBlockTab = "source" | "render";
-
-type FrontmatterField = {
-  key: string;
-  value: string;
+type MarkdownRenderProjection = {
+  kind: "rich" | "progressive" | "bounded";
+  initialLineLimit: number;
+  maxLineLimit: number;
+  chunkLineCount: number;
 };
 
 type MarkdownPositionTreeNode = Pick<Element, "children" | "position" | "tagName"> | undefined;
@@ -103,14 +106,40 @@ const ANNOTATABLE_MARKDOWN_NODE_TAGS = new Set<string>([
 ]);
 
 const MAX_CACHED_MERMAID_DOCUMENTS = 50;
+const MAX_CACHED_MERMAID_RENDERS = 80;
+const MAX_CACHED_KATEX_RENDERS = 120;
+const MAX_REVEALED_HEAVY_BLOCKS = 800;
+const PROGRESSIVE_INITIAL_LINES = 360;
+const PROGRESSIVE_CHUNK_LINES = 720;
+const BOUNDED_RENDER_LINE_LIMIT = 1_800;
+const LARGE_MARKDOWN_LINE_THRESHOLD = 6_000;
+const LARGE_MARKDOWN_BYTE_THRESHOLD = 240_000;
+const LARGE_MARKDOWN_BLOCK_THRESHOLD = 1_800;
+const LARGE_MARKDOWN_HEAVY_BLOCK_THRESHOLD = 60;
+const HEAVY_CODE_BLOCK_LINE_THRESHOLD = 80;
+const HEAVY_CODE_BLOCK_BYTE_THRESHOLD = 12_000;
 const mermaidTabSessionCache = new Map<string, Record<string, MermaidBlockTab>>();
+const mermaidRenderCache = new Map<string, string>();
+const katexRenderCache = new Map<string, string | null>();
+const revealedHeavyBlockCache = new Set<string>();
 
-function hashStableString(value: string): string {
-  let hash = 0;
-  for (let index = 0; index < value.length; index += 1) {
-    hash = (hash * 31 + value.charCodeAt(index)) >>> 0;
+function markHeavyBlockRevealed(revealKey: string | null) {
+  if (!revealKey) {
+    return;
   }
-  return hash.toString(36);
+  revealedHeavyBlockCache.delete(revealKey);
+  revealedHeavyBlockCache.add(revealKey);
+  while (revealedHeavyBlockCache.size > MAX_REVEALED_HEAVY_BLOCKS) {
+    const oldestKey = revealedHeavyBlockCache.values().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    revealedHeavyBlockCache.delete(oldestKey);
+  }
+}
+
+function isHeavyBlockRevealed(revealKey: string | null) {
+  return Boolean(revealKey && revealedHeavyBlockCache.has(revealKey));
 }
 
 function readCachedMermaidTabs(documentKey: string): Record<string, MermaidBlockTab> {
@@ -140,10 +169,97 @@ function writeCachedMermaidTab(
 function createMermaidBlockKey(
   node: MarkdownPositionTreeNode,
   value: string,
+  blockStartLine: number,
 ): string {
-  const startLine = node?.position?.start.line ?? 0;
-  const endLine = node?.position?.end.line ?? 0;
+  const startLine = (node?.position?.start.line ?? 1) + blockStartLine - 1;
+  const endLine = (node?.position?.end.line ?? 1) + blockStartLine - 1;
   return `${startLine}:${endLine}:${hashStableString(value)}`;
+}
+
+function createHeavyBlockRevealKey({
+  blockKey,
+  blockStartLine,
+  documentKey,
+  kind,
+  node,
+  value = "",
+}: {
+  blockKey: string;
+  blockStartLine: number;
+  documentKey: string;
+  kind: string;
+  node: MarkdownPositionTreeNode;
+  value?: string;
+}) {
+  const startLine = (node?.position?.start.line ?? 1) + blockStartLine - 1;
+  const endLine = (node?.position?.end.line ?? startLine) + blockStartLine - 1;
+  return `${documentKey}:${blockKey}:${kind}:${startLine}:${endLine}:${hashStableString(value)}`;
+}
+
+function createMermaidRenderCacheKey({
+  blockKey,
+  documentKey,
+  theme,
+  value,
+}: {
+  blockKey: string;
+  documentKey: string;
+  theme: "dark" | "default";
+  value: string;
+}) {
+  return `${documentKey}:${blockKey}:${theme}:${hashStableString(value)}`;
+}
+
+function createStableRuntimeId(prefix: string) {
+  const randomId =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
+  return `${prefix}-${randomId}`;
+}
+
+function readCachedMermaidRender(cacheKey: string) {
+  const svg = mermaidRenderCache.get(cacheKey);
+  if (!svg) {
+    return null;
+  }
+  mermaidRenderCache.delete(cacheKey);
+  mermaidRenderCache.set(cacheKey, svg);
+  return svg;
+}
+
+function writeCachedMermaidRender(cacheKey: string, svg: string) {
+  mermaidRenderCache.delete(cacheKey);
+  mermaidRenderCache.set(cacheKey, svg);
+  while (mermaidRenderCache.size > MAX_CACHED_MERMAID_RENDERS) {
+    const oldestKey = mermaidRenderCache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    mermaidRenderCache.delete(oldestKey);
+  }
+}
+
+function readCachedKatexRender(cacheKey: string) {
+  if (!katexRenderCache.has(cacheKey)) {
+    return undefined;
+  }
+  const renderedHtml = katexRenderCache.get(cacheKey) ?? null;
+  katexRenderCache.delete(cacheKey);
+  katexRenderCache.set(cacheKey, renderedHtml);
+  return renderedHtml;
+}
+
+function writeCachedKatexRender(cacheKey: string, renderedHtml: string | null) {
+  katexRenderCache.delete(cacheKey);
+  katexRenderCache.set(cacheKey, renderedHtml);
+  while (katexRenderCache.size > MAX_CACHED_KATEX_RENDERS) {
+    const oldestKey = katexRenderCache.keys().next().value;
+    if (!oldestKey) {
+      break;
+    }
+    katexRenderCache.delete(oldestKey);
+  }
 }
 
 function extractLanguageTag(className?: string) {
@@ -172,60 +288,45 @@ function detectMermaidTheme(): "dark" | "default" {
   return mapAppearanceToMermaidTheme(readDocumentThemeAppearance());
 }
 
-function normalizeFrontmatterValue(raw: string): string {
-  const trimmed = raw.trim();
+function resolveMarkdownRenderProjection(
+  metrics: ReturnType<typeof compileFileMarkdownDocument>["metrics"],
+): MarkdownRenderProjection {
   if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+    metrics.lineCount > LARGE_MARKDOWN_LINE_THRESHOLD ||
+    metrics.byteLength > LARGE_MARKDOWN_BYTE_THRESHOLD ||
+    metrics.blockCount > LARGE_MARKDOWN_BLOCK_THRESHOLD ||
+    metrics.heavyBlockCount > LARGE_MARKDOWN_HEAVY_BLOCK_THRESHOLD
   ) {
-    return trimmed.slice(1, -1);
-  }
-  if (trimmed.startsWith("[") && trimmed.endsWith("]")) {
-    return trimmed
-      .slice(1, -1)
-      .split(",")
-      .map((item) => normalizeFrontmatterValue(item))
-      .filter(Boolean)
-      .join(" · ");
-  }
-  return trimmed;
-}
-
-function extractFrontmatter(value: string): {
-  fields: FrontmatterField[];
-  body: string;
-  bodyStartLine: number;
-} {
-  const match = value.match(/^---\s*\r?\n([\s\S]*?)\r?\n---\s*(?:\r?\n|$)/);
-  if (!match) {
-    return { fields: [], body: value, bodyStartLine: 1 };
+    return {
+      kind: "bounded",
+      initialLineLimit: Math.min(BOUNDED_RENDER_LINE_LIMIT, metrics.lineCount),
+      maxLineLimit: Math.min(BOUNDED_RENDER_LINE_LIMIT, metrics.lineCount),
+      chunkLineCount: BOUNDED_RENDER_LINE_LIMIT,
+    };
   }
 
-  const frontmatterBlock = match[1] ?? "";
-  const rawFields = frontmatterBlock
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-  const fields = rawFields
-    .map((line) => {
-      const separatorIndex = line.indexOf(":");
-      if (separatorIndex <= 0) {
-        return null;
-      }
-      const key = line.slice(0, separatorIndex).trim();
-      const rawValue = line.slice(separatorIndex + 1).trim();
-      return {
-        key,
-        value: normalizeFrontmatterValue(rawValue),
-      };
-    })
-    .filter((field): field is FrontmatterField => Boolean(field));
+  if (metrics.lineCount > PROGRESSIVE_INITIAL_LINES) {
+    return {
+      kind: "progressive",
+      initialLineLimit: Math.min(PROGRESSIVE_INITIAL_LINES, metrics.lineCount),
+      maxLineLimit: metrics.lineCount,
+      chunkLineCount: PROGRESSIVE_CHUNK_LINES,
+    };
+  }
 
   return {
-    fields,
-    body: value.slice(match[0].length),
-    bodyStartLine: (match[0].match(/\r?\n/g) ?? []).length + 1,
+    kind: "rich",
+    initialLineLimit: metrics.lineCount,
+    maxLineLimit: metrics.lineCount,
+    chunkLineCount: metrics.lineCount,
   };
+}
+
+function isHeavyCodeBlock(value: string) {
+  return (
+    value.length > HEAVY_CODE_BLOCK_BYTE_THRESHOLD ||
+    value.split(/\r?\n/).length > HEAVY_CODE_BLOCK_LINE_THRESHOLD
+  );
 }
 
 function resolveMarkdownNodeLineRange(
@@ -273,26 +374,6 @@ function lineRangeSpan(lineRange: CodeAnnotationLineRange) {
   return lineRange.endLine - lineRange.startLine;
 }
 
-function collectNestedAnnotatableRanges(children: ReactNode): CodeAnnotationLineRange[] {
-  const ranges: CodeAnnotationLineRange[] = [];
-  Children.forEach(children, (child) => {
-    if (!isValidElement(child)) {
-      return;
-    }
-    const props = child.props as {
-      children?: ReactNode;
-      lineRange?: CodeAnnotationLineRange;
-    };
-    if (props.lineRange) {
-      ranges.push(props.lineRange);
-    }
-    if (props.children) {
-      ranges.push(...collectNestedAnnotatableRanges(props.children));
-    }
-  });
-  return ranges;
-}
-
 function collectNestedNodeLineRanges(
   node: MarkdownPositionTreeNode,
   bodyStartLine: number,
@@ -315,25 +396,11 @@ function collectNestedNodeLineRanges(
   return ranges;
 }
 
-function hasMoreSpecificAnnotationBlock({
-  children,
-  currentLineRange,
-  targetLineRange,
-  node,
-  bodyStartLine,
-}: {
-  children: ReactNode;
-  currentLineRange: CodeAnnotationLineRange;
-  targetLineRange: CodeAnnotationLineRange;
-  node?: MarkdownPositionTreeNode;
-  bodyStartLine?: number;
-}) {
-  const nestedRanges = [
-    ...collectNestedAnnotatableRanges(children),
-    ...(node && bodyStartLine
-      ? collectNestedNodeLineRanges(node, bodyStartLine)
-      : []),
-  ];
+function hasMoreSpecificAnnotationBlock(
+  currentLineRange: CodeAnnotationLineRange,
+  targetLineRange: CodeAnnotationLineRange,
+  nestedRanges: CodeAnnotationLineRange[],
+) {
   return nestedRanges.some(
     (nestedRange) =>
       lineRangeContains(nestedRange, targetLineRange) &&
@@ -341,10 +408,25 @@ function hasMoreSpecificAnnotationBlock({
   );
 }
 
+function collectAnnotationsEndingInRange(
+  annotationBucketsByEndLine: Map<number, CodeAnnotationSelection[]>,
+  lineRange: CodeAnnotationLineRange,
+) {
+  const annotationsById = new Map<string, CodeAnnotationSelection>();
+  for (let lineNumber = lineRange.startLine; lineNumber <= lineRange.endLine; lineNumber += 1) {
+    const annotations = annotationBucketsByEndLine.get(lineNumber);
+    if (!annotations) {
+      continue;
+    }
+    for (const annotation of annotations) {
+      annotationsById.set(annotation.id, annotation);
+    }
+  }
+  return Array.from(annotationsById.values());
+}
+
 function MarkdownAnnotatableBlock({
   lineRange,
-  node,
-  bodyStartLine,
   onAnnotationStart,
   annotationDraft,
   annotations,
@@ -354,8 +436,6 @@ function MarkdownAnnotatableBlock({
   children,
 }: {
   lineRange: CodeAnnotationLineRange;
-  node?: MarkdownPositionTreeNode;
-  bodyStartLine: number;
   onAnnotationStart?: (lineRange: CodeAnnotationLineRange) => void;
   annotationDraft?: { lineRange: CodeAnnotationLineRange; body: string } | null;
   annotations: CodeAnnotationSelection[];
@@ -364,30 +444,6 @@ function MarkdownAnnotatableBlock({
   annotationActionLabel: string;
   children: ReactNode;
 }) {
-  const blockAnnotations = annotations.filter((annotation) =>
-    annotationEndsInBlock(annotation.lineRange, lineRange) &&
-      !hasMoreSpecificAnnotationBlock({
-        children,
-        currentLineRange: lineRange,
-        targetLineRange: annotation.lineRange,
-        node,
-        bodyStartLine,
-      }),
-  );
-  const shouldRenderDraft = Boolean(
-    annotationDraft &&
-      annotationEndsInBlock(annotationDraft.lineRange, lineRange),
-  ) && !(
-    annotationDraft &&
-    hasMoreSpecificAnnotationBlock({
-      children,
-      currentLineRange: lineRange,
-      targetLineRange: annotationDraft.lineRange,
-      node,
-      bodyStartLine,
-    })
-  );
-
   return (
     <div
       className="fvp-markdown-annotatable-block"
@@ -406,14 +462,14 @@ function MarkdownAnnotatableBlock({
         </button>
       ) : null}
       {children}
-      {blockAnnotations.map((annotation) =>
+      {annotations.map((annotation) =>
         renderAnnotationMarker ? (
           <div key={annotation.id} className="fvp-markdown-annotation-inline">
             {renderAnnotationMarker(annotation)}
           </div>
         ) : null,
       )}
-      {shouldRenderDraft && annotationDraft && renderAnnotationDraft ? (
+      {annotationDraft && renderAnnotationDraft ? (
         <div className="fvp-markdown-annotation-inline">
           {renderAnnotationDraft(annotationDraft)}
         </div>
@@ -450,6 +506,77 @@ function FileMarkdownCodeBlock({
   );
 }
 
+function LazyMarkdownHeavyBlock({
+  children,
+  defer,
+  label,
+  revealKey = null,
+}: {
+  children: ReactNode;
+  defer: boolean;
+  label: string;
+  revealKey?: string | null;
+}) {
+  const { t } = useTranslation();
+  const [isVisible, setIsVisible] = useState(() => !defer || isHeavyBlockRevealed(revealKey));
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const revealBlock = useCallback(() => {
+    markHeavyBlockRevealed(revealKey);
+    setIsVisible(true);
+  }, [revealKey]);
+
+  useEffect(() => {
+    if (isVisible) {
+      markHeavyBlockRevealed(revealKey);
+    }
+  }, [isVisible, revealKey]);
+
+  useEffect(() => {
+    if (defer && isHeavyBlockRevealed(revealKey)) {
+      setIsVisible(true);
+    }
+  }, [defer, revealKey]);
+
+  useEffect(() => {
+    if (!defer || isVisible) {
+      return;
+    }
+    if (typeof IntersectionObserver === "undefined") {
+      const timeoutId = window.setTimeout(revealBlock, 0);
+      return () => window.clearTimeout(timeoutId);
+    }
+    const root = rootRef.current;
+    if (!root) {
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        revealBlock();
+        observer.disconnect();
+      }
+    }, {
+      rootMargin: "600px 0px",
+    });
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [defer, isVisible, revealBlock]);
+
+  if (isVisible) {
+    return <>{children}</>;
+  }
+
+  return (
+    <div
+      ref={rootRef}
+      className="fvp-file-markdown-heavy-placeholder"
+      data-testid="file-markdown-heavy-placeholder"
+      aria-label={label}
+    >
+      {t("files.markdownHeavyBlockDeferred")}
+    </div>
+  );
+}
+
 function isMathCodeLanguage(languageTag: string | null) {
   return languageTag === "math" || languageTag === "latex" || languageTag === "tex";
 }
@@ -462,7 +589,16 @@ function FileMarkdownMathBlock({
   value: string;
 }) {
   const languageTag = extractLanguageTag(className);
-  const renderedHtml = renderLatexFormula(value);
+  const renderCacheKey = `${languageTag ?? "math"}:${hashStableString(value)}`;
+  const renderedHtml = useMemo(() => {
+    const cachedRender = readCachedKatexRender(renderCacheKey);
+    if (cachedRender !== undefined) {
+      return cachedRender;
+    }
+    const nextRender = renderLatexFormula(value);
+    writeCachedKatexRender(renderCacheKey, nextRender);
+    return nextRender;
+  }, [renderCacheKey, value]);
 
   if (!renderedHtml) {
     return <FileMarkdownCodeBlock className={className} value={value} />;
@@ -478,46 +614,96 @@ function FileMarkdownMathBlock({
 }
 
 function FileMarkdownMermaidBlock({
-  activeTab,
+  blockKey,
   className,
-  onActiveTabChange,
+  documentKey,
   value,
 }: {
-  activeTab: MermaidBlockTab;
+  blockKey: string;
   className?: string;
-  onActiveTabChange: (activeTab: MermaidBlockTab) => void;
+  documentKey: string;
   value: string;
 }) {
   const { t } = useTranslation();
+  const [, setThemeVersion] = useState(0);
+  const [activeTab, setActiveTab] = useState<MermaidBlockTab>(
+    () => readCachedMermaidTabs(documentKey)[blockKey] ?? "source",
+  );
+  const mermaidTheme = detectMermaidTheme();
+  const renderCacheKey = useMemo(
+    () => createMermaidRenderCacheKey({
+      blockKey,
+      documentKey,
+      theme: mermaidTheme,
+      value,
+    }),
+    [blockKey, documentKey, mermaidTheme, value],
+  );
   const [renderState, setRenderState] = useState<MermaidRenderState>({
     status: "idle",
   });
-  const [renderKey, setRenderKey] = useState(0);
-  const idRef = useRef(`file-mermaid-${crypto.randomUUID()}`);
+  const lastSuccessfulSvgRef = useRef<string | null>(null);
+  const idRef = useRef(createStableRuntimeId("file-mermaid"));
+  const bodyRef = useRef<HTMLDivElement | null>(null);
+  const [stableBodyMinHeight, setStableBodyMinHeight] = useState(0);
   const highlightedHtml = useMemo(() => highlightLine(value, "mermaid"), [value]);
+  const cachedSvgForActiveRender =
+    activeTab === "render" ? readCachedMermaidRender(renderCacheKey) : null;
+  const visibleSvg =
+    renderState.status === "success"
+      ? renderState.svg
+      : cachedSvgForActiveRender ?? lastSuccessfulSvgRef.current;
+
+  useEffect(() => {
+    setActiveTab(readCachedMermaidTabs(documentKey)[blockKey] ?? "source");
+    setStableBodyMinHeight(0);
+  }, [blockKey, documentKey, value]);
+
+  const handleActiveTabChange = useCallback((nextActiveTab: MermaidBlockTab) => {
+    writeCachedMermaidTab(documentKey, blockKey, nextActiveTab);
+    setActiveTab((currentTab) =>
+      currentTab === nextActiveTab ? currentTab : nextActiveTab,
+    );
+  }, [blockKey, documentKey]);
 
   useEffect(() => {
     if (activeTab !== "render") {
       return;
     }
 
+    const cachedSvg = readCachedMermaidRender(renderCacheKey);
+    if (cachedSvg) {
+      lastSuccessfulSvgRef.current = cachedSvg;
+      setRenderState((current) =>
+        current.status === "success" && current.svg === cachedSvg
+          ? current
+          : { status: "success", svg: cachedSvg },
+      );
+      return;
+    }
+
     let cancelled = false;
-    setRenderState({ status: "rendering" });
+    const previousSvg = lastSuccessfulSvgRef.current;
+    if (!previousSvg) {
+      setRenderState({ status: "rendering" });
+    }
 
     void (async () => {
       try {
         const mermaid = (await import("mermaid")).default;
         mermaid.initialize({
           startOnLoad: false,
-          theme: detectMermaidTheme(),
+          theme: mermaidTheme,
           securityLevel: "strict",
           fontFamily:
             "ui-sans-serif, -apple-system, BlinkMacSystemFont, sans-serif",
         });
 
-        const id = `${idRef.current}-${renderKey}-${Date.now()}`;
+        const id = `${idRef.current}-${hashStableString(renderCacheKey)}`;
         const { svg } = await mermaid.render(id, value);
         if (!cancelled) {
+          writeCachedMermaidRender(renderCacheKey, svg);
+          lastSuccessfulSvgRef.current = svg;
           setRenderState({ status: "success", svg });
         }
       } catch (error) {
@@ -533,19 +719,45 @@ function FileMarkdownMermaidBlock({
     return () => {
       cancelled = true;
     };
-  }, [activeTab, renderKey, value]);
+  }, [activeTab, mermaidTheme, renderCacheKey, value]);
 
   useEffect(() => {
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
         if (isThemeMutationAttribute(mutation.attributeName)) {
-          setRenderKey((prev) => prev + 1);
+          setThemeVersion((prev) => prev + 1);
         }
       }
     });
     observer.observe(document.documentElement, { attributes: true });
     return () => observer.disconnect();
   }, []);
+
+  useLayoutEffect(() => {
+    const body = bodyRef.current;
+    if (!body) {
+      return;
+    }
+
+    const recordBodyHeight = () => {
+      const nextHeight = Math.ceil(body.getBoundingClientRect().height);
+      if (nextHeight <= 0) {
+        return;
+      }
+      setStableBodyMinHeight((currentHeight) =>
+        nextHeight > currentHeight ? nextHeight : currentHeight,
+      );
+    };
+
+    recordBodyHeight();
+    if (typeof ResizeObserver === "undefined") {
+      return;
+    }
+
+    const observer = new ResizeObserver(recordBodyHeight);
+    observer.observe(body);
+    return () => observer.disconnect();
+  }, [activeTab, highlightedHtml, renderState, visibleSvg]);
 
   return (
     <div className="fvp-file-markdown-codeblock fvp-file-markdown-mermaid">
@@ -561,7 +773,7 @@ function FileMarkdownMermaidBlock({
             role="tab"
             aria-selected={activeTab === "source"}
             className={`fvp-file-markdown-mermaid-tab${activeTab === "source" ? " is-active" : ""}`}
-            onClick={() => onActiveTabChange("source")}
+            onClick={() => handleActiveTabChange("source")}
           >
             {t("files.markdownMermaidSource")}
           </button>
@@ -570,35 +782,43 @@ function FileMarkdownMermaidBlock({
             role="tab"
             aria-selected={activeTab === "render"}
             className={`fvp-file-markdown-mermaid-tab${activeTab === "render" ? " is-active" : ""}`}
-            onClick={() => onActiveTabChange("render")}
+            onClick={() => handleActiveTabChange("render")}
           >
             {t("files.markdownMermaidRender")}
           </button>
         </div>
       </div>
 
-      {activeTab === "source" ? (
-        <pre>
-          <code
-            className={className}
-            dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+      <div
+        ref={bodyRef}
+        className="fvp-file-markdown-mermaid-body"
+        data-active-tab={activeTab}
+        data-testid="file-markdown-mermaid-body"
+        style={stableBodyMinHeight > 0 ? { minHeight: stableBodyMinHeight } : undefined}
+      >
+        {activeTab === "source" ? (
+          <pre>
+            <code
+              className={className}
+              dangerouslySetInnerHTML={{ __html: highlightedHtml }}
+            />
+          </pre>
+        ) : visibleSvg ? (
+          <div
+            className="fvp-file-markdown-mermaid-diagram"
+            data-testid="file-markdown-mermaid-preview"
+            dangerouslySetInnerHTML={{ __html: visibleSvg }}
           />
-        </pre>
-      ) : renderState.status === "success" ? (
-        <div
-          className="fvp-file-markdown-mermaid-diagram"
-          data-testid="file-markdown-mermaid-preview"
-          dangerouslySetInnerHTML={{ __html: renderState.svg }}
-        />
-      ) : renderState.status === "error" ? (
-        <div className="fvp-file-markdown-mermaid-status fvp-file-markdown-mermaid-error">
-          {t("files.markdownMermaidRenderFailed", { message: renderState.message })}
-        </div>
-      ) : (
-        <div className="fvp-file-markdown-mermaid-status">
-          {t("files.markdownMermaidRendering")}
-        </div>
-      )}
+        ) : renderState.status === "error" ? (
+          <div className="fvp-file-markdown-mermaid-status fvp-file-markdown-mermaid-error">
+            {t("files.markdownMermaidRenderFailed", { message: renderState.message })}
+          </div>
+        ) : (
+          <div className="fvp-file-markdown-mermaid-status">
+            {t("files.markdownMermaidRendering")}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -619,38 +839,84 @@ export function FileMarkdownPreview({
     () => documentKey ?? `inline:${hashStableString(value)}`,
     [documentKey, value],
   );
-  const [mermaidBlockTabs, setMermaidBlockTabs] = useState<Record<string, MermaidBlockTab>>(
-    () => readCachedMermaidTabs(mermaidDocumentKey),
+  const compiledDocument = useMemo(
+    () => compileFileMarkdownDocument({
+      documentKey: mermaidDocumentKey,
+      rawMarkdown: value,
+      rendererProfile: "file-markdown-github",
+    }),
+    [mermaidDocumentKey, value],
+  );
+  const renderProjection = useMemo(
+    () => resolveMarkdownRenderProjection(compiledDocument.metrics),
+    [compiledDocument.metrics],
+  );
+  const markdownBodyLineCount = useMemo(
+    () => compiledDocument.body.length === 0 ? 0 : compiledDocument.body.split(/\r?\n/).length,
+    [compiledDocument.body],
+  );
+  const effectiveInitialLineLimit =
+    renderProjection.kind === "rich"
+      ? markdownBodyLineCount
+      : Math.min(renderProjection.initialLineLimit, markdownBodyLineCount);
+  const effectiveMaxLineLimit =
+    renderProjection.kind === "bounded"
+      ? Math.min(renderProjection.maxLineLimit, markdownBodyLineCount)
+      : markdownBodyLineCount;
+  const [visibleLineLimit, setVisibleLineLimit] = useState(
+    effectiveInitialLineLimit,
   );
   useEffect(() => {
-    setMermaidBlockTabs(readCachedMermaidTabs(mermaidDocumentKey));
-  }, [mermaidDocumentKey]);
-  const handleMermaidBlockTabChange = useCallback((
-    blockKey: string,
-    activeTab: MermaidBlockTab,
-  ) => {
-    writeCachedMermaidTab(mermaidDocumentKey, blockKey, activeTab);
-    setMermaidBlockTabs((currentTabs) => {
-      if (currentTabs[blockKey] === activeTab) {
-        return currentTabs;
+    setVisibleLineLimit(effectiveInitialLineLimit);
+  }, [compiledDocument.cacheKey, effectiveInitialLineLimit]);
+  useEffect(() => {
+    if (
+      renderProjection.kind !== "progressive" ||
+      visibleLineLimit >= effectiveMaxLineLimit
+    ) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => {
+      setVisibleLineLimit((currentLineLimit) =>
+        Math.min(
+          currentLineLimit + renderProjection.chunkLineCount,
+          effectiveMaxLineLimit,
+        ),
+      );
+    }, 16);
+    return () => window.clearTimeout(timeoutId);
+  }, [
+    effectiveMaxLineLimit,
+    renderProjection.chunkLineCount,
+    renderProjection.kind,
+    visibleLineLimit,
+  ]);
+    const projectedLineLimit =
+      renderProjection.kind === "rich"
+        ? markdownBodyLineCount
+        : visibleLineLimit;
+    const visibleMarkdownBlocks = useMemo(
+      () =>
+        compiledDocument.blocks.filter((block) => block.startLine <= projectedLineLimit),
+      [compiledDocument.blocks, projectedLineLimit],
+    );
+    const markdownLineMap = compiledDocument.lineMap;
+    const hasMathContent = useMemo(
+      () => detectMathContent(value),
+      [value],
+    );
+  const annotationBucketsByEndLine = useMemo(() => {
+    const buckets = new Map<number, CodeAnnotationSelection[]>();
+    for (const annotation of annotations) {
+      const existingBucket = buckets.get(annotation.lineRange.endLine);
+      if (existingBucket) {
+        existingBucket.push(annotation);
+      } else {
+        buckets.set(annotation.lineRange.endLine, [annotation]);
       }
-      return {
-        ...currentTabs,
-        [blockKey]: activeTab,
-      };
-    });
-  }, [mermaidDocumentKey]);
-  const frontmatter = useMemo(() => extractFrontmatter(value), [value]);
-  const normalizedMarkdown = useMemo(
-    () => normalizeMarkdownMathForFilePreview(frontmatter.body),
-    [frontmatter.body],
-  );
-  const markdownBody = normalizedMarkdown.value;
-  const markdownLineMap = normalizedMarkdown.lineMap;
-  const hasMathContent = useMemo(
-    () => detectMathContent(frontmatter.body) || detectMathContent(markdownBody),
-    [frontmatter.body, markdownBody],
-  );
+    }
+    return buckets;
+  }, [annotations]);
   const [katexReady, setKatexReady] = useState(() => areKatexAssetsReady());
   useEffect(() => {
     if (!hasMathContent || katexReady) {
@@ -718,31 +984,51 @@ export function FileMarkdownPreview({
     void openUrl(href);
   }, []);
 
-  const renderAnnotatableBlock = useCallback((
-    tagName: AnnotatableBlockTag,
-    node: MarkdownPositionTreeNode,
-    children: ReactNode,
-    props?: Record<string, unknown>,
-  ) => {
-    const normalizedLineRange = resolveMarkdownNodeLineRange(node, 1);
-    const lineRange = normalizedLineRange
-      ? {
-          startLine: (markdownLineMap[normalizedLineRange.startLine - 1] ?? normalizedLineRange.startLine) + frontmatter.bodyStartLine - 1,
-          endLine: (markdownLineMap[normalizedLineRange.endLine - 1] ?? normalizedLineRange.endLine) + frontmatter.bodyStartLine - 1,
-        }
-      : null;
+    const renderAnnotatableBlock = useCallback((
+      tagName: AnnotatableBlockTag,
+      node: MarkdownPositionTreeNode,
+      children: ReactNode,
+      blockStartLine: number,
+      props?: Record<string, unknown>,
+    ) => {
+      const normalizedLineRange = resolveMarkdownNodeLineRange(node, 1);
+      const lineRange = normalizedLineRange
+        ? {
+            startLine: (markdownLineMap[blockStartLine + normalizedLineRange.startLine - 2] ?? blockStartLine + normalizedLineRange.startLine - 1) + compiledDocument.bodyStartLine - 1,
+            endLine: (markdownLineMap[blockStartLine + normalizedLineRange.endLine - 2] ?? blockStartLine + normalizedLineRange.endLine - 1) + compiledDocument.bodyStartLine - 1,
+          }
+        : null;
     const content = createElement(tagName, props, children);
     if (!lineRange) {
       return content;
     }
+      const nestedRanges = collectNestedNodeLineRanges(node, 1).map((nestedRange) => {
+        const normalizedStartLine = blockStartLine + nestedRange.startLine - 1;
+        const normalizedEndLine = blockStartLine + nestedRange.endLine - 1;
+        return {
+          startLine: (markdownLineMap[normalizedStartLine - 1] ?? normalizedStartLine) + compiledDocument.bodyStartLine - 1,
+          endLine: (markdownLineMap[normalizedEndLine - 1] ?? normalizedEndLine) + compiledDocument.bodyStartLine - 1,
+        };
+      });
+    const blockAnnotations = collectAnnotationsEndingInRange(
+      annotationBucketsByEndLine,
+      lineRange,
+    ).filter(
+      (annotation) =>
+        annotationEndsInBlock(annotation.lineRange, lineRange) &&
+        !hasMoreSpecificAnnotationBlock(lineRange, annotation.lineRange, nestedRanges),
+    );
+    const shouldRenderDraft = Boolean(
+      annotationDraft &&
+        annotationEndsInBlock(annotationDraft.lineRange, lineRange) &&
+        !hasMoreSpecificAnnotationBlock(lineRange, annotationDraft.lineRange, nestedRanges),
+    );
     return (
       <MarkdownAnnotatableBlock
         lineRange={lineRange}
-        node={node}
-        bodyStartLine={1}
         onAnnotationStart={onAnnotationStart}
-        annotationDraft={annotationDraft}
-        annotations={annotations}
+        annotationDraft={shouldRenderDraft ? annotationDraft : null}
+        annotations={blockAnnotations}
         renderAnnotationDraft={renderAnnotationDraft}
         renderAnnotationMarker={renderAnnotationMarker}
         annotationActionLabel={annotationActionLabel}
@@ -750,96 +1036,153 @@ export function FileMarkdownPreview({
         {content}
       </MarkdownAnnotatableBlock>
     );
-  }, [
+    }, [
+    annotationBucketsByEndLine,
     annotationActionLabel,
     annotationDraft,
-    annotations,
-    frontmatter.bodyStartLine,
+    compiledDocument.bodyStartLine,
     markdownLineMap,
     onAnnotationStart,
     renderAnnotationDraft,
-    renderAnnotationMarker,
-  ]);
+      renderAnnotationMarker,
+    ]);
 
-  const components = useMemo<Components>(() => ({
-    a: ({ href, children }) => (
-      <a href={href} onClick={(event) => handleAnchorClick(event, href)}>
-        {children}
-      </a>
-    ),
-    blockquote: ({ node, children }) => renderAnnotatableBlock("blockquote", node, children),
-    h1: ({ node, children }) => renderAnnotatableBlock("h1", node, children),
-    h2: ({ node, children }) => renderAnnotatableBlock("h2", node, children),
-    h3: ({ node, children }) => renderAnnotatableBlock("h3", node, children),
-    h4: ({ node, children }) => renderAnnotatableBlock("h4", node, children),
-    h5: ({ node, children }) => renderAnnotatableBlock("h5", node, children),
-    h6: ({ node, children }) => renderAnnotatableBlock("h6", node, children),
-    ol: ({ node, children }) => renderAnnotatableBlock("ol", node, children),
-    p: ({ node, children }) => renderAnnotatableBlock("p", node, children),
-    ul: ({ node, children }) => renderAnnotatableBlock("ul", node, children),
-    table: ({ node, children }) => renderAnnotatableBlock(
-      "div",
-      node,
-      <table>{children}</table>,
-      { className: "fvp-file-markdown-table-wrap" },
+    const createMarkdownComponents = useCallback((blockStartLine: number, blockKey: string): Components => ({
+      a: ({ href, children }) => (
+        <a href={href} onClick={(event) => handleAnchorClick(event, href)}>
+          {children}
+        </a>
+      ),
+      blockquote: ({ node, children }) => renderAnnotatableBlock("blockquote", node, children, blockStartLine),
+      h1: ({ node, children }) => renderAnnotatableBlock("h1", node, children, blockStartLine),
+      h2: ({ node, children }) => renderAnnotatableBlock("h2", node, children, blockStartLine),
+      h3: ({ node, children }) => renderAnnotatableBlock("h3", node, children, blockStartLine),
+      h4: ({ node, children }) => renderAnnotatableBlock("h4", node, children, blockStartLine),
+      h5: ({ node, children }) => renderAnnotatableBlock("h5", node, children, blockStartLine),
+      h6: ({ node, children }) => renderAnnotatableBlock("h6", node, children, blockStartLine),
+      ol: ({ node, children }) => renderAnnotatableBlock("ol", node, children, blockStartLine),
+      p: ({ node, children }) => renderAnnotatableBlock("p", node, children, blockStartLine),
+      ul: ({ node, children }) => renderAnnotatableBlock("ul", node, children, blockStartLine),
+      table: ({ node, children }) => renderAnnotatableBlock(
+        "div",
+        node,
+      <LazyMarkdownHeavyBlock
+        defer={renderProjection.kind !== "rich"}
+        label={t("files.markdownHeavyBlockDeferred")}
+        revealKey={createHeavyBlockRevealKey({
+          blockKey,
+          blockStartLine,
+          documentKey: mermaidDocumentKey,
+          kind: "table",
+          node,
+        })}
+      >
+        <table>{children}</table>
+        </LazyMarkdownHeavyBlock>,
+        blockStartLine,
+        { className: "fvp-file-markdown-table-wrap" },
     ),
     pre: ({ node, children }) => {
       const { className: codeClassName, value: codeValue } = extractCodeFromPre(
         node as PreviewPreNode,
       );
       if (!codeClassName && !codeValue) {
-        return renderAnnotatableBlock("div", node, <pre>{children}</pre>);
+        return renderAnnotatableBlock("div", node, <pre>{children}</pre>, blockStartLine);
       }
       const languageTag = extractLanguageTag(codeClassName);
       if (languageTag === "mermaid") {
-        const mermaidBlockKey = createMermaidBlockKey(node, codeValue);
+        const mermaidBlockKey = createMermaidBlockKey(node, codeValue, blockStartLine);
         return renderAnnotatableBlock(
           "div",
           node,
-          <FileMarkdownMermaidBlock
-            activeTab={mermaidBlockTabs[mermaidBlockKey] ?? "source"}
-            className={codeClassName}
-            onActiveTabChange={(nextActiveTab) =>
-              handleMermaidBlockTabChange(mermaidBlockKey, nextActiveTab)}
-            value={codeValue}
-          />,
+          <LazyMarkdownHeavyBlock
+            defer={renderProjection.kind !== "rich"}
+            label="Mermaid"
+            revealKey={`${mermaidDocumentKey}:${mermaidBlockKey}:mermaid`}
+          >
+            <FileMarkdownMermaidBlock
+              blockKey={mermaidBlockKey}
+              className={codeClassName}
+              documentKey={mermaidDocumentKey}
+              value={codeValue}
+            />
+          </LazyMarkdownHeavyBlock>,
+          blockStartLine,
         );
       }
       if (isMathCodeLanguage(languageTag)) {
         return renderAnnotatableBlock(
           "div",
           node,
-          <FileMarkdownMathBlock
-            className={codeClassName}
-            value={codeValue}
-          />,
+          <LazyMarkdownHeavyBlock
+            defer={renderProjection.kind !== "rich"}
+            label={languageTag ?? "math"}
+            revealKey={createHeavyBlockRevealKey({
+              blockKey,
+              blockStartLine,
+              documentKey: mermaidDocumentKey,
+              kind: languageTag ?? "math",
+              node,
+              value: codeValue,
+            })}
+          >
+            <FileMarkdownMathBlock
+              className={codeClassName}
+              value={codeValue}
+            />
+          </LazyMarkdownHeavyBlock>,
+          blockStartLine,
         );
       }
+      const shouldDeferCodeBlock =
+        renderProjection.kind !== "rich" && isHeavyCodeBlock(codeValue);
       return renderAnnotatableBlock(
         "div",
         node,
-        <FileMarkdownCodeBlock
-          className={codeClassName}
-          value={codeValue}
-        />,
+        <LazyMarkdownHeavyBlock
+          defer={shouldDeferCodeBlock}
+          label={languageTag ?? "code"}
+          revealKey={createHeavyBlockRevealKey({
+            blockKey,
+            blockStartLine,
+            documentKey: mermaidDocumentKey,
+            kind: languageTag ?? "code",
+            node,
+            value: codeValue,
+          })}
+        >
+          <FileMarkdownCodeBlock
+            className={codeClassName}
+            value={codeValue}
+          />
+        </LazyMarkdownHeavyBlock>,
+        blockStartLine,
       );
     },
   }), [
     handleAnchorClick,
-    handleMermaidBlockTabChange,
-    mermaidBlockTabs,
+    mermaidDocumentKey,
     renderAnnotatableBlock,
+    renderProjection.kind,
+    t,
   ]);
 
   return (
-    <div className={className} data-testid="file-markdown-preview">
-      {frontmatter.fields.length > 0 ? (
+    <div
+      className={className}
+      data-markdown-render-strategy={compiledDocument.renderStrategy}
+      data-markdown-render-projection={renderProjection.kind}
+      data-markdown-visible-lines={projectedLineLimit}
+      data-markdown-total-lines={compiledDocument.metrics.lineCount}
+      data-testid="file-markdown-preview"
+    >
+      {compiledDocument.frontmatterFields.length > 0 ? (
         <section className="fvp-file-markdown-frontmatter" data-testid="file-markdown-frontmatter">
           <div className="fvp-file-markdown-frontmatter-label">
             {t("files.markdownFrontmatterLabel")}
           </div>
           <dl className="fvp-file-markdown-frontmatter-grid">
-            {frontmatter.fields.map((field) => (
+            {compiledDocument.frontmatterFields.map((field) => (
               <div key={field.key} className="fvp-file-markdown-frontmatter-row">
                 <dt>{field.key}</dt>
                 <dd>{field.value}</dd>
@@ -848,13 +1191,31 @@ export function FileMarkdownPreview({
           </dl>
         </section>
       ) : null}
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={rehypePlugins}
-        components={components}
-      >
-        {markdownBody}
-      </ReactMarkdown>
-    </div>
-  );
+      {renderProjection.kind === "bounded" ? (
+        <div className="fvp-file-markdown-render-budget" data-testid="file-markdown-render-budget">
+          {t("files.markdownRenderBudgetBounded", {
+            visibleCount: String(projectedLineLimit),
+            totalCount: String(compiledDocument.metrics.lineCount),
+          })}
+        </div>
+      ) : null}
+        {visibleMarkdownBlocks.map((block) => (
+          <ReactMarkdown
+            key={block.key}
+            remarkPlugins={[remarkGfm, remarkMath]}
+            rehypePlugins={rehypePlugins}
+            components={createMarkdownComponents(block.startLine, block.key)}
+          >
+            {block.markdown}
+          </ReactMarkdown>
+        ))}
+      </div>
+    );
+  }
+
+export function clearFileMarkdownPreviewRuntimeCachesForTests() {
+  mermaidTabSessionCache.clear();
+  mermaidRenderCache.clear();
+  katexRenderCache.clear();
+  revealedHeavyBlockCache.clear();
 }
