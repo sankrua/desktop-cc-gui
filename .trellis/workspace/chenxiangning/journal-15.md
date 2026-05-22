@@ -1567,3 +1567,58 @@ Follow-ups: 重新推送并运行 Release workflow，创建 v0.5.0 release。
 ### Next Steps
 
 - None - task complete
+
+
+## Session 554: 修复底部状态面板折叠挂载
+
+**Date**: 2026-05-22
+**Task**: 修复底部状态面板折叠挂载
+**Branch**: `feature/v0.5.2`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| Layout | 修复底部 dock 状态面板折叠态被卸载的问题；当 bottom activity panel 可见、存在 active thread、且用户对话或结果 baseline tab 可见时保持挂载。 |
+| Engines | 将 OpenCode 纳入底部状态面板支持集合，和 Claude / Codex / Gemini 保持 baseline tab 可达性一致。 |
+| Composer | 主 Composer 显式关闭重复的 status panel layers toggle，由底部 dock 自身控件负责折叠/展开。 |
+| OpenSpec | 新增 change `fix-bottom-status-dock-collapse-stability`，补齐 proposal、design、tasks 和两个 capability delta specs。 |
+| Tests | 新增 layout hook regression case，覆盖折叠态 baseline tabs、OpenCode 和 Composer toggle override。 |
+
+**Validation**:
+- `openspec validate fix-bottom-status-dock-collapse-stability --strict --no-interactive`
+- `npx vitest run src/features/layout/hooks/useLayoutNodes.client-ui-visibility.test.tsx src/features/status-panel/components/StatusPanel.test.tsx src/features/composer/components/Composer.status-panel-toggle.test.tsx`
+- `npm run typecheck`
+- `npm run lint`
+
+**Updated Files**:
+- `src/features/layout/hooks/useLayoutNodes.tsx`
+- `src/features/layout/hooks/useLayoutNodes.client-ui-visibility.test.tsx`
+- `openspec/changes/fix-bottom-status-dock-collapse-stability/proposal.md`
+- `openspec/changes/fix-bottom-status-dock-collapse-stability/design.md`
+- `openspec/changes/fix-bottom-status-dock-collapse-stability/tasks.md`
+- `openspec/changes/fix-bottom-status-dock-collapse-stability/specs/status-panel-latest-user-message-tab/spec.md`
+- `openspec/changes/fix-bottom-status-dock-collapse-stability/specs/status-panel-checkpoint-module/spec.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1105940b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
