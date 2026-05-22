@@ -67,6 +67,7 @@ import {
   buildSessionFolderNavItems,
   buildWorkspaceOptions,
   normalizeEngineType,
+  resolveWorkspaceSessionDisplayTitle,
   type GroupedWorkspace,
   type SessionFolderCountSummary,
 } from "./sessionManagementSectionUtils";
@@ -2197,8 +2198,10 @@ export function SessionManagementSection({
                 </span>
                 <div>
                   <div className="settings-session-curtain-title">
-                    {sessionCurtain.entry.title.trim() ||
-                      t("settings.projectSessionItemUntitled")}
+                    {resolveWorkspaceSessionDisplayTitle(
+                      sessionCurtain.entry,
+                      t("settings.projectSessionItemUntitled"),
+                    )}
                   </div>
                   <div className="settings-session-curtain-subtitle">
                     {sessionCurtain.entry.workspaceLabel ??

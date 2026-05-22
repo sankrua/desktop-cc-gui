@@ -2415,6 +2415,7 @@ impl DaemonState {
         session_management::archive_workspace_sessions_core(
             &self.workspaces,
             &self.sessions,
+            &self.engine_manager,
             self.storage_path.as_path(),
             workspace_id,
             session_ids,
@@ -2429,6 +2430,7 @@ impl DaemonState {
     ) -> Result<session_management::WorkspaceSessionBatchMutationResponse, String> {
         session_management::unarchive_workspace_sessions_core(
             &self.workspaces,
+            &self.engine_manager,
             self.storage_path.as_path(),
             workspace_id,
             session_ids,

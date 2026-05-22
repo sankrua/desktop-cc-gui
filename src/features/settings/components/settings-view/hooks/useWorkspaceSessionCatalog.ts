@@ -60,9 +60,13 @@ const UNASSIGNED_WORKSPACE_ID = "__global_unassigned__";
 const OWNER_UNRESOLVED_CODE = "OWNER_WORKSPACE_UNRESOLVED";
 
 export function buildWorkspaceSessionSelectionKey(
-  entry: Pick<WorkspaceSessionCatalogEntry, "workspaceId" | "sessionId">,
+  entry: Pick<
+    WorkspaceSessionCatalogEntry,
+    "workspaceId" | "sessionId" | "stableSessionKey"
+  >,
 ): string {
-  return `${entry.workspaceId}::${entry.sessionId}`;
+  const stableKey = entry.stableSessionKey?.trim();
+  return `${entry.workspaceId}::${stableKey || entry.sessionId}`;
 }
 
 function toSelectionKeySet(selectionKeys: string[]): Set<string> {
@@ -311,6 +315,18 @@ export function useWorkspaceSessionCatalog({
               buildWorkspaceSessionSelectionKey(entry),
             ]),
           );
+          const selectionKeyByStableSessionKey = new Map(
+            entryBucket
+              .map((entry) => {
+                const stableKey = entry.stableSessionKey?.trim();
+                return stableKey
+                  ? ([stableKey, buildWorkspaceSessionSelectionKey(entry)] as const)
+                  : null;
+              })
+              .filter(
+                (item): item is readonly [string, string] => item !== null,
+              ),
+          );
           try {
             let response: WorkspaceSessionBatchMutationResponse;
             if (kind === "archive") {
@@ -339,12 +355,17 @@ export function useWorkspaceSessionCatalog({
             const respondedSessionIds = new Set<string>();
             response.results.forEach((item) => {
               respondedSessionIds.add(item.sessionId);
+              const ownerWorkspaceId = item.ownerWorkspaceId ?? entryWorkspaceId;
+              const stableSessionKey = item.stableSessionKey?.trim() || null;
               mutationResults.push({
                 selectionKey:
                   selectionKeyBySessionId.get(item.sessionId) ??
-                  `${entryWorkspaceId}::${item.sessionId}`,
+                  (stableSessionKey
+                    ? selectionKeyByStableSessionKey.get(stableSessionKey)
+                    : undefined) ??
+                  `${ownerWorkspaceId}::${stableSessionKey || item.sessionId}`,
                 sessionId: item.sessionId,
-                workspaceId: entryWorkspaceId,
+                workspaceId: ownerWorkspaceId,
                 ok: item.ok,
                 archivedAt: item.archivedAt,
                 error: item.error,

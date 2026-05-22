@@ -50,6 +50,13 @@ describe("useWorkspaceSessionCatalog", () => {
         sessionId: "claude:123",
       }),
     ).toBe("ws-2::claude:123");
+    expect(
+      buildWorkspaceSessionSelectionKey({
+        workspaceId: "ws-2",
+        sessionId: "claude:123",
+        stableSessionKey: "claude:ws-2:123",
+      }),
+    ).toBe("ws-2::claude:ws-2:123");
   });
 
   it("ignores stale responses after workspace selection is cleared", async () => {
@@ -195,6 +202,65 @@ describe("useWorkspaceSessionCatalog", () => {
         code: undefined,
       },
     ]);
+  });
+
+  it("uses returned owner workspace and stable key to reconcile aggregate mutations", async () => {
+    vi.mocked(listWorkspaceSessions).mockResolvedValueOnce({
+      data: [
+        {
+          sessionId: "claude:child-session",
+          stableSessionKey: "claude:child-ws:child-session",
+          workspaceId: "child-ws",
+          engine: "claude",
+          title: "Child Claude",
+          updatedAt: 10,
+          threadKind: "native",
+        },
+      ],
+      nextCursor: null,
+      partialSource: null,
+    });
+    vi.mocked(archiveWorkspaceSessions).mockResolvedValueOnce({
+      results: [
+        {
+          sessionId: "claude:child-session",
+          stableSessionKey: "claude:child-ws:child-session",
+          ownerWorkspaceId: "child-ws",
+          ok: true,
+          archivedAt: 100,
+        },
+      ],
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceSessionCatalog({
+        mode: "project",
+        workspaceId: "parent-ws",
+        filters: DEFAULT_FILTERS,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1);
+    });
+
+    let response:
+      | Awaited<ReturnType<typeof result.current.mutate>>
+      | undefined;
+    await act(async () => {
+      response = await result.current.mutate("archive", result.current.entries);
+    });
+
+    expect(archiveWorkspaceSessions).toHaveBeenCalledWith("child-ws", [
+      "claude:child-session",
+    ]);
+    expect(response?.results[0]).toMatchObject({
+      selectionKey: "child-ws::claude:child-ws:child-session",
+      sessionId: "claude:child-session",
+      workspaceId: "child-ws",
+      ok: true,
+      archivedAt: 100,
+    });
   });
 
   it("preserves successful workspace buckets when another bucket throws", async () => {

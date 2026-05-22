@@ -9,6 +9,7 @@ pub(crate) const SESSION_CATALOG_ARCHIVE_TIMEOUT_MS: u64 = 1_500;
 pub(crate) const SESSION_CATALOG_CURSOR_PREFIX: &str = "offset:";
 pub(crate) const SESSION_CATALOG_PARTIAL_CODEX: &str = "codex-history-unavailable";
 pub(crate) const SESSION_CATALOG_PARTIAL_CLAUDE: &str = "claude-history-unavailable";
+pub(crate) const SESSION_CATALOG_PARTIAL_CLAUDE_UNCERTAIN_EMPTY: &str = "claude-uncertain-empty";
 pub(crate) const SESSION_CATALOG_PARTIAL_GEMINI: &str = "gemini-history-unavailable";
 pub(crate) const SESSION_CATALOG_PARTIAL_OPENCODE: &str = "opencode-history-unavailable";
 pub(crate) const SESSION_CATALOG_UNASSIGNED_WORKSPACE_ID: &str = "__global_unassigned__";
@@ -28,6 +29,8 @@ pub(crate) const SESSION_ASSIGN_CODE_FOLDER_ASSIGNED: &str = "FOLDER_ASSIGNED";
 pub(crate) struct WorkspaceSessionCatalogEntry {
     pub(crate) session_id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stable_session_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) canonical_session_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) parent_session_id: Option<String>,
@@ -44,6 +47,10 @@ pub(crate) struct WorkspaceSessionCatalogEntry {
     pub(crate) source: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) source_label: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) source_completeness: Option<WorkspaceSessionSourceCompleteness>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) source_status_reason: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) size_bytes: Option<u64>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -72,6 +79,61 @@ pub(crate) struct WorkspaceSessionCatalogEntry {
     pub(crate) children_count: Option<usize>,
 }
 
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum WorkspaceSessionSourceCompleteness {
+    Complete,
+    AuthoritativeEmpty,
+    Partial,
+    Degraded,
+    UncertainEmpty,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WorkspaceSessionCatalogSourceStatus {
+    pub(crate) engine: String,
+    pub(crate) completeness: WorkspaceSessionSourceCompleteness,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) reason: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) scanned_candidates: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) skipped_candidates: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) scan_cap_reached: Option<bool>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) diagnostics: Vec<WorkspaceSessionCatalogDiagnostic>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) cache: Option<WorkspaceSessionSourceCacheMetrics>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WorkspaceSessionCatalogDiagnostic {
+    pub(crate) engine: String,
+    pub(crate) code: String,
+    pub(crate) reason: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) session_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) physical_locator: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) cwd: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) candidate_count: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WorkspaceSessionSourceCacheMetrics {
+    pub(crate) hits: usize,
+    pub(crate) misses: usize,
+    pub(crate) stale: usize,
+    pub(crate) rebuilds: usize,
+    pub(crate) failures: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSessionCatalogQuery {
@@ -93,6 +155,8 @@ pub(crate) struct WorkspaceSessionCatalogPage {
     pub(crate) next_cursor: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) partial_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -150,12 +214,18 @@ pub(crate) struct WorkspaceSessionProjectionSummary {
     pub(crate) unassigned_folder_count: usize,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) partial_sources: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct WorkspaceSessionBatchMutationResult {
     pub(crate) session_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stable_session_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) owner_workspace_id: Option<String>,
     pub(crate) ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) archived_at: Option<i64>,
@@ -192,6 +262,7 @@ pub(crate) struct WorkspaceScopeCatalogData {
     pub(crate) owner_workspace_ids: Vec<String>,
     pub(crate) entries: Vec<WorkspaceSessionCatalogEntry>,
     pub(crate) partial_sources: Vec<String>,
+    pub(crate) source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -243,27 +314,31 @@ impl SessionCatalogAttributionStatus {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum SessionCatalogAttributionReason {
-    DirectWorkspacePath,
-    DirectGitRoot,
+    CwdExact,
+    CwdLongest,
+    ProjectDirDirect,
+    GitRootInferred,
     SharedWorktreeFamily,
     SharedGitRoot,
     ParentScope,
-    UnassignedAmbiguous,
-    UnassignedMissingEvidence,
+    AmbiguousSibling,
+    CwdProjectConflict,
+    SourceIncomplete,
 }
 
 impl SessionCatalogAttributionReason {
     pub(crate) fn as_str(self) -> &'static str {
         match self {
-            SessionCatalogAttributionReason::DirectWorkspacePath => "direct-workspace-path",
-            SessionCatalogAttributionReason::DirectGitRoot => "direct-git-root",
+            SessionCatalogAttributionReason::CwdExact => "cwd-exact",
+            SessionCatalogAttributionReason::CwdLongest => "cwd-longest",
+            SessionCatalogAttributionReason::ProjectDirDirect => "project-dir-direct",
+            SessionCatalogAttributionReason::GitRootInferred => "git-root-inferred",
             SessionCatalogAttributionReason::SharedWorktreeFamily => "shared-worktree-family",
             SessionCatalogAttributionReason::SharedGitRoot => "shared-git-root",
             SessionCatalogAttributionReason::ParentScope => "parent-scope",
-            SessionCatalogAttributionReason::UnassignedAmbiguous => "unassigned-ambiguous",
-            SessionCatalogAttributionReason::UnassignedMissingEvidence => {
-                "unassigned-missing-evidence"
-            }
+            SessionCatalogAttributionReason::AmbiguousSibling => "ambiguous-sibling",
+            SessionCatalogAttributionReason::CwdProjectConflict => "cwd-project-conflict",
+            SessionCatalogAttributionReason::SourceIncomplete => "source-incomplete",
         }
     }
 }
@@ -311,6 +386,16 @@ impl SessionCatalogIdentity {
             Self::Gemini { .. } => "gemini",
             Self::OpenCode { .. } => "opencode",
             Self::Shared { .. } => "shared",
+        }
+    }
+
+    pub(crate) fn raw_session_id(&self) -> &str {
+        match self {
+            Self::Codex { session_id }
+            | Self::Claude { session_id }
+            | Self::Gemini { session_id }
+            | Self::OpenCode { session_id }
+            | Self::Shared { session_id } => session_id,
         }
     }
 }

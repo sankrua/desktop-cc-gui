@@ -149,10 +149,8 @@ export function useLoadOlderThreadsForWorkspace({
             catalogPartialSource = response.partialSource ?? null;
             catalogSessions = response.data
               .map((entry) => normalizeProjectCatalogSession(entry))
-              .filter(
-                (entry): entry is ProjectCatalogSessionSummary =>
-                  Boolean(entry) &&
-                  (entry!.workspaceId ?? workspace.id) === workspace.id,
+              .filter((entry): entry is ProjectCatalogSessionSummary =>
+                Boolean(entry),
               );
           } else {
             catalogPartialSource = "session-catalog-load-older-timeout";
@@ -231,7 +229,7 @@ export function useLoadOlderThreadsForWorkspace({
           }
           const preview = asString(thread?.preview ?? "").trim();
           const mappedTitle = mappedTitles[id];
-          const customName = mappedTitle || getCustomName(workspace.id, id);
+          const customName = getCustomName(workspace.id, id) || mappedTitle;
           const fallbackName = `Agent ${existing.length + additions.length + 1}`;
           const name = customName
             ? customName

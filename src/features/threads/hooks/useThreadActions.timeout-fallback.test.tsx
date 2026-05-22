@@ -489,7 +489,7 @@ describe("useThreadActions sidebar listing timeout fallback", () => {
     ).toContain("claude:cl-a");
   }, 20_000);
 
-  it("filters child-owned catalog entries out of parent workspace thread hydration", async () => {
+  it("keeps child-owned catalog entries in parent workspace aggregate hydration", async () => {
     vi.mocked(listWorkspaceSessions).mockResolvedValue({
       data: [
         {
@@ -536,7 +536,7 @@ describe("useThreadActions sidebar listing timeout fallback", () => {
     const dispatched = getLatestSetThreadsDispatch(dispatch);
     expect(dispatched).not.toBeNull();
     const ids = dispatched!.threads.map((thread: ThreadSummary) => thread.id);
-    expect(ids).not.toContain("claude:child-session");
+    expect(ids).toContain("claude:child-session");
     expect(ids).toContain("claude:parent-session");
   });
 
@@ -602,6 +602,82 @@ describe("useThreadActions sidebar listing timeout fallback", () => {
         }),
       ]),
     );
+  });
+
+  it("keeps last-good claude entries when catalog marks Claude empty as uncertain", async () => {
+    vi.mocked(listClaudeSessions).mockResolvedValue([]);
+    vi.mocked(listWorkspaceSessions).mockResolvedValue({
+      data: [],
+      nextCursor: null,
+      partialSource: null,
+      sourceStatuses: [
+        {
+          engine: "claude",
+          completeness: "uncertain_empty",
+          reason: "claude-uncertain-empty",
+        },
+      ],
+    } as any);
+
+    const { result, dispatch } = renderActions({
+      threadsByWorkspace: {
+        "ws-1": [makeCachedClaudeSummary("a", 9000)],
+      },
+    });
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
+    });
+
+    const dispatched = getLatestSetThreadsDispatch(dispatch);
+    expect(dispatched).not.toBeNull();
+    expect(
+      dispatched!.threads.map((thread: ThreadSummary) => thread.id),
+    ).toContain("claude:cl-a");
+    expect(dispatched!.threads[0]).toMatchObject({
+      isDegraded: true,
+      partialSource: "claude-uncertain-empty",
+      degradedReason: "last-good-fallback",
+    });
+  });
+
+  it("does not resurrect last-good claude entries when catalog proves authoritative empty", async () => {
+    vi.mocked(listClaudeSessions).mockResolvedValue([
+      {
+        sessionId: "native-stale",
+        firstMessage: "Stale native row",
+        updatedAt: 9000,
+      },
+    ]);
+    vi.mocked(listWorkspaceSessions).mockResolvedValue({
+      data: [],
+      nextCursor: null,
+      partialSource: null,
+      sourceStatuses: [
+        {
+          engine: "claude",
+          completeness: "authoritative_empty",
+        },
+      ],
+    } as any);
+
+    const { result, dispatch } = renderActions({
+      threadsByWorkspace: {
+        "ws-1": [makeCachedClaudeSummary("a", 9000)],
+      },
+    });
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
+    });
+
+    const dispatched = getLatestSetThreadsDispatch(dispatch);
+    expect(dispatched).not.toBeNull();
+    expect(dispatched!.threads).toEqual([]);
   });
 
   it("case 4: archived last-good claude entries are not resurrected by seed", async () => {

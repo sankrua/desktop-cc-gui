@@ -27,6 +27,7 @@ export type GeminiSessionSummary = {
 
 export type CodexCatalogSessionSummary = {
   sessionId: string;
+  workspaceId?: string | null;
   title: string;
   updatedAt: number;
   sizeBytes?: number;
@@ -731,18 +732,29 @@ export function mergeGeminiSessionSummaries(
     const updatedAt = Number.isFinite(session.updatedAt)
       ? Math.max(0, session.updatedAt)
       : 0;
+    const mappedTitle = mappedTitles[id];
+    const customTitle = getCustomName(workspaceId, id);
+    const fallbackTitle = previewThreadName(
+      session.firstMessage,
+      "Gemini Session",
+    );
     const next: ThreadSummary = {
       id,
-      name:
-        mappedTitles[id] ||
-        getCustomName(workspaceId, id) ||
-        previewThreadName(session.firstMessage, "Gemini Session"),
+      name: selectProjectedSessionDisplayName({
+        previous: prev,
+        nextName: fallbackTitle,
+        mappedTitle,
+        customTitle,
+      }),
       updatedAt,
       sizeBytes: session.fileSizeBytes,
       engineSource: "gemini",
     };
     if (!prev || next.updatedAt >= prev.updatedAt) {
-      mergedById.set(id, next);
+      mergedById.set(
+        id,
+        mergeSessionDisplaySummary(prev, next, { mappedTitle, customTitle }),
+      );
     }
   });
   return Array.from(mergedById.values()).sort(
@@ -813,7 +825,13 @@ export function mergeCodexCatalogSessionSummaries(
           : `claude:${session.parentSessionId}`
         : (session.parentSessionId ?? null);
     const mappedTitle = mappedTitles[session.sessionId];
-    const customTitle = getCustomName(workspaceId, session.sessionId);
+    const ownerWorkspaceId = session.workspaceId ?? workspaceId;
+    const ownerCustomTitle = getCustomName(ownerWorkspaceId, session.sessionId);
+    const selectedWorkspaceCustomTitle =
+      ownerWorkspaceId === workspaceId
+        ? undefined
+        : getCustomName(workspaceId, session.sessionId);
+    const customTitle = ownerCustomTitle || selectedWorkspaceCustomTitle;
     const fallbackTitle = previewThreadName(
       title,
       engineSource === "claude"

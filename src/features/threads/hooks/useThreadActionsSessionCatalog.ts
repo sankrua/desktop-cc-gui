@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import type {
   WorkspaceSessionCatalogPage,
   WorkspaceSessionCatalogQuery,
+  WorkspaceSessionCatalogSourceStatus,
 } from "../../../services/tauri";
 import { withTimeout } from "./useThreadActions.helpers";
 import {
@@ -77,6 +78,7 @@ export function useThreadActionsSessionCatalog({
       sessions: ProjectCatalogSessionSummary[];
       partialSource: string | null;
       nextCursor: string | null;
+      sourceStatuses: WorkspaceSessionCatalogSourceStatus[];
     } | null> => {
       if (!canListWorkspaceSessions || !listWorkspaceSessionsService) {
         return null;
@@ -94,20 +96,17 @@ export function useThreadActionsSessionCatalog({
           sessions: [],
           partialSource: "session-catalog-timeout",
           nextCursor: null,
+          sourceStatuses: [],
         };
       }
       const sessions = response.data
         .map((entry: unknown) => normalizeProjectCatalogSession(entry))
-        .filter((entry): entry is ProjectCatalogSessionSummary => {
-          if (!entry) {
-            return false;
-          }
-          return (entry.workspaceId ?? workspaceId) === workspaceId;
-        });
+        .filter((entry): entry is ProjectCatalogSessionSummary => Boolean(entry));
       return {
         sessions,
         partialSource: response.partialSource ?? null,
         nextCursor: response.nextCursor ?? null,
+        sourceStatuses: response.sourceStatuses ?? [],
       };
     },
     [canListWorkspaceSessions, listWorkspaceSessionsService],

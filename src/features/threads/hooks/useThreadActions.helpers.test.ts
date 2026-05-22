@@ -5,6 +5,7 @@ import {
   isRetainableEngineContinuitySummary,
   mergeDegradedClaudeContinuitySummaries,
   mergeCodexCatalogSessionSummaries,
+  mergeGeminiSessionSummaries,
   seedLastGoodEngineIntoMerged,
   selectRecoveredNewThreadSummary,
   selectReplacementThreadByMessageHistory,
@@ -247,6 +248,68 @@ describe("useThreadActions.helpers", () => {
 
     expect(merged.find((thread) => thread.id === "claude:session-1")?.name).toBe(
       "帮我审核一下这个 PR",
+    );
+  });
+
+  it("lets custom titles override mapped titles in catalog and Gemini merges", () => {
+    const catalogMerged = mergeCodexCatalogSessionSummaries(
+      [],
+      [
+        {
+          sessionId: "claude:session-1",
+          title: "Native title",
+          updatedAt: 120,
+          engine: "claude",
+        },
+      ],
+      "workspace-1",
+      { "claude:session-1": "Mapped title" },
+      () => "Custom title",
+    );
+    const geminiMerged = mergeGeminiSessionSummaries(
+      [],
+      [
+        {
+          sessionId: "session-2",
+          firstMessage: "Gemini native title",
+          updatedAt: 120,
+        },
+      ],
+      "workspace-1",
+      { "gemini:session-2": "Mapped Gemini title" },
+      () => "Custom Gemini title",
+    );
+
+    expect(catalogMerged.find((thread) => thread.id === "claude:session-1")?.name).toBe(
+      "Custom title",
+    );
+    expect(geminiMerged.find((thread) => thread.id === "gemini:session-2")?.name).toBe(
+      "Custom Gemini title",
+    );
+  });
+
+  it("uses catalog owner workspace when resolving aggregate custom titles", () => {
+    const merged = mergeCodexCatalogSessionSummaries(
+      [],
+      [
+        {
+          sessionId: "claude:session-1",
+          workspaceId: "child-workspace",
+          title: "Native child title",
+          updatedAt: 120,
+          engine: "claude",
+        },
+      ],
+      "parent-workspace",
+      {},
+      (workspaceId) =>
+        workspaceId === "child-workspace"
+          ? "Owner custom title"
+          : "Parent fallback title",
+    );
+
+    expect(merged.find((thread) => thread.id === "claude:session-1")?.name).toBe(
+      "Owner custom title",
     );
   });
 

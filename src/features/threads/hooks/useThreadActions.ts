@@ -10,7 +10,7 @@ import {
   connectWorkspace as connectWorkspaceService,
   listThreadTitles as listThreadTitlesService,
   listThreads as listThreadsService,
-  listClaudeSessions as listClaudeSessionsService,
+  listClaudeSessions as listClaudeSessionsForFallbackSeedService,
   listGeminiSessions as listGeminiSessionsService,
   getOpenCodeSessionList as getOpenCodeSessionListService,
   loadClaudeSession as loadClaudeSessionService,
@@ -18,6 +18,7 @@ import {
   loadCodexSession as loadCodexSessionService,
   resumeThread as resumeThreadService,
 } from "../../../services/tauri";
+import type { WorkspaceSessionCatalogSourceStatus } from "../../../services/tauri";
 import * as tauriServices from "../../../services/tauri";
 import {
   buildItemsFromThread,
@@ -160,6 +161,43 @@ type UseThreadActionsOptions = {
   rememberThreadAlias?: (oldThreadId: string, newThreadId: string) => void;
   useUnifiedHistoryLoader?: boolean;
 };
+
+function findCatalogSourceStatusForEngine(
+  sourceStatuses: readonly WorkspaceSessionCatalogSourceStatus[] | undefined,
+  engine: string,
+): WorkspaceSessionCatalogSourceStatus | null {
+  const normalizedEngine = engine.trim().toLowerCase();
+  if (!normalizedEngine) {
+    return null;
+  }
+  return (
+    sourceStatuses?.find(
+      (status) => status.engine.trim().toLowerCase() === normalizedEngine,
+    ) ?? null
+  );
+}
+
+function isIncompleteCatalogSourceStatus(
+  sourceStatus: WorkspaceSessionCatalogSourceStatus | null,
+): boolean {
+  return (
+    sourceStatus?.completeness === "degraded" ||
+    sourceStatus?.completeness === "partial" ||
+    sourceStatus?.completeness === "uncertain_empty"
+  );
+}
+
+function hasAuthoritativeCatalogMembershipProof(
+  sourceStatuses: readonly WorkspaceSessionCatalogSourceStatus[] | undefined,
+): boolean {
+  return (
+    Array.isArray(sourceStatuses) &&
+    sourceStatuses.length > 0 &&
+    sourceStatuses.every(
+      (sourceStatus) => !isIncompleteCatalogSourceStatus(sourceStatus),
+    )
+  );
+}
 
 type ResumeThreadForWorkspaceOptions = {
   preferLocalCodexHistory?: boolean;
@@ -1683,7 +1721,7 @@ export function useThreadActions({
             const id = String(thread?.id ?? "");
             const preview = asString(thread?.preview ?? "").trim();
             const mappedTitle = mappedTitles[id];
-            const customName = mappedTitle || getCustomName(workspace.id, id);
+            const customName = getCustomName(workspace.id, id) || mappedTitle;
             const fallbackName = `Agent ${index + 1}`;
             const name = customName
               ? customName
@@ -1735,7 +1773,7 @@ export function useThreadActions({
             shouldDeferFullSessionCatalog
               ? Promise.resolve([])
               : withTimeout(
-                  listClaudeSessionsService(
+                  listClaudeSessionsForFallbackSeedService(
                     workspace.path,
                     nativeSessionListLimit,
                   ),
@@ -1744,12 +1782,31 @@ export function useThreadActions({
             opencodeSessionsPromise,
             projectCatalogSessionsPromise,
           ]);
+        const projectCatalogValue =
+          projectCatalogResult.status === "fulfilled"
+            ? projectCatalogResult.value
+            : null;
+        const catalogClaudeSourceStatus = findCatalogSourceStatusForEngine(
+          projectCatalogValue?.sourceStatuses,
+          "claude",
+        );
+        // Native Claude history is a legacy fallback/diagnostic seed here.
+        // When catalog reports Claude source status, catalog projection owns
+        // membership and native rows must not widen or erase that projection.
+        const shouldMergeNativeClaudeSessions = !catalogClaudeSourceStatus;
+        if (isIncompleteCatalogSourceStatus(catalogClaudeSourceStatus)) {
+          rememberPartialSource(
+            catalogClaudeSourceStatus?.reason ??
+              `claude-${catalogClaudeSourceStatus?.completeness}`,
+          );
+        }
         const claudeSuccessfulEmpty =
+          shouldMergeNativeClaudeSessions &&
           claudeResult.status === "fulfilled" &&
           Array.isArray(claudeResult.value) &&
           claudeResult.value.length === 0;
         if (claudeResult.status === "fulfilled") {
-          if (claudeResult.value === null) {
+          if (shouldMergeNativeClaudeSessions && claudeResult.value === null) {
             rememberPartialSource("claude-session-timeout");
             onDebug?.({
               id: `${Date.now()}-client-claude-session-timeout`,
@@ -1770,9 +1827,10 @@ export function useThreadActions({
               hiddenSharedBindingIds,
             );
           }
-          const claudeSessions = Array.isArray(claudeResult.value)
-            ? claudeResult.value
-            : [];
+          const claudeSessions =
+            shouldMergeNativeClaudeSessions && Array.isArray(claudeResult.value)
+              ? claudeResult.value
+              : [];
           claudeSessions.forEach(
             (session: {
               sessionId: string;
@@ -1795,8 +1853,8 @@ export function useThreadActions({
               const next: ThreadSummary = {
                 id,
                 name:
-                  mappedTitle ||
                   customTitle ||
+                  mappedTitle ||
                   previewThreadName(session.firstMessage, "Claude Session"),
                 updatedAt,
                 sizeBytes: extractThreadSizeBytes(
@@ -1814,7 +1872,7 @@ export function useThreadActions({
               }
             },
           );
-        } else {
+        } else if (shouldMergeNativeClaudeSessions) {
           rememberPartialSource("claude-session-error");
           onDebug?.({
             id: `${Date.now()}-client-claude-session-error`,
@@ -1914,10 +1972,6 @@ export function useThreadActions({
             hiddenSharedBindingIds,
           );
         }
-        const projectCatalogValue =
-          projectCatalogResult.status === "fulfilled"
-            ? projectCatalogResult.value
-            : null;
         if (projectCatalogResult.status === "fulfilled") {
           if (projectCatalogValue === null) {
             rememberPartialSource("codex-catalog-timeout");
@@ -2065,8 +2119,14 @@ export function useThreadActions({
         }
 
         let visibleSummaries = allSummaries;
+        const hasAuthoritativeEmptyCatalog =
+          visibleSummaries.length === 0 &&
+          !degradedPartialSource &&
+          hasAuthoritativeCatalogMembershipProof(
+            projectCatalogValue?.sourceStatuses,
+          );
         const emptyListFallbackSource =
-          visibleSummaries.length === 0
+          visibleSummaries.length === 0 && !hasAuthoritativeEmptyCatalog
             ? (degradedPartialSource ?? "empty-thread-list")
             : null;
         if (emptyListFallbackSource) {

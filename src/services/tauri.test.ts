@@ -670,6 +670,95 @@ describe("tauri invoke wrappers", () => {
     });
   });
 
+  it("preserves workspace session catalog source and ownership fields", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({
+      data: [
+        {
+          sessionId: "claude:session-1",
+          stableSessionKey: "claude:child-ws:session-1",
+          canonicalSessionId: "session-1",
+          workspaceId: "child-ws",
+          engine: "claude",
+          title: "Investigate ownership",
+          updatedAt: 123,
+          threadKind: "native",
+          sourceCompleteness: "complete",
+          sourceStatusReason: null,
+          attributionStatus: "strict-match",
+          attributionReason: "cwd-longest",
+          attributionConfidence: "high",
+          matchedWorkspaceId: "child-ws",
+          matchedWorkspaceLabel: "Child",
+        },
+      ],
+      nextCursor: null,
+      partialSource: null,
+      sourceStatuses: [
+        {
+          engine: "claude",
+          completeness: "complete",
+          reason: null,
+          scannedCandidates: 1,
+          skippedCandidates: 0,
+          scanCapReached: false,
+          diagnostics: [
+            {
+              engine: "claude",
+              code: "cwd-project-conflict",
+              reason: "cwd-project-conflict",
+              sessionId: "claude:conflict",
+              physicalLocator: "conflict.jsonl:0123456789abcdef",
+            },
+          ],
+          cache: {
+            hits: 1,
+            misses: 2,
+            stale: 0,
+            rebuilds: 2,
+            failures: 0,
+          },
+        },
+      ],
+    });
+
+    const page = await listWorkspaceSessions("parent-ws", {
+      query: { status: "active" },
+      limit: 50,
+    });
+
+    expect(page.data[0]).toMatchObject({
+      sessionId: "claude:session-1",
+      stableSessionKey: "claude:child-ws:session-1",
+      sourceCompleteness: "complete",
+      attributionReason: "cwd-longest",
+      attributionConfidence: "high",
+      matchedWorkspaceId: "child-ws",
+    });
+    expect(page.sourceStatuses?.[0]).toMatchObject({
+      engine: "claude",
+      completeness: "complete",
+      scannedCandidates: 1,
+      scanCapReached: false,
+      diagnostics: [
+        {
+          code: "cwd-project-conflict",
+          physicalLocator: "conflict.jsonl:0123456789abcdef",
+        },
+      ],
+      cache: {
+        hits: 1,
+        rebuilds: 2,
+      },
+    });
+    expect(invokeMock).toHaveBeenCalledWith("list_workspace_sessions", {
+      workspaceId: "parent-ws",
+      query: { status: "active" },
+      cursor: null,
+      limit: 50,
+    });
+  });
+
   it("maps global codex session list options to list_global_codex_sessions", async () => {
     const invokeMock = vi.mocked(invoke);
     invokeMock.mockResolvedValueOnce({
