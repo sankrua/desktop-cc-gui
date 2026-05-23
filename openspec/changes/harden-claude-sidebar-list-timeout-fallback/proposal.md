@@ -3,9 +3,9 @@
 ## 2026-05-23 Proposal Refresh
 
 - **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
-- **Task state**: 25/30 checked; status = In progress / implementation mostly complete, final gates open.
-- **Code/document evidence**: 第一阶段 timeout/reject fallback、successful-empty regression、source completeness/status、child-first attribution tests 与 owner-aware catalog merge 已写入；仍未完成 `npm run typecheck`、manual QA 与 archive prep。
-- **Next action**: 保持 active；先跑 typecheck/focused sidebar tests，补 manual QA 记录，再决定是否归档或并入 unified catalog closure。
+- **Task state**: 26/30 checked; status = In progress / automation gates closed, manual QA and post-merge archive remain open.
+- **Code/document evidence**: 第一阶段 timeout/reject fallback、successful-empty regression、source completeness/status、child-first attribution tests 与 owner-aware catalog merge 已写入；2026-05-23 `npm run typecheck`、focused sidebar tests、session-activity/app 回归与 Rust attribution exact tests 均通过。
+- **Next action**: 保持 active；补真实 dev build manual QA 记录，合并 PR 后再执行 archive prep。
 - **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
 
 ## Summary

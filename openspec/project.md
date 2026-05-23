@@ -64,9 +64,9 @@ Detailed proposal triage lives in `openspec/docs/proposal-refresh-2026-05-23.md`
   - Current code fact: existing `codex_doctor`, `codexBin`, `codexArgs`, and workspace override fields exist; `codex_preview_launch_profile` / Launch Configuration preview/editor contract is not implemented.
   - Action: keep active for implementation.
 - `harden-claude-sidebar-list-timeout-fallback`
-  - Task state: `25/30`.
-  - Current code fact: timeout/reject fallback, successful-empty regression, source completeness, child-first attribution, and owner-aware catalog merge evidence exist. Final typecheck/manual/archive gates remain open.
-  - Action: keep active until gates are closed.
+  - Task state: `26/30`.
+  - Current code fact: timeout/reject fallback, successful-empty regression, source completeness, child-first attribution, and owner-aware catalog merge evidence exist. 2026-05-23 automation gates are green.
+  - Action: keep active until real dev build manual QA is recorded and the PR is merged for archive prep.
 
 ### Deferred Completed Proposals
 
