@@ -58,6 +58,7 @@ fn build_catalog_page(
     source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
 ) -> WorkspaceSessionCatalogPage {
     let source_statuses = normalize_source_statuses(source_statuses);
+    let cursor_state = parse_catalog_cursor_state(cursor.as_deref());
     let status_filter = parse_status_filter(query.status.as_deref());
     let keyword = query
         .keyword
@@ -88,21 +89,23 @@ fn build_catalog_page(
             .cmp(&left.updated_at)
             .then_with(|| left.session_id.cmp(&right.session_id))
             .then_with(|| left.workspace_id.cmp(&right.workspace_id))
+            .then_with(|| catalog_entry_sort_key(left).cmp(&catalog_entry_sort_key(right)))
     });
 
-    let limit = limit
-        .unwrap_or(SESSION_CATALOG_DEFAULT_LIMIT as u32)
-        .clamp(1, SESSION_CATALOG_MAX_LIMIT as u32) as usize;
-    let offset = parse_catalog_cursor(cursor.as_deref());
+    let requested_limit = limit.map(|value| value as usize);
+    let limit_capped = matches!(limit, Some(value) if value > SESSION_CATALOG_MAX_LIMIT as u32);
+    let effective_limit = normalize_catalog_page_limit(limit);
+    let offset = catalog_page_start_index(&filtered, &query, cursor_state);
     let data: Vec<WorkspaceSessionCatalogEntry> = filtered
         .iter()
         .skip(offset)
-        .take(limit)
+        .take(effective_limit)
         .cloned()
         .map(|entry| decorate_catalog_entry_for_response(entry, &source_statuses))
         .collect();
     let next_cursor = if offset + data.len() < filtered.len() {
-        Some(build_catalog_cursor(offset + data.len()))
+        data.last()
+            .map(|entry| build_catalog_stable_cursor(entry, &query, offset + data.len()))
     } else {
         None
     };
@@ -110,8 +113,55 @@ fn build_catalog_page(
     WorkspaceSessionCatalogPage {
         data,
         next_cursor,
+        requested_limit,
+        effective_limit,
+        limit_capped,
         partial_source,
         source_statuses,
+    }
+}
+
+fn catalog_entry_sort_key(entry: &WorkspaceSessionCatalogEntry) -> String {
+    entry
+        .stable_session_key
+        .clone()
+        .unwrap_or_else(|| build_catalog_entry_stable_key(entry))
+}
+
+fn catalog_entry_is_after_stable_cursor(
+    entry: &WorkspaceSessionCatalogEntry,
+    cursor: &SessionCatalogStableCursor,
+) -> bool {
+    if entry.updated_at != cursor.updated_at {
+        return entry.updated_at < cursor.updated_at;
+    }
+    if entry.session_id.as_str() != cursor.session_id.as_str() {
+        return entry.session_id.as_str() > cursor.session_id.as_str();
+    }
+    if entry.workspace_id.as_str() != cursor.workspace_id.as_str() {
+        return entry.workspace_id.as_str() > cursor.workspace_id.as_str();
+    }
+    let entry_stable_key = catalog_entry_sort_key(entry);
+    let cursor_stable_key = cursor.stable_session_key.as_deref().unwrap_or("");
+    entry_stable_key.as_str() > cursor_stable_key
+}
+
+fn catalog_page_start_index(
+    filtered: &[WorkspaceSessionCatalogEntry],
+    query: &WorkspaceSessionCatalogQuery,
+    cursor: SessionCatalogCursor,
+) -> usize {
+    match cursor {
+        SessionCatalogCursor::LegacyOffset(offset) => offset.min(filtered.len()),
+        SessionCatalogCursor::Stable(payload) => {
+            if payload.query_fingerprint != catalog_query_fingerprint(query) {
+                return 0;
+            }
+            filtered
+                .iter()
+                .position(|entry| catalog_entry_is_after_stable_cursor(entry, &payload))
+                .unwrap_or(filtered.len())
+        }
     }
 }
 

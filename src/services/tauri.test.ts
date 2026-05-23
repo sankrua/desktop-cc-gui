@@ -69,8 +69,10 @@ import {
   getWorkspaceSessionProjectionSummary,
   listGlobalCodexSessions,
   listProjectRelatedCodexSessions,
+  listProjectRelatedSessions,
   listExternalSpecTree,
   listWorkspaceSessions,
+  listWorkspaceSessionArchiveEvidence,
   listWorkspaceSessionFolders,
   createWorkspaceSessionFolder,
   renameWorkspaceSessionFolder,
@@ -801,6 +803,55 @@ describe("tauri invoke wrappers", () => {
         query: { keyword: "feature", engine: "codex", status: "active" },
         cursor: "offset:0",
         limit: 5,
+      },
+    );
+  });
+
+  it("maps engine-neutral related session list options to list_project_related_sessions", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({
+      data: [],
+      nextCursor: "offset:5",
+      partialSource: null,
+    });
+
+    await listProjectRelatedSessions("ws-2", {
+      query: { keyword: "feature", engine: "claude", status: "active" },
+      cursor: "offset:0",
+      limit: 5,
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("list_project_related_sessions", {
+      workspaceId: "ws-2",
+      query: { keyword: "feature", engine: "claude", status: "active" },
+      cursor: "offset:0",
+      limit: 5,
+    });
+  });
+
+  it("maps workspace session archive evidence requests", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({
+      archivedAtBySessionId: {
+        "claude:session-1": 123,
+      },
+      partialSource: null,
+      sourceStatuses: [
+        {
+          engine: "archive-metadata",
+          completeness: "complete",
+          scannedCandidates: 1,
+        },
+      ],
+    });
+
+    const evidence = await listWorkspaceSessionArchiveEvidence("ws-2");
+
+    expect(evidence.archivedAtBySessionId["claude:session-1"]).toBe(123);
+    expect(invokeMock).toHaveBeenCalledWith(
+      "list_workspace_session_archive_evidence",
+      {
+        workspaceId: "ws-2",
       },
     );
   });

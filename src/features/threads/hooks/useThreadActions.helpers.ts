@@ -30,6 +30,7 @@ export type CodexCatalogSessionSummary = {
   workspaceId?: string | null;
   title: string;
   updatedAt: number;
+  archivedAt?: number | null;
   sizeBytes?: number;
   parentSessionId?: string | null;
   engine?: ThreadSummary["engineSource"] | string | null;
@@ -125,7 +126,7 @@ export function inferThreadEngineSource(
   return "codex";
 }
 
-function isPendingThreadId(threadId: string): boolean {
+export function isPendingThreadId(threadId: string): boolean {
   const normalized = threadId.trim().toLowerCase();
   return (
     normalized.startsWith("claude-pending-") ||
@@ -852,6 +853,12 @@ export function mergeCodexCatalogSessionSummaries(
         engineSource,
       }),
       updatedAt,
+      archivedAt:
+        typeof session.archivedAt === "number" &&
+        Number.isFinite(session.archivedAt) &&
+        session.archivedAt > 0
+          ? session.archivedAt
+          : undefined,
       sizeBytes: session.sizeBytes,
       engineSource,
       threadKind: "native",

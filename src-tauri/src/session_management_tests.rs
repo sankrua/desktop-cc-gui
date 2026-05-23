@@ -166,9 +166,33 @@
     }
 
     #[test]
-    fn parses_prefixed_cursor() {
+    fn parses_prefixed_and_stable_cursor() {
         assert_eq!(parse_catalog_cursor(Some("offset:25")), 25);
         assert_eq!(parse_catalog_cursor(Some("bad")), 0);
+
+        let mut entry = catalog_entry("codex:session-anchor", "ws-1", Some("Project"), None);
+        entry.updated_at = 1_234;
+        entry.stable_session_key = Some("codex:ws-1:codex:session-anchor".to_string());
+        let query = WorkspaceSessionCatalogQuery {
+            engine: Some(" codex ".to_string()),
+            status: Some("active".to_string()),
+            ..Default::default()
+        };
+        let cursor = build_catalog_stable_cursor(&entry, &query, 25);
+
+        assert!(cursor.starts_with(SESSION_CATALOG_STABLE_CURSOR_PREFIX));
+        assert_eq!(parse_catalog_cursor(Some(&cursor)), 25);
+        match parse_catalog_cursor_state(Some(&cursor)) {
+            SessionCatalogCursor::Stable(payload) => {
+                assert_eq!(payload.version, 1);
+                assert_eq!(payload.updated_at, 1_234);
+                assert_eq!(payload.session_id, "codex:session-anchor");
+                assert_eq!(payload.workspace_id, "ws-1");
+                assert_eq!(payload.offset_hint, 25);
+                assert_eq!(payload.query_fingerprint, catalog_query_fingerprint(&query));
+            }
+            SessionCatalogCursor::LegacyOffset(_) => panic!("expected stable cursor"),
+        }
     }
 
     #[test]
@@ -212,19 +236,133 @@
         );
 
         assert_eq!(page.data.len(), 25);
-        assert_eq!(page.next_cursor, Some("offset:25".to_string()));
+        assert!(page
+            .next_cursor
+            .as_deref()
+            .is_some_and(|cursor| cursor.starts_with(SESSION_CATALOG_STABLE_CURSOR_PREFIX)));
+        assert_eq!(page.requested_limit, Some(25));
+        assert_eq!(page.effective_limit, 25);
+        assert!(!page.limit_capped);
         assert_eq!(
             page.partial_source,
             Some(SESSION_CATALOG_PARTIAL_CODEX.to_string())
         );
         assert_eq!(
             page.source_statuses[0].completeness,
-            WorkspaceSessionSourceCompleteness::Complete
+            WorkspaceSessionSourceCompleteness::Partial
+        );
+        assert_eq!(
+            page.source_statuses[0].reason.as_deref(),
+            Some("codex-scan-cap-reached")
         );
         assert_eq!(
             page.data[0].stable_session_key.as_deref(),
             Some("codex:ws-1:codex:session-00")
         );
+    }
+
+    #[test]
+    fn stable_catalog_cursor_survives_newer_entry_insertion() {
+        let initial_entries = [300, 200, 100]
+            .into_iter()
+            .enumerate()
+            .map(|(index, updated_at)| {
+                let mut entry =
+                    catalog_entry(&format!("codex:session-{index}"), "ws-1", Some("Project"), None);
+                entry.updated_at = updated_at;
+                entry
+            })
+            .collect();
+        let first_page = build_catalog_page(
+            initial_entries,
+            WorkspaceSessionCatalogQuery::default(),
+            None,
+            Some(2),
+            None,
+            Vec::new(),
+        );
+        let cursor = first_page.next_cursor.clone().expect("next cursor");
+
+        let entries_after_insertion = [400, 300, 200, 100]
+            .into_iter()
+            .enumerate()
+            .map(|(index, updated_at)| {
+                let session_number = if index == 0 { 99 } else { index - 1 };
+                let mut entry = catalog_entry(
+                    &format!("codex:session-{session_number}"),
+                    "ws-1",
+                    Some("Project"),
+                    None,
+                );
+                entry.updated_at = updated_at;
+                entry
+            })
+            .collect();
+        let second_page = build_catalog_page(
+            entries_after_insertion,
+            WorkspaceSessionCatalogQuery::default(),
+            Some(cursor),
+            Some(2),
+            None,
+            Vec::new(),
+        );
+
+        assert_eq!(first_page.data[0].session_id, "codex:session-0");
+        assert_eq!(first_page.data[1].session_id, "codex:session-1");
+        assert_eq!(second_page.data.len(), 1);
+        assert_eq!(second_page.data[0].session_id, "codex:session-2");
+    }
+
+    #[test]
+    fn stable_catalog_cursor_restarts_when_filter_context_changes() {
+        let mut anchor = catalog_entry("codex:session-1", "ws-1", Some("Project"), None);
+        anchor.updated_at = 200;
+        let cursor = build_catalog_stable_cursor(
+            &decorate_catalog_entry_for_response(anchor, &[]),
+            &WorkspaceSessionCatalogQuery {
+                engine: Some("codex".to_string()),
+                ..Default::default()
+            },
+            1,
+        );
+        let mut codex_entry = catalog_entry("codex:session-1", "ws-1", Some("Project"), None);
+        codex_entry.updated_at = 200;
+        let mut claude_entry = catalog_entry("claude:session-1", "ws-1", Some("Project"), None);
+        claude_entry.engine = "claude".to_string();
+        claude_entry.updated_at = 100;
+
+        let page = build_catalog_page(
+            vec![codex_entry, claude_entry],
+            WorkspaceSessionCatalogQuery {
+                engine: Some("claude".to_string()),
+                ..Default::default()
+            },
+            Some(cursor),
+            Some(1),
+            None,
+            Vec::new(),
+        );
+
+        assert_eq!(page.data.len(), 1);
+        assert_eq!(page.data[0].session_id, "claude:session-1");
+    }
+
+    #[test]
+    fn success_source_status_treats_capped_non_empty_scan_as_partial() {
+        let status = build_success_source_status(
+            "opencode",
+            25,
+            SessionCatalogScanMode::Bounded(25),
+            WorkspaceSessionSourceCompleteness::AuthoritativeEmpty,
+            None,
+        );
+
+        assert_eq!(
+            status.completeness,
+            WorkspaceSessionSourceCompleteness::Partial
+        );
+        assert_eq!(status.reason.as_deref(), Some("opencode-scan-cap-reached"));
+        assert_eq!(status.scan_cap_reached, Some(true));
     }
 
     #[test]
@@ -762,6 +900,102 @@
             .folder_id_by_session_id
             .contains_key("codex:codex-1"));
         assert!(metadata.folder_id_by_session_id.contains_key("claude:1"));
+    }
+
+    #[tokio::test]
+    async fn archive_evidence_reads_metadata_without_catalog_scan_and_expands_stable_keys() {
+        let base = std::env::temp_dir().join(format!("archive-evidence-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+        let workspace =
+            workspace_entry("ws-1", "Workspace", "/tmp/ws-1", WorkspaceKind::Main, None);
+        let workspaces = Mutex::new(HashMap::from([(workspace.id.clone(), workspace)]));
+        with_catalog_metadata_mutation(&storage_path, "ws-1", |metadata| {
+            metadata.archived_at_by_session_id.insert(
+                "claude:ws-1:session-1".to_string(),
+                123,
+            );
+            metadata
+                .archived_at_by_session_id
+                .insert("codex:ws-1:codex-1".to_string(), 456);
+            Ok(())
+        })
+        .expect("seed archive metadata");
+
+        let evidence = list_workspace_session_archive_evidence_core(
+            &workspaces,
+            &storage_path,
+            "ws-1".to_string(),
+        )
+        .await
+        .expect("read archive evidence");
+
+        assert_eq!(
+            evidence.archived_at_by_session_id.get("claude:session-1"),
+            Some(&123)
+        );
+        assert_eq!(
+            evidence
+                .archived_at_by_session_id
+                .get("claude:ws-1:session-1"),
+            Some(&123)
+        );
+        assert_eq!(
+            evidence.archived_at_by_session_id.get("codex-1"),
+            Some(&456)
+        );
+        assert_eq!(
+            evidence.archived_at_by_session_id.get("codex:codex-1"),
+            Some(&456)
+        );
+        assert_eq!(evidence.partial_source, None);
+        assert_eq!(
+            evidence.source_statuses[0].completeness,
+            WorkspaceSessionSourceCompleteness::Complete
+        );
+        std::fs::remove_dir_all(base).ok();
+    }
+
+    #[tokio::test]
+    async fn archive_evidence_reports_partial_when_metadata_unavailable() {
+        let base = std::env::temp_dir().join(format!("archive-evidence-bad-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+        let metadata_path =
+            catalog_metadata_path(&storage_path, "ws-1").expect("metadata path");
+        std::fs::create_dir_all(metadata_path.parent().expect("metadata parent"))
+            .expect("create metadata parent");
+        std::fs::write(&metadata_path, "{not-json").expect("write corrupt metadata");
+        let workspace =
+            workspace_entry("ws-1", "Workspace", "/tmp/ws-1", WorkspaceKind::Main, None);
+        let workspaces = Mutex::new(HashMap::from([(workspace.id.clone(), workspace)]));
+
+        let evidence = list_workspace_session_archive_evidence_core(
+            &workspaces,
+            &storage_path,
+            "ws-1".to_string(),
+        )
+        .await
+        .expect("read degraded archive evidence");
+
+        assert!(evidence.archived_at_by_session_id.is_empty());
+        assert_eq!(
+            evidence.partial_source.as_deref(),
+            Some(SESSION_CATALOG_PARTIAL_ARCHIVE_METADATA)
+        );
+        assert_eq!(evidence.source_statuses.len(), 1);
+        assert_eq!(evidence.source_statuses[0].engine, "archive-metadata");
+        assert_eq!(
+            evidence.source_statuses[0].completeness,
+            WorkspaceSessionSourceCompleteness::Degraded
+        );
+        assert_eq!(
+            evidence.source_statuses[0].reason.as_deref(),
+            Some(SESSION_CATALOG_PARTIAL_ARCHIVE_METADATA)
+        );
+        std::fs::remove_dir_all(base).ok();
     }
 
     #[test]
@@ -1667,6 +1901,122 @@
     }
 
     #[tokio::test]
+    async fn folder_assignment_returns_partial_results_when_owner_folder_is_missing() {
+        let base = std::env::temp_dir().join(format!("folder-partial-owner-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+
+        let repo_path = base.join("repo");
+        let child_path = repo_path.join("sub");
+        std::fs::create_dir_all(&child_path).expect("create child workspace path");
+
+        let claude_home = base.join("claude-home");
+        let claude_projects_dir = claude_home.join("projects");
+        write_claude_session_fixture(
+            &claude_projects_dir,
+            &repo_path,
+            "parent-session",
+            &repo_path,
+            "parent mutation task",
+        );
+        write_claude_session_fixture(
+            &claude_projects_dir,
+            &child_path,
+            "child-session",
+            &child_path,
+            "child mutation task",
+        );
+
+        let parent = workspace_entry(
+            "parent",
+            "Parent",
+            &repo_path.to_string_lossy(),
+            WorkspaceKind::Main,
+            None,
+        );
+        let child = workspace_entry(
+            "child",
+            "Child",
+            &child_path.to_string_lossy(),
+            WorkspaceKind::Worktree,
+            Some("parent"),
+        );
+        let workspaces = Mutex::new(HashMap::from([
+            (parent.id.clone(), parent),
+            (child.id.clone(), child),
+        ]));
+        let engine_manager = engine::EngineManager::new();
+        engine_manager
+            .set_engine_config(
+                engine::EngineType::Claude,
+                engine::EngineConfig {
+                    home_dir: Some(claude_home.to_string_lossy().to_string()),
+                    ..engine::EngineConfig::default()
+                },
+            )
+            .await;
+
+        let parent_folder = create_workspace_session_folder_core(
+            &workspaces,
+            &storage_path,
+            "parent".to_string(),
+            "Parent folder".to_string(),
+            None,
+        )
+        .await
+        .expect("create parent folder")
+        .folder;
+
+        let response = assign_workspace_session_folders_core(
+            &workspaces,
+            &engine_manager,
+            &storage_path,
+            "parent".to_string(),
+            vec![
+                "claude:parent-session".to_string(),
+                "claude:child-session".to_string(),
+            ],
+            Some(parent_folder.id.clone()),
+        )
+        .await
+        .expect("partial folder assignment should stay request-successful");
+
+        assert_eq!(response.results.len(), 2);
+        let parent_result = response
+            .results
+            .iter()
+            .find(|result| result.session_id == "claude:parent-session")
+            .expect("parent result");
+        let child_result = response
+            .results
+            .iter()
+            .find(|result| result.session_id == "claude:child-session")
+            .expect("child result");
+        assert!(parent_result.ok);
+        assert_eq!(parent_result.owner_workspace_id.as_deref(), Some("parent"));
+        assert!(!child_result.ok);
+        assert_eq!(child_result.owner_workspace_id.as_deref(), Some("child"));
+        assert_eq!(
+            child_result.code.as_deref(),
+            Some("FOLDER_METADATA_UNAVAILABLE")
+        );
+
+        let parent_metadata =
+            read_catalog_metadata(&storage_path, "parent").expect("parent metadata");
+        let child_metadata = read_catalog_metadata(&storage_path, "child").expect("child metadata");
+        assert_eq!(
+            parent_metadata
+                .folder_id_by_session_id
+                .get("claude:parent:parent-session"),
+            Some(&parent_folder.id)
+        );
+        assert!(child_metadata.folder_id_by_session_id.is_empty());
+
+        std::fs::remove_dir_all(base).ok();
+    }
+
+    #[tokio::test]
     async fn claude_independent_nested_workspace_session_is_not_claimed_by_parent_projection() {
         let base = std::env::temp_dir().join(format!("claude-nested-owner-{}", Uuid::new_v4()));
         std::fs::create_dir_all(&base).expect("create temp dir");
@@ -1898,7 +2248,10 @@
 
         assert_eq!(page.data.len(), 1);
         assert_eq!(page.data[0].session_id, "codex:parent");
-        assert_eq!(page.next_cursor, Some("offset:1".to_string()));
+        assert!(page
+            .next_cursor
+            .as_deref()
+            .is_some_and(|cursor| cursor.starts_with(SESSION_CATALOG_STABLE_CURSOR_PREFIX)));
     }
 
     #[test]
@@ -2041,6 +2394,110 @@
         let attribution = infer_related_attribution_for_workspace(&workspaces, &main_a, &entry);
 
         assert!(attribution.is_none());
+    }
+
+    #[tokio::test]
+    async fn project_related_sessions_include_claude_inferred_entries() {
+        let base = std::env::temp_dir().join(format!("related-claude-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+
+        let repo_path = base.join("repo");
+        let worktree_a_path = repo_path.join("worktree-a");
+        let worktree_b_path = repo_path.join("worktree-b");
+        std::fs::create_dir_all(&worktree_a_path).expect("create worktree a");
+        std::fs::create_dir_all(&worktree_b_path).expect("create worktree b");
+
+        let claude_home = base.join("claude-home");
+        let claude_projects_dir = claude_home.join("projects");
+        write_claude_session_fixture(
+            &claude_projects_dir,
+            &worktree_b_path,
+            "related-claude-session",
+            &worktree_b_path,
+            "related claude task",
+        );
+
+        let main = workspace_entry(
+            "main",
+            "Main",
+            &repo_path.to_string_lossy(),
+            WorkspaceKind::Main,
+            None,
+        );
+        let selected = workspace_entry(
+            "worktree-a",
+            "A",
+            &worktree_a_path.to_string_lossy(),
+            WorkspaceKind::Worktree,
+            Some("main"),
+        );
+        let sibling = workspace_entry(
+            "worktree-b",
+            "B",
+            &worktree_b_path.to_string_lossy(),
+            WorkspaceKind::Worktree,
+            Some("main"),
+        );
+        let workspaces = Mutex::new(HashMap::from([
+            (main.id.clone(), main),
+            (selected.id.clone(), selected),
+            (sibling.id.clone(), sibling),
+        ]));
+        let engine_manager = engine::EngineManager::new();
+        engine_manager
+            .set_engine_config(
+                engine::EngineType::Claude,
+                engine::EngineConfig {
+                    home_dir: Some(claude_home.to_string_lossy().to_string()),
+                    ..engine::EngineConfig::default()
+                },
+            )
+            .await;
+
+        let page = list_project_related_sessions_core(
+            &workspaces,
+            &engine_manager,
+            &storage_path,
+            "worktree-a".to_string(),
+            Some(WorkspaceSessionCatalogQuery {
+                engine: Some("claude".to_string()),
+                status: Some("active".to_string()),
+                ..Default::default()
+            }),
+            None,
+            Some(20),
+        )
+        .await
+        .expect("list related sessions");
+
+        assert!(page.data.iter().any(|entry| {
+            entry.engine == "claude"
+                && entry.session_id == "claude:related-claude-session"
+                && entry.workspace_id == "worktree-b"
+                && entry.attribution_status.as_deref()
+                    == Some(SessionCatalogAttributionStatus::InferredRelated.as_str())
+        }));
+        std::fs::remove_dir_all(base).ok();
+    }
+
+    #[test]
+    fn legacy_related_codex_query_forces_codex_engine_filter() {
+        let query = force_codex_related_query(Some(WorkspaceSessionCatalogQuery {
+            keyword: Some("feature".to_string()),
+            engine: Some("claude".to_string()),
+            status: Some("active".to_string()),
+            folder_id: Some("__all__".to_string()),
+        }));
+
+        assert_eq!(query.keyword.as_deref(), Some("feature"));
+        assert_eq!(query.engine.as_deref(), Some("codex"));
+        assert_eq!(query.status.as_deref(), Some("active"));
+        assert_eq!(query.folder_id.as_deref(), Some("__all__"));
+
+        let default_query = force_codex_related_query(None);
+        assert_eq!(default_query.engine.as_deref(), Some("codex"));
     }
 
     #[test]

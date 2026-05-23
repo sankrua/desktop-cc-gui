@@ -58,6 +58,7 @@ export type ProjectCatalogSessionSummary = {
   matchedWorkspaceId?: string | null;
   title: string;
   updatedAt: number;
+  archivedAt?: number | null;
   sizeBytes?: number;
   parentSessionId?: string | null;
   engine?: ThreadSummary["engineSource"] | string | null;
@@ -193,6 +194,7 @@ export function normalizeProjectCatalogSession(
     workspaceId?: unknown;
     matchedWorkspaceId?: unknown;
     updatedAt?: unknown;
+    archivedAt?: unknown;
     sizeBytes?: unknown;
     parentSessionId?: unknown;
     engine?: unknown;
@@ -218,6 +220,12 @@ export function normalizeProjectCatalogSession(
       Number.isFinite(session.updatedAt)
         ? session.updatedAt
         : 0,
+    archivedAt:
+      typeof session.archivedAt === "number" &&
+      Number.isFinite(session.archivedAt) &&
+      session.archivedAt > 0
+        ? session.archivedAt
+        : null,
     sizeBytes:
       typeof session.sizeBytes === "number" &&
       Number.isFinite(session.sizeBytes)

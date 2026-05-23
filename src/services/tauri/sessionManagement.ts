@@ -83,6 +83,15 @@ export interface WorkspaceSessionCatalogQuery {
 export interface WorkspaceSessionCatalogPage {
   data: WorkspaceSessionCatalogEntry[];
   nextCursor?: string | null;
+  requestedLimit?: number | null;
+  effectiveLimit?: number | null;
+  limitCapped?: boolean;
+  partialSource?: string | null;
+  sourceStatuses?: WorkspaceSessionCatalogSourceStatus[];
+}
+
+export interface WorkspaceSessionArchiveEvidence {
+  archivedAtBySessionId: Record<string, number>;
   partialSource?: string | null;
   sourceStatuses?: WorkspaceSessionCatalogSourceStatus[];
 }
@@ -181,6 +190,31 @@ export async function listProjectRelatedCodexSessions(
     cursor: options?.cursor ?? null,
     limit: options?.limit ?? null,
   });
+}
+
+export async function listProjectRelatedSessions(
+  workspaceId: string,
+  options?: {
+    query?: WorkspaceSessionCatalogQuery | null;
+    cursor?: string | null;
+    limit?: number | null;
+  },
+): Promise<WorkspaceSessionCatalogPage> {
+  return invoke<WorkspaceSessionCatalogPage>("list_project_related_sessions", {
+    workspaceId,
+    query: options?.query ?? null,
+    cursor: options?.cursor ?? null,
+    limit: options?.limit ?? null,
+  });
+}
+
+export async function listWorkspaceSessionArchiveEvidence(
+  workspaceId: string,
+): Promise<WorkspaceSessionArchiveEvidence> {
+  return invoke<WorkspaceSessionArchiveEvidence>(
+    "list_workspace_session_archive_evidence",
+    { workspaceId },
+  );
 }
 
 export async function getWorkspaceSessionProjectionSummary(

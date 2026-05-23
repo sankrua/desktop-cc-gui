@@ -11,6 +11,7 @@ import {
   listThreadTitles,
   listThreads,
   listWorkspaceSessions,
+  listWorkspaceSessionArchiveEvidence,
   renameThreadTitleKey,
   setThreadTitle,
 } from "../../../services/tauri";
@@ -37,6 +38,7 @@ vi.mock("../../../services/tauri", () => ({
   listGeminiSessions: vi.fn(),
   getOpenCodeSessionList: vi.fn(),
   listWorkspaceSessions: vi.fn(),
+  listWorkspaceSessionArchiveEvidence: vi.fn(),
   loadClaudeSession: vi.fn(),
   loadGeminiSession: vi.fn(),
   loadCodexSession: vi.fn(),
@@ -171,6 +173,11 @@ describe("useThreadActions sidebar listing timeout fallback", () => {
       nextCursor: null,
       partialSource: null,
     });
+    vi.mocked(listWorkspaceSessionArchiveEvidence).mockResolvedValue({
+      archivedAtBySessionId: {},
+      partialSource: null,
+      sourceStatuses: [],
+    });
     vi.mocked(listThreads).mockResolvedValue({
       result: { data: [], nextCursor: null },
     } as any);
@@ -262,6 +269,63 @@ describe("useThreadActions sidebar listing timeout fallback", () => {
     expect(ids).toContain("claude:cl-b");
     expect(ids).toContain("codex-1");
   }, 20_000);
+
+  it("keeps healthy codex snapshot when claude catalog evidence is degraded", async () => {
+    vi.mocked(listThreads).mockResolvedValue({
+      result: { data: [], nextCursor: null },
+    } as any);
+    vi.mocked(listWorkspaceSessions)
+      .mockResolvedValueOnce({
+        data: [
+          {
+            sessionId: "codex:snapshot",
+            workspaceId: "ws-1",
+            title: "Codex Snapshot",
+            engine: "codex",
+            updatedAt: 7000,
+            threadKind: "native",
+          },
+        ],
+        nextCursor: null,
+        partialSource: "claude-history-unavailable",
+        sourceStatuses: [
+          {
+            engine: "claude",
+            completeness: "partial",
+            reason: "claude-history-unavailable",
+          },
+        ],
+      } as any)
+      .mockRejectedValueOnce(new Error("catalog unavailable"));
+
+    const { result, dispatch } = renderActions({
+      threadsByWorkspace: { "ws-1": [] },
+    });
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
+    });
+    dispatch.mockClear();
+
+    await act(async () => {
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
+    });
+
+    const dispatched = getLatestSetThreadsDispatch(dispatch);
+    expect(dispatched).not.toBeNull();
+    expect(
+      dispatched!.threads.map((thread: ThreadSummary) => thread.id),
+    ).toContain("codex:snapshot");
+    expect(dispatched!.threads[0]).toMatchObject({
+      id: "codex:snapshot",
+      isDegraded: true,
+      degradedReason: "last-good-fallback",
+    });
+  });
 
   it("case 2: consecutive claude timeouts do not progressively drop more claude sessions", async () => {
     vi.mocked(listClaudeSessions).mockImplementation(NEVER_RESOLVES);

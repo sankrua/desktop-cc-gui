@@ -7,9 +7,8 @@ use super::{
     CLAUDE_ATTRIBUTION_STRICT_MATCH,
 };
 use crate::engine::claude_history_entries::{
-    classify_claude_history_entry, is_claude_control_plane_entry,
-    ClaudeHistoryEntryClassification, ClaudeHistoryHiddenReason, ClaudeLocalControlEventType,
-    CLAUDE_CONTROL_EVENT_TOOL_TYPE,
+    classify_claude_history_entry, is_claude_control_plane_entry, ClaudeHistoryEntryClassification,
+    ClaudeHistoryHiddenReason, ClaudeLocalControlEventType, CLAUDE_CONTROL_EVENT_TOOL_TYPE,
 };
 use crate::engine::EngineConfig;
 use serde_json::json;
@@ -73,7 +72,9 @@ async fn scan_session_source_file_marks_read_error_as_partial() {
 
     let outcome = scan_session_source_file(
         &session_path,
-        &[ClaudeSessionAttributionScope::workspace_path(workspace_path)],
+        &[ClaudeSessionAttributionScope::workspace_path(
+            workspace_path,
+        )],
         true,
     )
     .await;
@@ -213,8 +214,7 @@ async fn scan_session_source_file_returns_bounded_source_fact() {
 #[tokio::test]
 async fn scan_session_source_file_reports_unresolved_candidates() {
     let unique = Uuid::new_v4().to_string();
-    let temp_root =
-        std::env::temp_dir().join(format!("ccgui-claude-source-diagnostic-{}", unique));
+    let temp_root = std::env::temp_dir().join(format!("ccgui-claude-source-diagnostic-{}", unique));
     let base_dir = temp_root.join("claude-projects");
     let workspace_path = temp_root.join("workspace");
     let sibling_path = temp_root.join("sibling");
@@ -236,8 +236,7 @@ async fn scan_session_source_file_reports_unresolved_candidates() {
         })],
         "\n",
     );
-    let mismatched =
-        scan_session_source_file(&mismatched_path, &attribution_scopes, true).await;
+    let mismatched = scan_session_source_file(&mismatched_path, &attribution_scopes, true).await;
     let mismatched_fact = mismatched.fact.expect("project dir fallback fact");
     assert_eq!(
         mismatched_fact.attribution_reason.as_deref(),
@@ -258,8 +257,7 @@ async fn scan_session_source_file_reports_unresolved_candidates() {
         })],
         "\n",
     );
-    let missing_cwd =
-        scan_session_source_file(&missing_cwd_path, &attribution_scopes, false).await;
+    let missing_cwd = scan_session_source_file(&missing_cwd_path, &attribution_scopes, false).await;
     assert!(missing_cwd.fact.is_none());
     assert!(missing_cwd.diagnostics.iter().any(|diagnostic| {
         diagnostic.code == ClaudeSessionScanDiagnosticCode::MissingCwdWithoutFallback
@@ -279,8 +277,7 @@ async fn scan_session_source_file_reports_unresolved_candidates() {
 #[tokio::test]
 async fn scan_session_source_file_does_not_inline_large_payloads() {
     let unique = Uuid::new_v4().to_string();
-    let temp_root =
-        std::env::temp_dir().join(format!("ccgui-claude-large-source-fact-{}", unique));
+    let temp_root = std::env::temp_dir().join(format!("ccgui-claude-large-source-fact-{}", unique));
     let base_dir = temp_root.join("claude-projects");
     let workspace_path = temp_root.join("workspace");
     std::fs::create_dir_all(&workspace_path).expect("create workspace path");
@@ -544,8 +541,7 @@ async fn source_fact_cache_excludes_full_inline_payloads() {
 #[tokio::test]
 async fn source_fact_cache_corrupt_or_unavailable_falls_back_to_direct_scan() {
     let unique = Uuid::new_v4().to_string();
-    let temp_root =
-        std::env::temp_dir().join(format!("ccgui-claude-cache-fallback-{}", unique));
+    let temp_root = std::env::temp_dir().join(format!("ccgui-claude-cache-fallback-{}", unique));
     let base_dir = temp_root.join("claude-projects");
     let cache_dir = temp_root.join("source-fact-cache");
     let workspace_path = temp_root.join("workspace");
@@ -613,8 +609,7 @@ async fn source_fact_cache_corrupt_or_unavailable_falls_back_to_direct_scan() {
 #[tokio::test]
 async fn source_fact_cache_disabled_keeps_projection_facts_equivalent() {
     let unique = Uuid::new_v4().to_string();
-    let temp_root =
-        std::env::temp_dir().join(format!("ccgui-claude-cache-disabled-{}", unique));
+    let temp_root = std::env::temp_dir().join(format!("ccgui-claude-cache-disabled-{}", unique));
     let base_dir = temp_root.join("claude-projects");
     let cache_dir = temp_root.join("source-fact-cache");
     let workspace_path = temp_root.join("workspace");
@@ -883,14 +878,10 @@ async fn list_claude_sessions_uses_transcript_cwd_when_project_dir_does_not_matc
     let attribution_scopes = vec![ClaudeSessionAttributionScope::workspace_path(
         workspace_path.clone(),
     )];
-    let sessions = list_claude_sessions_from_base_dir(
-        &base_dir,
-        &workspace_path,
-        &attribution_scopes,
-        None,
-    )
-    .await
-    .expect("list claude sessions");
+    let sessions =
+        list_claude_sessions_from_base_dir(&base_dir, &workspace_path, &attribution_scopes, None)
+            .await
+            .expect("list claude sessions");
     let summary = sessions
         .iter()
         .find(|session| session.session_id == session_id)
@@ -955,14 +946,10 @@ async fn list_claude_sessions_uses_git_root_evidence_when_cwd_is_outside_workspa
         ClaudeSessionAttributionScope::workspace_path(workspace_path.clone()),
         ClaudeSessionAttributionScope::git_root(git_root.clone()),
     ];
-    let sessions = list_claude_sessions_from_base_dir(
-        &base_dir,
-        &workspace_path,
-        &attribution_scopes,
-        None,
-    )
-    .await
-    .expect("list claude sessions");
+    let sessions =
+        list_claude_sessions_from_base_dir(&base_dir, &workspace_path, &attribution_scopes, None)
+            .await
+            .expect("list claude sessions");
     let summary = sessions
         .iter()
         .find(|session| session.session_id == session_id)
@@ -1101,14 +1088,10 @@ async fn load_claude_session_formats_local_control_events_and_hides_internal_row
     let attribution_scopes = vec![ClaudeSessionAttributionScope::workspace_path(
         workspace_path.clone(),
     )];
-    let sessions = list_claude_sessions_from_base_dir(
-        &base_dir,
-        &workspace_path,
-        &attribution_scopes,
-        None,
-    )
-    .await
-    .expect("list claude sessions");
+    let sessions =
+        list_claude_sessions_from_base_dir(&base_dir, &workspace_path, &attribution_scopes, None)
+            .await
+            .expect("list claude sessions");
     let summary = sessions
         .iter()
         .find(|session| session.session_id == session_id)
@@ -1153,11 +1136,12 @@ async fn load_claude_session_formats_local_control_events_and_hides_internal_row
                 .and_then(serde_json::Value::as_str)
                 == Some("interrupted")
     }));
-    assert!(!result.messages.iter().any(|message| message
-        .text
-        .contains("<local-command-stdout>")
-        || message.text.contains("<command-name>")
-        || message.text == "No response requested."));
+    assert!(!result
+        .messages
+        .iter()
+        .any(|message| message.text.contains("<local-command-stdout>")
+            || message.text.contains("<command-name>")
+            || message.text == "No response requested."));
     assert!(result
         .messages
         .iter()

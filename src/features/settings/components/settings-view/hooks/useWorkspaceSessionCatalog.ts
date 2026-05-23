@@ -4,7 +4,7 @@ import {
   archiveWorkspaceSessions,
   deleteWorkspaceSessions,
   listGlobalCodexSessions,
-  listProjectRelatedCodexSessions,
+  listProjectRelatedSessions,
   listWorkspaceSessions,
   unarchiveWorkspaceSessions,
   type WorkspaceSessionBatchMutationResponse,
@@ -41,9 +41,18 @@ export type WorkspaceSessionCatalogMutationResponse = {
   results: WorkspaceSessionCatalogMutationResult[];
 };
 
+export type WorkspaceSessionCatalogPageLimitInfo = {
+  requestedLimit: number | null;
+  effectiveLimit: number | null;
+  limitCapped: boolean;
+};
+
 type WorkspaceSessionCatalogPageLike = {
   data?: WorkspaceSessionCatalogEntry[] | null;
   nextCursor?: string | null;
+  requestedLimit?: number | null;
+  effectiveLimit?: number | null;
+  limitCapped?: boolean | null;
   partialSource?: string | null;
 } | null;
 
@@ -107,11 +116,27 @@ function normalizeCatalogPage(response: WorkspaceSessionCatalogPageLike): {
   data: WorkspaceSessionCatalogEntry[];
   nextCursor: string | null;
   partialSource: string | null;
+  pageLimit: WorkspaceSessionCatalogPageLimitInfo;
 } {
+  const requestedLimit =
+    typeof response?.requestedLimit === "number" &&
+    Number.isFinite(response.requestedLimit)
+      ? Math.max(0, response.requestedLimit)
+      : null;
+  const effectiveLimit =
+    typeof response?.effectiveLimit === "number" &&
+    Number.isFinite(response.effectiveLimit)
+      ? Math.max(0, response.effectiveLimit)
+      : null;
   return {
     data: Array.isArray(response?.data) ? response.data : [],
     nextCursor: response?.nextCursor ?? null,
     partialSource: response?.partialSource ?? null,
+    pageLimit: {
+      requestedLimit,
+      effectiveLimit,
+      limitCapped: response?.limitCapped === true,
+    },
   };
 }
 
@@ -156,6 +181,12 @@ export function useWorkspaceSessionCatalog({
   const [entries, setEntries] = useState<WorkspaceSessionCatalogEntry[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [partialSource, setPartialSource] = useState<string | null>(null);
+  const [pageLimit, setPageLimit] =
+    useState<WorkspaceSessionCatalogPageLimitInfo>({
+      requestedLimit: null,
+      effectiveLimit: null,
+      limitCapped: false,
+    });
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -172,19 +203,15 @@ export function useWorkspaceSessionCatalog({
     async (pageMode: "replace" | "append", cursor?: string | null) => {
       const requestId = requestSeqRef.current + 1;
       requestSeqRef.current = requestId;
-      const relatedEngineFilteredOut =
-        mode === "project" &&
-        source === "related" &&
-        Boolean(query.engine) &&
-        query.engine !== "codex";
-      if (
-        !enabled ||
-        relatedEngineFilteredOut ||
-        (mode === "project" && !workspaceId)
-      ) {
+      if (!enabled || (mode === "project" && !workspaceId)) {
         setEntries(clearCatalogEntries);
         setNextCursor(null);
         setPartialSource(null);
+        setPageLimit({
+          requestedLimit: null,
+          effectiveLimit: null,
+          limitCapped: false,
+        });
         setError(null);
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -207,11 +234,8 @@ export function useWorkspaceSessionCatalog({
                 limit: SESSION_CATALOG_PAGE_SIZE,
               })
             : source === "related"
-              ? await listProjectRelatedCodexSessions(workspaceId!, {
-                  query: {
-                    ...query,
-                    engine: "codex",
-                  },
+              ? await listProjectRelatedSessions(workspaceId!, {
+                  query,
                   cursor: cursor ?? null,
                   limit: SESSION_CATALOG_PAGE_SIZE,
                 })
@@ -229,6 +253,7 @@ export function useWorkspaceSessionCatalog({
         );
         setNextCursor(page.nextCursor);
         setPartialSource(page.partialSource);
+        setPageLimit(page.pageLimit);
         setError(null);
       } catch (incomingError) {
         if (requestSeqRef.current !== requestId) {
@@ -239,6 +264,11 @@ export function useWorkspaceSessionCatalog({
           setEntries([]);
           setNextCursor(null);
           setPartialSource(null);
+          setPageLimit({
+            requestedLimit: null,
+            effectiveLimit: null,
+            limitCapped: false,
+          });
         }
         setError(message);
       } finally {
@@ -444,6 +474,7 @@ export function useWorkspaceSessionCatalog({
     entries,
     nextCursor,
     partialSource,
+    pageLimit,
     error,
     isLoading,
     isLoadingMore,

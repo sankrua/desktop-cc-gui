@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine as _};
 use serde::{Deserialize, Serialize};
 
 pub(crate) const SESSION_CATALOG_DEFAULT_LIMIT: usize = 50;
@@ -7,11 +8,13 @@ pub(crate) const SESSION_CATALOG_MAX_LIMIT: usize = 200;
 pub(crate) const SESSION_CATALOG_SCAN_LOOKAHEAD: usize = 1;
 pub(crate) const SESSION_CATALOG_ARCHIVE_TIMEOUT_MS: u64 = 1_500;
 pub(crate) const SESSION_CATALOG_CURSOR_PREFIX: &str = "offset:";
+pub(crate) const SESSION_CATALOG_STABLE_CURSOR_PREFIX: &str = "stable:";
 pub(crate) const SESSION_CATALOG_PARTIAL_CODEX: &str = "codex-history-unavailable";
 pub(crate) const SESSION_CATALOG_PARTIAL_CLAUDE: &str = "claude-history-unavailable";
 pub(crate) const SESSION_CATALOG_PARTIAL_CLAUDE_UNCERTAIN_EMPTY: &str = "claude-uncertain-empty";
 pub(crate) const SESSION_CATALOG_PARTIAL_GEMINI: &str = "gemini-history-unavailable";
 pub(crate) const SESSION_CATALOG_PARTIAL_OPENCODE: &str = "opencode-history-unavailable";
+pub(crate) const SESSION_CATALOG_PARTIAL_ARCHIVE_METADATA: &str = "archive-metadata-unavailable";
 pub(crate) const SESSION_CATALOG_UNASSIGNED_WORKSPACE_ID: &str = "__global_unassigned__";
 pub(crate) const SESSION_FOLDER_ROOT_ID: &str = "__root__";
 pub(crate) const SESSION_INCONSISTENCY_MISSING_ON_DISK: &str = "missing-on-disk";
@@ -154,6 +157,21 @@ pub(crate) struct WorkspaceSessionCatalogPage {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) next_cursor: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) requested_limit: Option<usize>,
+    pub(crate) effective_limit: usize,
+    #[serde(default)]
+    pub(crate) limit_capped: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) partial_source: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub(crate) source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct WorkspaceSessionArchiveEvidence {
+    pub(crate) archived_at_by_session_id: HashMap<String, i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) partial_source: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub(crate) source_statuses: Vec<WorkspaceSessionCatalogSourceStatus>,
@@ -269,6 +287,25 @@ pub(crate) struct WorkspaceScopeCatalogData {
 pub(crate) enum SessionCatalogScanMode {
     Bounded(usize),
     Exhaustive,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct SessionCatalogStableCursor {
+    pub(crate) version: u8,
+    pub(crate) updated_at: i64,
+    pub(crate) session_id: String,
+    pub(crate) workspace_id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) stable_session_key: Option<String>,
+    pub(crate) query_fingerprint: String,
+    pub(crate) offset_hint: usize,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum SessionCatalogCursor {
+    LegacyOffset(usize),
+    Stable(SessionCatalogStableCursor),
 }
 
 impl SessionCatalogScanMode {
@@ -439,18 +476,95 @@ pub(crate) fn parse_status_filter(value: Option<&str>) -> SessionCatalogStatusFi
     }
 }
 
-pub(crate) fn parse_catalog_cursor(cursor: Option<&str>) -> usize {
+fn normalize_cursor_query_component(value: Option<&str>, lowercase: bool) -> Option<String> {
+    let trimmed = value.map(str::trim).filter(|value| !value.is_empty())?;
+    if lowercase {
+        Some(trimmed.to_ascii_lowercase())
+    } else {
+        Some(trimmed.to_string())
+    }
+}
+
+pub(crate) fn catalog_query_fingerprint(query: &WorkspaceSessionCatalogQuery) -> String {
+    #[derive(Serialize)]
+    #[serde(rename_all = "camelCase")]
+    struct CursorQueryFingerprint {
+        keyword: Option<String>,
+        engine: Option<String>,
+        status: String,
+        folder_id: Option<String>,
+    }
+
+    let status = match parse_status_filter(query.status.as_deref()) {
+        SessionCatalogStatusFilter::Active => "active",
+        SessionCatalogStatusFilter::Archived => "archived",
+        SessionCatalogStatusFilter::All => "all",
+    }
+    .to_string();
+    let folder_id = normalize_cursor_query_component(query.folder_id.as_deref(), false)
+        .filter(|value| value != "__all__");
+    let payload = CursorQueryFingerprint {
+        keyword: normalize_cursor_query_component(query.keyword.as_deref(), true),
+        engine: normalize_cursor_query_component(query.engine.as_deref(), true),
+        status,
+        folder_id,
+    };
+    serde_json::to_string(&payload).unwrap_or_else(|_| "{}".to_string())
+}
+
+pub(crate) fn parse_catalog_cursor_state(cursor: Option<&str>) -> SessionCatalogCursor {
     let Some(raw_cursor) = cursor.map(str::trim).filter(|value| !value.is_empty()) else {
-        return 0;
+        return SessionCatalogCursor::LegacyOffset(0);
     };
     if let Some(raw_offset) = raw_cursor.strip_prefix(SESSION_CATALOG_CURSOR_PREFIX) {
-        return raw_offset.parse::<usize>().unwrap_or(0);
+        return SessionCatalogCursor::LegacyOffset(raw_offset.parse::<usize>().unwrap_or(0));
     }
-    raw_cursor.parse::<usize>().unwrap_or(0)
+    if let Some(raw_payload) = raw_cursor.strip_prefix(SESSION_CATALOG_STABLE_CURSOR_PREFIX) {
+        let decoded = URL_SAFE_NO_PAD.decode(raw_payload.as_bytes());
+        if let Ok(bytes) = decoded {
+            if let Ok(payload) = serde_json::from_slice::<SessionCatalogStableCursor>(&bytes) {
+                if payload.version == 1 {
+                    return SessionCatalogCursor::Stable(payload);
+                }
+            }
+        }
+        return SessionCatalogCursor::LegacyOffset(0);
+    }
+    SessionCatalogCursor::LegacyOffset(raw_cursor.parse::<usize>().unwrap_or(0))
+}
+
+pub(crate) fn parse_catalog_cursor(cursor: Option<&str>) -> usize {
+    match parse_catalog_cursor_state(cursor) {
+        SessionCatalogCursor::LegacyOffset(offset) => offset,
+        SessionCatalogCursor::Stable(payload) => payload.offset_hint,
+    }
 }
 
 pub(crate) fn build_catalog_cursor(offset: usize) -> String {
     format!("{SESSION_CATALOG_CURSOR_PREFIX}{offset}")
+}
+
+pub(crate) fn build_catalog_stable_cursor(
+    entry: &WorkspaceSessionCatalogEntry,
+    query: &WorkspaceSessionCatalogQuery,
+    offset_hint: usize,
+) -> String {
+    let payload = SessionCatalogStableCursor {
+        version: 1,
+        updated_at: entry.updated_at,
+        session_id: entry.session_id.clone(),
+        workspace_id: entry.workspace_id.clone(),
+        stable_session_key: entry.stable_session_key.clone(),
+        query_fingerprint: catalog_query_fingerprint(query),
+        offset_hint,
+    };
+    match serde_json::to_vec(&payload) {
+        Ok(bytes) => format!(
+            "{SESSION_CATALOG_STABLE_CURSOR_PREFIX}{}",
+            URL_SAFE_NO_PAD.encode(bytes)
+        ),
+        Err(_) => build_catalog_cursor(offset_hint),
+    }
 }
 
 pub(crate) fn normalize_catalog_page_limit(limit: Option<u32>) -> usize {

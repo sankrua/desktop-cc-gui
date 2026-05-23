@@ -40,14 +40,17 @@ import {
   resolveThreadListCursorForDisplay,
   type ProjectCatalogSessionSummary,
 } from "./useThreadActions.threadList";
-import type { ListWorkspaceSessionsService } from "./useThreadActionsSessionCatalog";
+import type {
+  ArchivedSessionMapResult,
+  ListWorkspaceSessionsService,
+} from "./useThreadActionsSessionCatalog";
 import type { ThreadAction, ThreadState } from "./useThreadsReducer";
 
 type UseLoadOlderThreadsForWorkspaceOptions = {
   activeThreadIdByWorkspace: ThreadState["activeThreadIdByWorkspace"];
   applySessionArchiveState: (
     summaries: ThreadSummary[],
-    archivedAtBySessionId: Map<string, number> | null,
+    archivedEvidence: ArchivedSessionMapResult | null,
   ) => ThreadSummary[];
   canListWorkspaceSessions: boolean;
   dispatch: Dispatch<ThreadAction>;
@@ -58,7 +61,7 @@ type UseLoadOlderThreadsForWorkspaceOptions = {
   listWorkspaceSessionsService: ListWorkspaceSessionsService | null;
   loadArchivedSessionMap: (
     workspaceId: string,
-  ) => Promise<Map<string, number> | null>;
+  ) => Promise<ArchivedSessionMapResult | null>;
   onDebug?: (entry: DebugEntry) => void;
   onThreadTitleMappingsLoaded?: (
     workspaceId: string,

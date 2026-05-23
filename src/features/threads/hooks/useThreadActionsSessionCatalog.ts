@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type {
+  WorkspaceSessionArchiveEvidence,
   WorkspaceSessionCatalogPage,
   WorkspaceSessionCatalogQuery,
   WorkspaceSessionCatalogSourceStatus,
@@ -21,54 +22,89 @@ export type ListWorkspaceSessionsService = (
   },
 ) => Promise<WorkspaceSessionCatalogPage>;
 
+export type ListWorkspaceSessionArchiveEvidenceService = (
+  workspaceId: string,
+) => Promise<WorkspaceSessionArchiveEvidence>;
+
+export type ArchivedSessionMapResult = {
+  archivedAtBySessionId: Map<string, number>;
+  partialSource: string | null;
+  sourceStatuses: WorkspaceSessionCatalogSourceStatus[];
+  isComplete: boolean;
+};
+
 type UseThreadActionsSessionCatalogOptions = {
   canListWorkspaceSessions: boolean;
   listWorkspaceSessionsService: ListWorkspaceSessionsService | null;
+  listWorkspaceSessionArchiveEvidenceService:
+    | ListWorkspaceSessionArchiveEvidenceService
+    | null;
 };
 
 export function useThreadActionsSessionCatalog({
   canListWorkspaceSessions,
   listWorkspaceSessionsService,
+  listWorkspaceSessionArchiveEvidenceService,
 }: UseThreadActionsSessionCatalogOptions) {
   const loadArchivedSessionMap = useCallback(
-    async (workspaceId: string): Promise<Map<string, number> | null> => {
-      if (!canListWorkspaceSessions || !listWorkspaceSessionsService) {
+    async (workspaceId: string): Promise<ArchivedSessionMapResult | null> => {
+      if (
+        !canListWorkspaceSessions ||
+        !listWorkspaceSessionArchiveEvidenceService
+      ) {
         return null;
       }
       try {
+        const response = await withTimeout(
+          listWorkspaceSessionArchiveEvidenceService(workspaceId),
+          CODEX_SESSION_CATALOG_FETCH_TIMEOUT_MS,
+        );
+        if (!response) {
+          return {
+            archivedAtBySessionId: new Map(),
+            partialSource: "session-catalog-archive-evidence-timeout",
+            sourceStatuses: [],
+            isComplete: false,
+          };
+        }
         const archivedAtBySessionId = new Map<string, number>();
-        let cursor: string | null = null;
-        const visitedCursors = new Set<string>();
-        do {
-          const currentCursor = cursor;
-          const cursorKey = currentCursor ?? "__root__";
-          if (visitedCursors.has(cursorKey)) {
-            break;
-          }
-          visitedCursors.add(cursorKey);
-          const response = await listWorkspaceSessionsService(workspaceId, {
-            query: { status: "all" },
-            cursor: currentCursor,
-            limit: SESSION_CATALOG_PAGE_SIZE,
-          });
-          response.data.forEach((entry) => {
-            const archivedAt =
-              typeof entry.archivedAt === "number" &&
-              Number.isFinite(entry.archivedAt)
-                ? Math.max(0, entry.archivedAt)
-                : 0;
-            if (archivedAt > 0) {
-              archivedAtBySessionId.set(entry.sessionId, archivedAt);
+        Object.entries(response.archivedAtBySessionId ?? {}).forEach(
+          ([sessionId, archivedAt]) => {
+            if (typeof archivedAt !== "number" || !Number.isFinite(archivedAt)) {
+              return;
             }
-          });
-          cursor = response.nextCursor ?? null;
-        } while (cursor);
-        return archivedAtBySessionId;
+            if (archivedAt > 0) {
+              archivedAtBySessionId.set(sessionId, archivedAt);
+            }
+          },
+        );
+        const sourceStatuses = Array.isArray(response.sourceStatuses)
+          ? response.sourceStatuses
+          : [];
+        const isComplete =
+          !response.partialSource &&
+          sourceStatuses.length > 0 &&
+          sourceStatuses.every(
+            (status) =>
+              status.completeness === "complete" ||
+              status.completeness === "authoritative_empty",
+          );
+        return {
+          archivedAtBySessionId,
+          partialSource: response.partialSource ?? null,
+          sourceStatuses,
+          isComplete,
+        };
       } catch {
-        return null;
+        return {
+          archivedAtBySessionId: new Map(),
+          partialSource: "session-catalog-archive-evidence-error",
+          sourceStatuses: [],
+          isComplete: false,
+        };
       }
     },
-    [canListWorkspaceSessions, listWorkspaceSessionsService],
+    [canListWorkspaceSessions, listWorkspaceSessionArchiveEvidenceService],
   );
 
   const loadActiveProjectCatalogSessions = useCallback(

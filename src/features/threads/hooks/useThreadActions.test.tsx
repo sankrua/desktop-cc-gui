@@ -11,6 +11,7 @@ import {
   connectWorkspace,
   getOpenCodeSessionList,
   listWorkspaceSessions,
+  listWorkspaceSessionArchiveEvidence,
   listClaudeSessions,
   listGeminiSessions,
   loadGeminiSession,
@@ -51,6 +52,7 @@ vi.mock("../../../services/tauri", () => ({
   listGeminiSessions: vi.fn(),
   getOpenCodeSessionList: vi.fn(),
   listWorkspaceSessions: vi.fn(),
+  listWorkspaceSessionArchiveEvidence: vi.fn(),
   loadClaudeSession: vi.fn(),
   loadGeminiSession: vi.fn(),
   loadCodexSession: vi.fn(),
@@ -109,6 +111,11 @@ describe("useThreadActions", () => {
       data: [],
       nextCursor: null,
       partialSource: null,
+    });
+    vi.mocked(listWorkspaceSessionArchiveEvidence).mockResolvedValue({
+      archivedAtBySessionId: {},
+      partialSource: null,
+      sourceStatuses: [],
     });
     vi.mocked(renameThreadTitleKey).mockResolvedValue(undefined);
     vi.mocked(setThreadTitle).mockResolvedValue("title");
@@ -1598,21 +1605,19 @@ describe("useThreadActions", () => {
         nextCursor: null,
       },
     });
-    vi.mocked(listWorkspaceSessions).mockResolvedValue({
-      data: [
+    vi.mocked(listWorkspaceSessionArchiveEvidence).mockResolvedValue({
+      archivedAtBySessionId: {
+        "thread-catalog-archived": 1710000000000,
+      },
+      partialSource: null,
+      sourceStatuses: [
         {
-          sessionId: "thread-catalog-archived",
-          workspaceId: "ws-1",
-          engine: "codex",
-          title: "Should hide from catalog",
-          updatedAt: 6100,
-          archivedAt: 1710000000000,
-          threadKind: "native",
-          sourceLabel: "cli/codex",
+          engine: "archive-metadata",
+          completeness: "complete",
+          scannedCandidates: 1,
+          scanCapReached: false,
         },
       ],
-      nextCursor: null,
-      partialSource: null,
     });
     vi.mocked(getThreadTimestamp).mockImplementation((thread) => {
       const value = (thread as Record<string, unknown>).updated_at as number;
@@ -1625,11 +1630,7 @@ describe("useThreadActions", () => {
       await result.current.listThreadsForWorkspace(workspace);
     });
 
-    expect(listWorkspaceSessions).toHaveBeenCalledWith("ws-1", {
-      query: { status: "all" },
-      cursor: null,
-      limit: 200,
-    });
+    expect(listWorkspaceSessionArchiveEvidence).toHaveBeenCalledWith("ws-1");
     expectSetThreadsDispatched(dispatch, "ws-1", [
       {
         id: "thread-visible",

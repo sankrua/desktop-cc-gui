@@ -4,7 +4,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   archiveWorkspaceSessions,
   listGlobalCodexSessions,
-  listProjectRelatedCodexSessions,
+  listProjectRelatedSessions,
   listWorkspaceSessions,
 } from "../../../../../services/tauri";
 import {
@@ -15,7 +15,7 @@ import {
 
 vi.mock("../../../../../services/tauri", () => ({
   listGlobalCodexSessions: vi.fn(),
-  listProjectRelatedCodexSessions: vi.fn(),
+  listProjectRelatedSessions: vi.fn(),
   listWorkspaceSessions: vi.fn(),
   archiveWorkspaceSessions: vi.fn(),
   unarchiveWorkspaceSessions: vi.fn(),
@@ -36,7 +36,7 @@ describe("useWorkspaceSessionCatalog", () => {
       nextCursor: null,
       partialSource: null,
     });
-    vi.mocked(listProjectRelatedCodexSessions).mockResolvedValue({
+    vi.mocked(listProjectRelatedSessions).mockResolvedValue({
       data: [],
       nextCursor: null,
       partialSource: null,
@@ -126,6 +126,44 @@ describe("useWorkspaceSessionCatalog", () => {
     expect(result.current.nextCursor).toBeNull();
     expect(result.current.error).toBeNull();
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it("exposes backend page-size cap evidence", async () => {
+    vi.mocked(listWorkspaceSessions).mockResolvedValueOnce({
+      data: [
+        {
+          sessionId: "codex:page-1",
+          workspaceId: "ws-1",
+          engine: "codex",
+          title: "Page item",
+          updatedAt: 1,
+          threadKind: "native",
+        },
+      ],
+      nextCursor: "stable:next",
+      requestedLimit: 999,
+      effectiveLimit: 200,
+      limitCapped: true,
+      partialSource: null,
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceSessionCatalog({
+        mode: "project",
+        workspaceId: "ws-1",
+        filters: DEFAULT_FILTERS,
+      }),
+    );
+
+    await waitFor(() => {
+      expect(result.current.entries).toHaveLength(1);
+    });
+    expect(result.current.nextCursor).toBe("stable:next");
+    expect(result.current.pageLimit).toEqual({
+      requestedLimit: 999,
+      effectiveLimit: 200,
+      limitCapped: true,
+    });
   });
 
   it("groups batch archive requests by owner workspace", async () => {
@@ -418,7 +456,7 @@ describe("useWorkspaceSessionCatalog", () => {
   });
 
   it("loads inferred related codex sessions for project mode", async () => {
-    vi.mocked(listProjectRelatedCodexSessions).mockResolvedValueOnce({
+    vi.mocked(listProjectRelatedSessions).mockResolvedValueOnce({
       data: [
         {
           sessionId: "global:related",
@@ -447,8 +485,8 @@ describe("useWorkspaceSessionCatalog", () => {
     );
 
     await waitFor(() => {
-      expect(listProjectRelatedCodexSessions).toHaveBeenCalledWith("ws-main", {
-        query: { keyword: null, engine: "codex", status: "active", folderId: null },
+      expect(listProjectRelatedSessions).toHaveBeenCalledWith("ws-main", {
+        query: { keyword: null, engine: null, status: "active", folderId: null },
         cursor: null,
         limit: 999,
       });
@@ -456,6 +494,53 @@ describe("useWorkspaceSessionCatalog", () => {
 
     await waitFor(() => {
       expect(result.current.entries).toHaveLength(1);
+    });
+  });
+
+  it("loads inferred related non-codex sessions without frontend filtering", async () => {
+    vi.mocked(listProjectRelatedSessions).mockResolvedValueOnce({
+      data: [
+        {
+          sessionId: "claude:related",
+          workspaceId: "ws-owner",
+          matchedWorkspaceId: "ws-main",
+          attributionStatus: "inferred-related",
+          attributionReason: "shared-worktree-family",
+          attributionConfidence: "high",
+          engine: "claude",
+          title: "Related Claude session",
+          updatedAt: 100,
+          threadKind: "native",
+        },
+      ],
+      nextCursor: null,
+      partialSource: null,
+    });
+
+    const { result } = renderHook(() =>
+      useWorkspaceSessionCatalog({
+        mode: "project",
+        workspaceId: "ws-main",
+        filters: { ...DEFAULT_FILTERS, engine: "claude" },
+        source: "related",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(listProjectRelatedSessions).toHaveBeenCalledWith("ws-main", {
+        query: {
+          keyword: null,
+          engine: "claude",
+          status: "active",
+          folderId: null,
+        },
+        cursor: null,
+        limit: 999,
+      });
+    });
+
+    await waitFor(() => {
+      expect(result.current.entries[0]?.engine).toBe("claude");
     });
   });
 });
