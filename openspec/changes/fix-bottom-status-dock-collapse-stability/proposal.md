@@ -1,3 +1,11 @@
+## 2026-05-23 Proposal Refresh
+
+- **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
+- **Task state**: 11/11 checked; status = Completed / pending verify-archive.
+- **Code/document evidence**: `StatusPanel`/`CheckpointPanel` 已有 checkpoint compact/full projection、subagent aggregation、policy audit 与 status-panel CSS tokenized checkpoint sizing。
+- **Next action**: 归档前确认 status-panel focused tests 与 manual dock collapse smoke。
+- **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
+
 ## Why
 
 底部 `dock` 状态面板的折叠语义不稳定：某些状态下折叠会被上层布局误判为整块面板不需要挂载，导致 `用户对话 / 结果` tab bar 直接消失。与此同时，Composer 工具栏里仍保留一个控制同一底部状态面板的 layers 图标，和 dock 自身折叠按钮重复，增加了交互歧义。

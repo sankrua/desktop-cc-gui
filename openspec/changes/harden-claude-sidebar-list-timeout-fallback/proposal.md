@@ -1,5 +1,13 @@
 # Proposal: Harden Claude Sidebar List Timeout Fallback
 
+## 2026-05-23 Proposal Refresh
+
+- **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
+- **Task state**: 25/30 checked; status = In progress / implementation mostly complete, final gates open.
+- **Code/document evidence**: 第一阶段 timeout/reject fallback、successful-empty regression、source completeness/status、child-first attribution tests 与 owner-aware catalog merge 已写入；仍未完成 `npm run typecheck`、manual QA 与 archive prep。
+- **Next action**: 保持 active；先跑 typecheck/focused sidebar tests，补 manual QA 记录，再决定是否归档或并入 unified catalog closure。
+- **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
+
 ## Summary
 
 工作区左侧栏在应用启动后约 30 秒会出现 Claude 历史会话从列表中"消失"的现象：首屏 30 秒内可见完整列表，随后突然只剩下少量（典型为 1 条 Codex 会话），点击刷新按钮无法恢复，关闭重开能稳定复现。同一时刻，工作区"会话雷达"仍能看到这些 Claude 会话，证明 native session truth 没有丢，丢的是**侧边栏列表合并链路**。

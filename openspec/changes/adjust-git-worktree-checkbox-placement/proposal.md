@@ -1,3 +1,11 @@
+## 2026-05-23 Proposal Refresh
+
+- **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
+- **Task state**: 15/15 checked; status = Completed / pending verify-archive.
+- **Code/document evidence**: Git worktree/diff tree 路径已有 trailing `InclusionToggle`、shared tree compaction、dotted folder tests 与 worktree row selection CSS。
+- **Next action**: 归档前确认 Git worktree focused Vitest、typecheck、lint/large-file gate 与 strict validation。
+- **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
+
 ## Why
 
 Git worktree 文件列表当前把 commit scope 复选框放在行首，视觉上抢占文件状态与文件名的阅读路径；树形视图的 root/folder 行也渲染前置复选框，导致平铺与树形选择入口不统一。将文件级复选框统一移到文件行右侧，并移除目录行前置复选框，可以让文件识别信息先出现，同时保留提交范围选择能力。

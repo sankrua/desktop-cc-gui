@@ -1,3 +1,11 @@
+## 2026-05-23 Proposal Refresh
+
+- **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
+- **Task state**: 55/55 checked; status = Completed / pending verify-archive.
+- **Code/document evidence**: Claude source-fact cache/tests、`WorkspaceSessionCatalog*` types, source completeness, stable key, owner evidence, listWorkspaceSessions mapping and Settings display-window/page-size adjustments are present. Control-plane `codex app-server` filter has targeted tests.
+- **Next action**: 归档前补 catalog projection verification，确认 no raw transcript cache、owner routing、source completeness 与 UI surfaces 一致。
+- **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
+
 ## Why
 
 右侧工作区会话列表里 `Claude Code` 会话仍会被“吞掉”，而 `Codex` 基本正常，说明问题不是单纯的 UI 渲染 bug，而是 Claude 会话读取、归属、catalog projection、前端合并与命名之间缺少单一事实源。
