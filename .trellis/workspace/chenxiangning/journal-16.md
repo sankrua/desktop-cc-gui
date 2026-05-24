@@ -156,3 +156,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 566: 补全 v0.5.2 变更日志
+
+**Date**: 2026-05-24
+**Task**: 补全 v0.5.2 变更日志
+**Branch**: `feature/v0.5.2`
+
+### Summary
+
+按 v0.5.1..HEAD 审计真实提交，补全 CHANGELOG.md 顶部 v0.5.2 中英双语发布说明，覆盖 session catalog、Sidebar full-catalog、native session isolation、Git 文件树、底部 dock、runtime evidence gate 与性能脚本修复。验证 git diff --check 通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `aa0c405b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
