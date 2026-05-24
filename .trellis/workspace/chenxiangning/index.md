@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-16.md`
-- **Total Sessions**: 566
+- **Total Sessions**: 567
 - **Last Active**: 2026-05-24
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-16.md` | ~191 | Active |
+| `journal-16.md` | ~257 | Active |
 | `journal-15.md` | ~1996 | Archived |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
@@ -44,6 +44,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 567 | 2026-05-24 | 重构文件打开渲染调度收口 | `8a24eabb` | `feature/v0.5.2` |
 | 566 | 2026-05-24 | 补全 v0.5.2 变更日志 | `aa0c405b` | `feature/v0.5.2` |
 | 565 | 2026-05-24 | 修复 branding gate 临时目录前缀 | `99a8234d` | `feature/v0.5.2` |
 | 564 | 2026-05-24 | 性能证据门禁与稳定性校准收口 | `e13e5e73` | `feature/v0.5.2` |

@@ -189,3 +189,69 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 567: 重构文件打开渲染调度收口
+
+**Date**: 2026-05-24
+**Task**: 重构文件打开渲染调度收口
+**Branch**: `feature/v0.5.2`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+完成 OpenSpec change `refactor-file-open-rendering-scheduler` 的实现、review 补全与提交收口。
+
+## Key Changes
+
+- 引入 `FileDocumentSnapshot`，集中维护 `contentHash`、`byteLength`、`lineCount`、`snapshotVersion` 与 bounded line access。
+- 将大文件 code preview 改为 viewport-bounded rendering，并保留 line selection、Git marker、AI annotation、scroll-to-line 等交互语义。
+- 将大目录文件树改为 visible row projection + `@tanstack/react-virtual`，小目录继续走原路径以降低风险。
+- 引入 `FileRenderPressure`，engine streaming + editor split 下推迟非紧急 Markdown progressive、heavy block 和 external refresh work。
+- 修复外部文件同步 debounce/snapshot mismatch 边界，避免 clean disk update 被静默丢弃。
+- 编辑态 line range 改为 local-first + delayed global publish，减少鼠标点击不跟手。
+- 为 hover preview 和 structured preview 增加 deterministic budget，避免 secondary surfaces 重新触发全文 split/highlight/parse。
+- 回写 OpenSpec proposal/design/spec/tasks/evidence，并更新 runtime evidence gates。
+
+## Validation
+
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- Focused file Vitest: 10 files / 138 tests passed.
+- `npm run check:large-files` passed, fail-scope found=0.
+- `npm run check:large-files:near-threshold` passed with existing watch-scope warnings only.
+- `npm run check:large-files:gate` passed, found=0.
+- `node --test scripts/check-large-files.test.mjs` passed.
+- `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs` passed.
+- `npm run check:heavy-test-noise` passed: 533 Vitest files, repo-owned act/stdout/stderr noise all 0.
+- `npm run check:runtime-evidence-gates` passed and regenerated evidence reports.
+- `openspec validate refactor-file-open-rendering-scheduler --strict --no-interactive` passed.
+
+## Platform Notes
+
+- macOS local validation completed in the current workspace.
+- Windows compatibility is covered by path/newline/parser tests and GitHub workflow matrix definitions, but native Windows app smoke was not executed locally.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8a24eabb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
