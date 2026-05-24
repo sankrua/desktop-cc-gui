@@ -90,3 +90,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 564: 性能证据门禁与稳定性校准收口
+
+**Date**: 2026-05-24
+**Task**: 性能证据门禁与稳定性校准收口
+**Branch**: `feature/v0.5.2`
+
+### Summary
+
+新增运行态证据门禁、浏览器长列表滚动证据、边界单测与 Messages timeline 虚拟列表 teardown 稳定性修复；OpenSpec 提案/验证回写并通过 typecheck、OpenSpec、large-file、heavy-test-noise 等门禁。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e13e5e73` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

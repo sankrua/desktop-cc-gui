@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-16.md`
-- **Total Sessions**: 563
+- **Total Sessions**: 564
 - **Last Active**: 2026-05-24
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-16.md` | ~92 | Active |
+| `journal-16.md` | ~125 | Active |
 | `journal-15.md` | ~1996 | Archived |
 | `journal-14.md` | ~1969 | Archived |
 | `journal-13.md` | ~1947 | Archived |
@@ -44,6 +44,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 564 | 2026-05-24 | 性能证据门禁与稳定性校准收口 | `e13e5e73` | `feature/v0.5.2` |
 | 563 | 2026-05-24 | 修复 Claude 第二轮会话白板恢复 | `bcf0537b` | `feature/v0.5.2` |
 | 562 | 2026-05-24 | 校准会话管理重构收尾状态 | `98e1ff46` | `feature/v0.5.2` |
 | 561 | 2026-05-24 | 收紧会话恢复与目录全量水合 | `b7083ebf` | `feature/v0.5.2` |
