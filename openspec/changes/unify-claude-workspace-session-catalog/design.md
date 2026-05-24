@@ -295,7 +295,7 @@ Claude JSONL
 engine + physicalPath + fileMtime + fileSize + scannerVersion + schemaVersion
 ```
 
-如需支持配置切换，cache namespace 还应包含 effective Claude home 或 engine config fingerprint。  
+如需支持配置切换，cache namespace 还应包含 effective Claude home 或 engine config fingerprint。
 如果未来 cache 记录 owner evidence，也必须带 `ownerResolverVersion` 与 workspace graph fingerprint；本轮更保守，默认不持久化最终 owner。
 
 #### Cache 状态语义
@@ -311,7 +311,7 @@ engine + physicalPath + fileMtime + fileSize + scannerVersion + schemaVersion
 
 #### Cache 文件边界
 
-cache 是派生状态，建议存放在 app data / runtime cache 目录，而不是 OpenSpec、Trellis、workspace metadata 或 `.omx` 事实源中。  
+cache 是派生状态，建议存放在 app data / runtime cache 目录，而不是 OpenSpec、Trellis、workspace metadata 或 `.omx` 事实源中。
 cache 写入必须是 best-effort：写失败不能阻止 catalog 返回 direct scan 结果。
 
 ## Risks / Trade-offs

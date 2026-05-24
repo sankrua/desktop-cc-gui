@@ -1,7 +1,7 @@
 # Project Context
 
 - Type: OpenSpec Workspace
-- Updated At: 2026-05-23T00:00:00+08:00
+- Updated At: 2026-05-24T00:00:00+08:00
 - Scope: governance snapshot for the current `mossx` repository workspace
 
 ## Domain
@@ -13,7 +13,7 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 - Spec artifacts: `openspec/specs/*`
 - Change workflow artifacts: `openspec/changes/<change-id>/{proposal,design,tasks,verification}.md`
 - Archive: `openspec/changes/archive/*`
-- Current workspace state: active changes = `28`, archive changes = `318`, main specs = `271`
+- Current workspace state: active changes = `30`, archive changes = `318`, main specs = `271`
 
 ## Entry Surfaces
 
@@ -41,21 +41,22 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 
 ## Active Changes
 
-### Branch Calibration Snapshot (2026-05-23)
+### Branch Calibration Snapshot (2026-05-24)
 
-Current implementation branch for this workspace snapshot is `feature/v0.5.2`. This refresh is documentation-only: it updates OpenSpec proposal/project documents against current code facts and does not modify implementation code.
+Current implementation branch for this workspace snapshot is `feature/v0.5.2`. This refresh reconciles OpenSpec proposal/project documents against current code facts and records a small hygiene cleanup for stale comments / whitespace; it does not change runtime behavior code.
 
-Strict OpenSpec validation before this refresh passed: `openspec validate --all --strict --no-interactive` reported 299 passed, 0 failed.
+Strict OpenSpec validation before the original 2026-05-23 refresh passed: `openspec validate --all --strict --no-interactive` reported 299 passed, 0 failed.
 
 Detailed proposal triage lives in `openspec/docs/proposal-refresh-2026-05-23.md`.
+Session-management closeout and manual-QA qualifiers live in `openspec/docs/session-management-refactor-closeout-2026-05-24.md`.
 
 ### Inventory
 
-- Active changes: `28`
+- Active changes: `30`
 - Archive changes: `318`
 - Main specs: `271`
-- Completed task sets still active: `26`
-- In-progress task sets: `2`
+- Completed task sets still active: `29`
+- In-progress task sets: `1`
 
 ### In-Progress Changes
 
@@ -63,10 +64,6 @@ Detailed proposal triage lives in `openspec/docs/proposal-refresh-2026-05-23.md`
   - Task state: `0/7`.
   - Current code fact: existing `codex_doctor`, `codexBin`, `codexArgs`, and workspace override fields exist; `codex_preview_launch_profile` / Launch Configuration preview/editor contract is not implemented.
   - Action: keep active for implementation.
-- `harden-claude-sidebar-list-timeout-fallback`
-  - Task state: `26/30`.
-  - Current code fact: timeout/reject fallback, successful-empty regression, source completeness, child-first attribution, and owner-aware catalog merge evidence exist. 2026-05-23 automation gates are green.
-  - Action: keep active until real dev build manual QA is recorded and the PR is merged for archive prep.
 
 ### Deferred Completed Proposals
 
@@ -87,7 +84,9 @@ Detailed proposal triage lives in `openspec/docs/proposal-refresh-2026-05-23.md`
 - `fix-bottom-status-dock-collapse-stability`
 - `fix-codex-deferred-completion-after-assistant-ingress`
 - `fix-codex-empty-draft-stale-thread-auto-replay`
+- `fix-stale-thread-recovery-confidence-gates`
 - `fix-markdown-preview-auto-refresh`
+- `harden-claude-sidebar-list-timeout-fallback`
 - `improve-email-mail-session-list-controls`
 - `integrate-openspec-trellis-bridge-into-status-panel`
 - `optimize-bundle-chunking`
@@ -100,11 +99,12 @@ Detailed proposal triage lives in `openspec/docs/proposal-refresh-2026-05-23.md`
 - `stabilize-core-runtime-and-realtime-contracts`
 - `stabilize-file-markdown-preview-render-architecture`
 - `stabilize-markdown-preview-awareness-and-large-rendering`
+- `stabilize-session-management-truth-boundaries`
 - `unify-claude-workspace-session-catalog`
 
 These changes have fully checked task lists but remain in `openspec/changes/` rather than archive. Treat the next step as closure hygiene: update verification artifacts, preserve platform/manual-test qualifiers, sync main specs only where needed, then archive.
 
-### Code Fact Snapshot (2026-05-23)
+### Code Fact Snapshot (2026-05-24)
 
 Current-branch code inventory shows proposal substrate in:
 
@@ -112,10 +112,15 @@ Current-branch code inventory shows proposal substrate in:
 - Markdown preview stability/math/rendering: `src/features/files/components/FileMarkdownPreview.tsx`, `src/features/files/utils/fileMarkdownDocument.ts`, `src/features/files/hooks/useFileExternalSync.ts`, `src/features/markdown/markdownMath.ts`.
 - Governance/status panel: `src/features/status-panel/components/StatusPanel.tsx`, `src/features/status-panel/components/CheckpointPanel.tsx`, `src/features/governance/evidence/*`, `scripts/check-governance-evidence-bridge.mjs`, `scripts/check-agent-domain-event-adoption.mjs`.
 - Workspace session catalog: `src-tauri/src/session_management*.rs`, `src-tauri/src/engine/claude_history_inline_tests.rs`, `src/services/tauri/sessionManagement.ts`, `src/services/tauri.test.ts`.
+- Thread recovery and sidebar catalog hydration: `src/features/threads/hooks/useThreadActions*.ts*`, `src/app-shell-parts/useWorkspaceThreadListHydration.ts`, `src/features/threads/utils/threadStorage.ts`, `src/features/threads/utils/streamLatencyDiagnostics.ts`.
 - Runtime/realtime/perf gates: `src/features/threads/contracts/realtimeEventBatcher.ts`, `src/features/threads/contracts/realtimeReplayHarness.ts`, `scripts/realtime-perf-report.ts`, `vite.config.ts`, `scripts/check-bundle-chunking.mjs`.
 - Composer/editor surfaces: `src/features/composer/components/ChatInputBox/*`, `src/app-shell-parts/threadEditorPreservation.ts`, `src/features/layout/components/DesktopLayout.tsx`.
 
 This snapshot is evidence-oriented. It does not claim full product QA for each change; archive notes must record the exact focused tests, manual checks, and skipped/platform qualifiers.
+
+2026-05-24 qualifier: local dev-build manual QA for the affected Claude Sidebar / Session Management flows is recorded as temporarily passing, but Windows + Claude manual QA is not covered in this environment. Do not convert that platform gap into a passing claim during archive.
+
+Compatibility boundary: `listClaudeSessions`, `listProjectRelatedCodexSessions`, legacy bare-session metadata lookup, and legacy cursor parsing remain intentional compatibility / diagnostic paths. They are not the Sidebar membership truth source and should not be deleted as unused without a dedicated compatibility-removal change.
 
 ## Namespace Policy
 
@@ -159,7 +164,8 @@ This snapshot is evidence-oriented. It does not claim full product QA for each c
 
 ## Update History
 
-- 2026-05-23: Refreshed active proposal inventory against `feature/v0.5.2` without code changes. Current workspace counts are active=28, archive=318, specs=271. Added `openspec/docs/proposal-refresh-2026-05-23.md` and injected 2026-05-23 proposal refresh notes into active proposal docs. Marked `add-codex-structured-launch-profile` and `harden-claude-sidebar-list-timeout-fallback` as the only in-progress active changes; 26 task-complete changes now need verification/archive closure rather than broad implementation.
+- 2026-05-24: Recalibrated session-management and stale-thread recovery proposals after code/proposal audit. Workspace counts are now active=30, archive=318, specs=271; only `add-codex-structured-launch-profile` remains in-progress. Recorded local manual QA qualifiers and the missing Windows coverage boundary in `openspec/docs/session-management-refactor-closeout-2026-05-24.md`; retained compatibility APIs as intentional compatibility / diagnostic paths rather than dead code.
+- 2026-05-23: Refreshed active proposal inventory against `feature/v0.5.2` without code changes. Historical snapshot before the 2026-05-24 calibration: active changes 28, archive 318, specs 271. Added `openspec/docs/proposal-refresh-2026-05-23.md` and injected 2026-05-23 proposal refresh notes into active proposal docs. At that time `add-codex-structured-launch-profile` and `harden-claude-sidebar-list-timeout-fallback` were the only in-progress active changes; this row is superseded by the 2026-05-24 update above.
 - 2026-05-20: Added active change `advance-harness-governance-to-90` to coordinate the remaining harness governance readiness work. Calibrated the current state as first-slice foundation-ready rather than fully closed: evidence bridge, policy chain, audit surface, event runtime, batching, virtualization, chunking, and one hub split exist, but live snapshot injection, artifact-backed gate evidence, first runtime domain-event adoption, browser scroll evidence, and webview timing evidence remain open. Refreshed inventory to active=12, archive=316, specs=269.
 - 2026-05-20: Upgraded `advance-harness-governance-to-90` from a 90% readiness floor to a 95%-99% governance-layer readiness plan. Added release-grade requirements for evidence provenance, deterministic replay, recovery behavior, operator handoff, Windows/macOS/Linux evidence, and sync/archive closure while preserving the existing change id for OpenSpec continuity.
 - 2026-05-20: Hardened `advance-harness-governance-to-90` after production-grade review by removing a stale duplicate execution summary from `design.md`, adding explicit S1 `StatusPanel` hook/useMemo ordering constraints, requiring `check:agent-domain-event-adoption`, tightening consumed evidence provenance to MUST semantics, and defining per-platform implementation-evidence rows for 99% claims.

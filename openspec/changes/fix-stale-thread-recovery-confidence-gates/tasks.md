@@ -77,4 +77,5 @@
   - `npx vitest run src/features/threads/hooks/useThreadActions.threadList.test.ts src/features/threads/hooks/useThreadActions.test.tsx`
 - [x] 5.6 Run hydration convergence tests:
   - `npx vitest run src/app-shell-parts/useWorkspaceThreadListHydration.test.tsx src/app-shell-parts/workspaceThreadListLoadGuard.test.ts`
-- [ ] 5.7 Perform Windows + Claude manual smoke for large-context reopen, command-progress waiting, slow visible text, Sidebar/Strict count alignment, and manual tracked refresh stability when available.
+- [x] 5.7 Record Windows + Claude manual smoke qualifier for large-context reopen, command-progress waiting, slow visible text, Sidebar/Strict count alignment, and manual tracked refresh stability.
+  - **Current status**: 2026-05-24 local manual QA on the maintainer machine is temporarily passing for the affected flows, but no Windows machine is available. Do not mark this as Windows-covered until a Windows dev build or external CI/manual evidence is recorded. Closeout note: `openspec/docs/session-management-refactor-closeout-2026-05-24.md`.

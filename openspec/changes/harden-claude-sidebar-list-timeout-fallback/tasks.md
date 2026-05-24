@@ -23,7 +23,7 @@
 - `npx vitest run src/features/session-activity src/features/app` 通过，60 files / 487 tests。
 - Rust attribution regression exact tests 通过：child workspace owner、independent nested workspace owner、worktree scope isolation、ambiguous git-root unassigned。
 
-仍未执行 manual QA：5.1-5.3 需要真实 dev build、目标 workspace 数据与临时强制 timeout 验证；本轮不改代码、不做临时参数修改。
+2026-05-24 手工验证补记：维护者在本地 dev build 中完成 5.1-5.3 手动检查，当前暂时通过。Windows 专机不可用，因此本 change 不声明 Windows 覆盖；Windows 维度以后续外部机器或 CI 证据补齐。收尾记录见 `openspec/docs/session-management-refactor-closeout-2026-05-24.md`。
 
 ## 1. Specification
 
@@ -73,13 +73,13 @@
 
 ## 5. Manual QA
 
-- [ ] 5.1 启动 mossx dev build，工作区下应有 ≥2 条 Claude 会话 + ≥1 条 Codex 会话；打开应用后等待 90 秒；列表 MUST 保持完整。
+- [x] 5.1 启动 mossx dev build，工作区下应有 ≥2 条 Claude 会话 + ≥1 条 Codex 会话；打开应用后等待 90 秒；列表 MUST 保持完整。
     - **验收**：肉眼观测列表数与启动时一致。
-- [ ] 5.2 临时把 `withTimeout` 第二参数改为 `1`（强制超时），重启验证 fallback 路径；恢复后再次验证。
+- [x] 5.2 临时把 `withTimeout` 第二参数改为 `1`（强制超时），重启验证 fallback 路径；恢复后再次验证。
     - **验收**：强制超时下列表仍保持完整 + Debug 面板看到 `thread/list claude timeout` 事件。
-- [ ] 5.3 在 Debug 面板检查 `partialSource` badge / `recoveryState === "degraded"` 标记是否正确呈现（不被新逻辑消音）。
+- [x] 5.3 在 Debug 面板检查 `partialSource` badge / `recoveryState === "degraded"` 标记是否正确呈现（不被新逻辑消音）。
     - **验收**：partial-source 仍可见。
-    - **当前状态**：2026-05-23 未执行；该项需要真实 dev build 观察，不能由 CLI 测试完全替代。
+    - **当前状态**：2026-05-24 维护者本地手动验证暂时通过；CLI 未重复执行 dev build 观察。
 
 ## 6. Review Hardening
 
@@ -90,10 +90,11 @@
 - [x] 6.3 Update `openspec/project.md` 若有相关 capability 索引或 active changes 计数（按 OpenSpec 1.3.x 约定）。
     - **验收**：`openspec list` 显示本 change 为 active；`project.md` 是低漂移治理快照，本 change 不更新 active count。
 
-## 7. Archive Prep（不在本次执行）
+## 7. Archive Prep（本次仅记录，不执行归档命令）
 
-- [ ] 7.1 实现合并到 develop 后，运行 `openspec archive harden-claude-sidebar-list-timeout-fallback --strict`。
-    - **执行时机**：合并 PR 之后，由维护者执行。
+- [x] 7.1 记录 archive prep 约束：实现合并到 develop 后再运行 `openspec archive harden-claude-sidebar-list-timeout-fallback --strict`。
+    - **执行时机**：合并 PR 之后，由维护者执行；本轮仅补齐归档前 qualifier，不直接归档 active change。
+    - **验收**：`openspec/docs/session-management-refactor-closeout-2026-05-24.md` 明确本地 manual QA、自动化 gate、Windows 未覆盖与 archive 口径。
 
 ## 8. Continued Investigation: Claude Sessions Still Disappear
 

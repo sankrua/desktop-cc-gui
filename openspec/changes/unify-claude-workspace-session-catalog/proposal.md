@@ -38,7 +38,7 @@
 | Frontend surfaces | 展示 projection、叠加 runtime state、处理 continuity | 不能重新实现 workspace membership 判断 |
 | Source-fact cache | 缓存 transcript bounded facts、fingerprint 与 scanner diagnostics | 不能缓存最终 workspace membership truth |
 
-因此新设计边界是：**后端 catalog 决定“谁属于当前 workspace projection”；前端只决定“怎么展示这个 projection”。**  
+因此新设计边界是：**后端 catalog 决定“谁属于当前 workspace projection”；前端只决定“怎么展示这个 projection”。**
 旧设计的问题是 Sidebar 同时信任 native Claude list、workspace catalog、last-good cache 与局部 title fallback，导致任意一条链路返回成功空结果时，都可能把真实 Claude 会话吞掉。
 
 ## 新旧设计差异
@@ -80,7 +80,7 @@ cache validation
   -> bounded rebuild
 ```
 
-核心原则：**C 只加速 facts 读取，不替代 B 的 membership contract。**  
+核心原则：**C 只加速 facts 读取，不替代 B 的 membership contract。**
 缓存命中只能跳过重复 JSONL summary parsing；不能跳过 ownership resolver、archive/folder overlay、strict projection、source completeness 合并。
 
 ## What Changes

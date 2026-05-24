@@ -1,11 +1,11 @@
 # Proposal: Harden Claude Sidebar List Timeout Fallback
 
-## 2026-05-23 Proposal Refresh
+## 2026-05-23 Proposal Refresh / 2026-05-24 Calibration
 
 - **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.
-- **Task state**: 26/30 checked; status = In progress / automation gates closed, manual QA and post-merge archive remain open.
-- **Code/document evidence**: 第一阶段 timeout/reject fallback、successful-empty regression、source completeness/status、child-first attribution tests 与 owner-aware catalog merge 已写入；2026-05-23 `npm run typecheck`、focused sidebar tests、session-activity/app 回归与 Rust attribution exact tests 均通过。
-- **Next action**: 保持 active；补真实 dev build manual QA 记录，合并 PR 后再执行 archive prep。
+- **Task state**: 30/30 checked after the 2026-05-24 calibration; status = Completed / active until archive.
+- **Code/document evidence**: 第一阶段 timeout/reject fallback、successful-empty regression、source completeness/status、child-first attribution tests 与 owner-aware catalog merge 已写入；2026-05-23 `npm run typecheck`、focused sidebar tests、session-activity/app 回归与 Rust attribution exact tests 均通过。2026-05-24 已补本地 dev build manual QA 记录。
+- **Next action**: 合并 PR 后执行 archive prep；Windows 覆盖仍需外部 Windows dev build、CI artifact 或明确手工记录补证。
 - **Validation note**: `openspec validate --all --strict --no-interactive` passed 299 items in this documentation refresh.
 
 ## Summary
@@ -42,6 +42,8 @@
 这两个现象不应被解释为第一阶段 timeout fallback 完全未做；更准确的判断是：原 timeout / reject 路径已止血，但剩余复现很可能进入了更深的 listing successful-empty、catalog projection、archive/shared filtering、request race，或 Claude session attribution / ownership 漂移路径。
 
 因此，本 change 继续扩展为第二阶段 hardening：保持第一阶段修复不回退，同时补齐 session 消失与子文件夹归属漂移的可执行契约。
+
+2026-05-24 校准结论：第二阶段 hardening 已有代码、自动化测试与本地手工验证记录；本 change 保持 active 仅因为尚未执行 archive 命令，以及 Windows 平台证据需要后续外部机器或 CI 补齐。
 
 ## Problem
 
