@@ -123,3 +123,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 565: 修复 branding gate 临时目录前缀
+
+**Date**: 2026-05-24
+**Task**: 修复 branding gate 临时目录前缀
+**Branch**: `feature/v0.5.2`
+
+### Summary
+
+修复 scripts/perf-long-list-browser-scroll.mjs 中遗留 mossx 临时目录前缀导致 check:branding 失败的问题；将前缀改为 ccgui-long-list-scroll-，保持 branding gate 严格性。验证通过：npm run check:branding；npm run doctor:win。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `99a8234d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
