@@ -48,6 +48,7 @@
 - [x] 8.2 [P1] Propagate explicit delete tombstones from Settings mutations to workspace thread refresh; input: per-entry delete results; output: deleted thread ids passed through SettingsView -> app shell -> workspace list hydration -> thread actions; verify with focused thread/settings Vitest.
 - [x] 8.3 [P1] Prevent degraded last-good fallback from reviving explicitly deleted sessions; input: `deletedThreadIds` plus uncertain/degraded empty source status; output: deleted rows removed from cached summaries, reducer state, fallback snapshots, visible summaries, and remembered last-good candidates; verify with `useThreadActions` regression.
 - [x] 8.4 [P1] Close stale Settings session curtain when the currently opened session is deleted; input: successful delete results while curtain is loading; output: curtain closes, timeout cleanup runs, stale load sequence is invalidated; verify with `SessionManagementSection` regression.
+- [x] 8.5 [P1] Allow deleting zero-count folders that only contain stale folder-assignment metadata; input: folder delete core plus exhaustive catalog evidence; output: real assigned sessions still block, stale `folderIdBySessionId` keys are cleaned and the empty folder is removed; verify with focused Rust folder-delete regressions.
 
 ## Evidence - 2026-05-23
 
@@ -71,3 +72,8 @@
 - Focused session-management regression set: `npx vitest run src/features/threads/hooks/useThreadActions.test.tsx src/features/settings/components/settings-view/sections/SessionManagementSection.test.tsx src/app-shell-parts/useWorkspaceThreadListHydration.test.tsx src/app-shell-parts/useAppShellSearchRadarSection.test.tsx` passed with 78 tests.
 - Quality gates: `npm run lint`, `npm run check:runtime-contracts`, and `git diff --check` passed.
 - Typecheck qualifier: `npm run typecheck` is currently blocked by unrelated untracked `src/features/project-map/components/ProjectMapPanel.tsx` importing missing `../mockProjectMapData`; this is outside the session-management write set.
+
+## Evidence - 2026-05-26
+
+- Focused backend folder regression: `cargo test --manifest-path src-tauri/Cargo.toml workspace_session_folder -- --nocapture` passed, covering stale-assignment cleanup, real-assignment blocking, and child-folder blocking in lib + daemon targets.
+- Formatting and hygiene: `cargo fmt --manifest-path src-tauri/Cargo.toml --check` and scoped `git diff --check -- src-tauri/src/session_management.rs src-tauri/src/session_management_tests.rs src-tauri/src/bin/cc_gui_daemon/session_folders.rs` passed.

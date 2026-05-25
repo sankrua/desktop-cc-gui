@@ -682,6 +682,7 @@
         let workspace =
             workspace_entry("ws-1", "Workspace", "/tmp/ws-1", WorkspaceKind::Main, None);
         let workspaces = Mutex::new(HashMap::from([(workspace.id.clone(), workspace)]));
+        let engine_manager = engine::EngineManager::new();
 
         let parent = create_workspace_session_folder_core(
             &workspaces,
@@ -717,12 +718,110 @@
 
         let delete_error = delete_workspace_session_folder_core(
             &workspaces,
+            &engine_manager,
             &storage_path,
             "ws-1".to_string(),
             parent.id.clone(),
         )
         .await
         .expect_err("non-empty delete must fail");
+        assert_eq!(
+            delete_error,
+            "folder is not empty; move or clear its contents first"
+        );
+
+        std::fs::remove_dir_all(base).ok();
+    }
+
+    #[tokio::test]
+    async fn workspace_session_folder_delete_cleans_stale_assignments_when_visible_count_is_zero() {
+        let base = std::env::temp_dir().join(format!("session-folder-stale-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+        let codex_home = base.join("codex-home");
+        let workspace = workspace_with_codex_home("ws-1", "Workspace", "/tmp/ws-1", &codex_home);
+        let workspaces = Mutex::new(HashMap::from([(workspace.id.clone(), workspace)]));
+        let engine_manager = engine::EngineManager::new();
+
+        let folder = create_workspace_session_folder_core(
+            &workspaces,
+            &storage_path,
+            "ws-1".to_string(),
+            "Stale folder".to_string(),
+            None,
+        )
+        .await
+        .expect("create folder")
+        .folder;
+        with_catalog_metadata_mutation(&storage_path, "ws-1", |metadata| {
+            metadata.folder_id_by_session_id.insert(
+                "codex:ws-1:missing-session".to_string(),
+                folder.id.clone(),
+            );
+            Ok(())
+        })
+        .expect("write stale folder assignment");
+
+        delete_workspace_session_folder_core(
+            &workspaces,
+            &engine_manager,
+            &storage_path,
+            "ws-1".to_string(),
+            folder.id.clone(),
+        )
+        .await
+        .expect("delete empty folder with stale metadata");
+
+        let metadata = read_catalog_metadata(&storage_path, "ws-1").expect("read metadata");
+        assert!(!metadata.folders.iter().any(|item| item.id == folder.id));
+        assert!(metadata.folder_id_by_session_id.is_empty());
+
+        std::fs::remove_dir_all(base).ok();
+    }
+
+    #[tokio::test]
+    async fn workspace_session_folder_delete_still_blocks_existing_session_assignments() {
+        let base = std::env::temp_dir().join(format!("session-folder-real-{}", Uuid::new_v4()));
+        std::fs::create_dir_all(&base).expect("create temp dir");
+        let storage_path = base.join("workspaces.json");
+        std::fs::write(&storage_path, "[]").expect("seed storage path");
+        let codex_home = base.join("codex-home");
+        write_codex_session_fixture(&codex_home, "codex-real", "/tmp/ws-1");
+        let workspace = workspace_with_codex_home("ws-1", "Workspace", "/tmp/ws-1", &codex_home);
+        let workspaces = Mutex::new(HashMap::from([(workspace.id.clone(), workspace)]));
+        let engine_manager = engine::EngineManager::new();
+
+        let folder = create_workspace_session_folder_core(
+            &workspaces,
+            &storage_path,
+            "ws-1".to_string(),
+            "Real folder".to_string(),
+            None,
+        )
+        .await
+        .expect("create folder")
+        .folder;
+        assign_workspace_session_folder_core(
+            &workspaces,
+            &engine_manager,
+            &storage_path,
+            "ws-1".to_string(),
+            "codex-real".to_string(),
+            Some(folder.id.clone()),
+        )
+        .await
+        .expect("assign real session");
+
+        let delete_error = delete_workspace_session_folder_core(
+            &workspaces,
+            &engine_manager,
+            &storage_path,
+            "ws-1".to_string(),
+            folder.id,
+        )
+        .await
+        .expect_err("delete folder with real session must fail");
         assert_eq!(
             delete_error,
             "folder is not empty; move or clear its contents first"

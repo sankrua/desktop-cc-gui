@@ -127,6 +127,7 @@ Rollback：所有新增字段为 additive；若 stable cursor 有问题，backen
 - Batch mutation owner-group metadata failures 降级为 per-entry failure；request-level error 继续保留给 workspace 缺失、请求不可解析等全局前置条件失败。
 - Large-file hardening: batch folder assignment 拆到 `session_management_batch_assign.rs`，`session_management.rs` 保持在 hard gate 下方。
 - Follow-up 2026-05-25: Settings 管理页取消分页交互并统一请求 `9999` 条 session；delete mutation 将成功删除的 thread ids 传给 workspace thread refresh，sidebar/list merge 在 degraded last-good fallback 前先应用 tombstone；Settings session curtain 若命中被删 session，会关闭幕布并递增 load sequence，防止旧异步加载回写“正在加载会话”。
+- Follow-up 2026-05-26: folder delete 的 non-empty 判定改为 catalog-aware。子文件夹和真实存在的 session assignment 继续阻断删除；仅剩 `folderIdBySessionId` orphan/stale assignment 时允许删除 folder，并同步清理这些 stale keys，使侧栏 0 计数与 Settings/后台删除语义一致。
 
 ## Open Questions
 

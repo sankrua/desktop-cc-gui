@@ -267,6 +267,7 @@ pub(crate) async fn delete_workspace_session_folder(
 ) -> Result<(), String> {
     delete_workspace_session_folder_core(
         &state.workspaces,
+        &state.engine_manager,
         state.storage_path.as_path(),
         workspace_id,
         folder_id,
@@ -1401,18 +1402,22 @@ fn folder_exists(metadata: &WorkspaceSessionCatalogMetadata, folder_id: &str) ->
     metadata.folders.iter().any(|folder| folder.id == folder_id)
 }
 
-fn folder_has_children_or_sessions(
-    metadata: &WorkspaceSessionCatalogMetadata,
-    folder_id: &str,
-) -> bool {
+fn folder_has_child_folders(metadata: &WorkspaceSessionCatalogMetadata, folder_id: &str) -> bool {
     metadata
         .folders
         .iter()
         .any(|folder| folder.parent_id.as_deref() == Some(folder_id))
-        || metadata
-            .folder_id_by_session_id
-            .values()
-            .any(|assigned_folder_id| assigned_folder_id == folder_id)
+}
+
+fn existing_catalog_assignment_keys_for_folder(
+    entries: &[WorkspaceSessionCatalogEntry],
+    folder_id: &str,
+) -> HashSet<String> {
+    entries
+        .iter()
+        .filter(|entry| entry.exists_on_disk && entry.folder_id.as_deref() == Some(folder_id))
+        .flat_map(catalog_metadata_lookup_keys_for_entry)
+        .collect()
 }
 
 fn would_create_folder_cycle(
@@ -1779,6 +1784,7 @@ pub(crate) async fn move_workspace_session_folder_core(
 
 pub(crate) async fn delete_workspace_session_folder_core(
     workspaces: &Mutex<HashMap<String, WorkspaceEntry>>,
+    engine_manager: &engine::EngineManager,
     storage_path: &Path,
     workspace_id: String,
     folder_id: String,
@@ -1786,14 +1792,36 @@ pub(crate) async fn delete_workspace_session_folder_core(
     let workspace_id = normalize_workspace_id(&workspace_id)?;
     ensure_workspace_exists(workspaces, &workspace_id).await?;
     let folder_id = normalize_folder_id(&folder_id)?;
+    let scope_catalog = build_workspace_scope_catalog_data(
+        workspaces,
+        engine_manager,
+        storage_path,
+        &workspace_id,
+        SessionCatalogScanMode::Exhaustive,
+    )
+    .await?;
+    let existing_assignment_keys =
+        existing_catalog_assignment_keys_for_folder(&scope_catalog.entries, &folder_id);
 
     with_catalog_metadata_mutation(storage_path, &workspace_id, |metadata| {
         if !folder_exists(metadata, &folder_id) {
             return Err("folder not found".to_string());
         }
-        if folder_has_children_or_sessions(metadata, &folder_id) {
+        if folder_has_child_folders(metadata, &folder_id) {
             return Err("folder is not empty; move or clear its contents first".to_string());
         }
+        if metadata
+            .folder_id_by_session_id
+            .iter()
+            .any(|(session_key, assigned_folder_id)| {
+                assigned_folder_id == &folder_id && existing_assignment_keys.contains(session_key)
+            })
+        {
+            return Err("folder is not empty; move or clear its contents first".to_string());
+        }
+        metadata
+            .folder_id_by_session_id
+            .retain(|_, assigned_folder_id| assigned_folder_id != &folder_id);
         metadata.folders.retain(|folder| folder.id != folder_id);
         Ok(())
     })

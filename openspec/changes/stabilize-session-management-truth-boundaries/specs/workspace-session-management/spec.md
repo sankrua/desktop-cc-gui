@@ -74,3 +74,18 @@ Session Management delete success MUST be treated as explicit removal evidence a
 - **AND** a delete mutation succeeds for that same session identity
 - **THEN** the curtain MUST close or otherwise leave loading state
 - **AND** stale async load results for the deleted session MUST NOT reopen or repopulate the curtain
+
+### Requirement: Empty Session Folders MUST Ignore Stale Assignment Metadata
+
+Session Management folder deletion MUST distinguish real existing session assignments from stale metadata-only folder assignments. A folder that has no child folders and no existing catalog entry assigned to it MUST be deletable even if `folderIdBySessionId` still contains orphaned keys pointing at that folder; deleting it MUST remove those stale assignment keys.
+
+#### Scenario: zero-count folder contains stale assignment metadata
+- **WHEN** the visible strict project folder count is zero
+- **AND** the folder has no child folders
+- **AND** the only folder assignments are metadata keys for sessions that do not exist in the current catalog
+- **THEN** deleting the folder MUST succeed
+- **AND** stale assignment metadata pointing at that folder MUST be removed
+
+#### Scenario: folder still contains a real session
+- **WHEN** a folder has an existing catalog entry assigned to it
+- **THEN** deleting the folder MUST still fail with a non-empty folder error
