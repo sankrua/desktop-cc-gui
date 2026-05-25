@@ -2093,7 +2093,9 @@ describe("SettingsView Session management", () => {
       ]);
     });
     await waitFor(() => {
-      expect(onEnsureWorkspaceThreads).toHaveBeenCalledWith("ws-1");
+      expect(onEnsureWorkspaceThreads).toHaveBeenCalledWith("ws-1", {
+        deletedThreadIds: ["codex:thread-a"],
+      });
     });
   });
 
