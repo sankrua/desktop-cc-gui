@@ -1,5 +1,12 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   collectSucceededWorkspaceIds,
@@ -167,7 +174,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -175,11 +184,17 @@ describe("SessionManagementSection", () => {
     expect(await screen.findByText("Main session")).toBeTruthy();
     expect(await screen.findByText("Worktree session")).toBeTruthy();
     screen
-      .getAllByRole("button", { name: "settings.sessionManagementDetailToggle" })
+      .getAllByRole("button", {
+        name: "settings.sessionManagementDetailToggle",
+      })
       .forEach((button) => fireEvent.click(button));
     expect(await screen.findAllByText("cli/codex")).toHaveLength(2);
-    expect(await screen.findByText("settings.sessionManagementFilteredTotalCount")).toBeTruthy();
-    expect(await screen.findByText("settings.sessionManagementCurrentPageCount")).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementFilteredTotalCount"),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementCurrentPageCount"),
+    ).toBeTruthy();
   });
 
   it("renders workspace scope inside the left tree without a duplicate picker", async () => {
@@ -188,7 +203,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -203,7 +220,11 @@ describe("SessionManagementSection", () => {
         name: /Ungrouped \/ settings\.sessionManagementScopeTagWorktree Workspace Worktree/,
       }),
     ).toBeTruthy();
-    expect(screen.queryByTestId("settings-project-sessions-workspace-picker-trigger")).toBeNull();
+    expect(
+      screen.queryByTestId(
+        "settings-project-sessions-workspace-picker-trigger",
+      ),
+    ).toBeNull();
   });
 
   it("renders the left project hierarchy and keeps user workspace switches as the active scope", async () => {
@@ -212,7 +233,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -231,7 +254,9 @@ describe("SessionManagementSection", () => {
       );
     });
     await waitFor(() => {
-      const lastWorkspaceListCall = vi.mocked(listWorkspaceSessions).mock.calls.at(-1);
+      const lastWorkspaceListCall = vi
+        .mocked(listWorkspaceSessions)
+        .mock.calls.at(-1);
       expect(lastWorkspaceListCall?.[0]).toBe("ws-2");
     });
   });
@@ -270,12 +295,16 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    expect(await screen.findByText("settings.sessionManagementBadgeMissingOnDisk")).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementBadgeMissingOnDisk"),
+    ).toBeTruthy();
   });
 
   it("opens an independent session curtain from the row icon", async () => {
@@ -322,15 +351,25 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Chat session")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "settings.sessionManagementOpenCurtain" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
 
-    expect(await screen.findByRole("dialog", { name: "settings.sessionManagementCurtainTitle" })).toBeTruthy();
+    expect(
+      await screen.findByRole("dialog", {
+        name: "settings.sessionManagementCurtainTitle",
+      }),
+    ).toBeTruthy();
     expect(await screen.findByText("Loaded assistant reply")).toBeTruthy();
     expect(loadCodexSession).toHaveBeenCalledWith("ws-1", "codex:chat");
     expect(resumeThread).toHaveBeenCalledWith("ws-1", "codex:chat");
@@ -374,15 +413,25 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Chat session")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "settings.sessionManagementOpenCurtain" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
 
-    expect(await screen.findByRole("dialog", { name: "settings.sessionManagementCurtainTitle" })).toBeTruthy();
+    expect(
+      await screen.findByRole("dialog", {
+        name: "settings.sessionManagementCurtainTitle",
+      }),
+    ).toBeTruthy();
     expect(await screen.findByText("Loaded assistant reply")).toBeTruthy();
     expect(resumeThread).toHaveBeenCalledWith("ws-1", "codex:chat");
   });
@@ -421,19 +470,105 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Chat session")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "settings.sessionManagementOpenCurtain" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
 
     expect(await screen.findByText("Read-only history")).toBeTruthy();
     expect(
-      screen.queryByLabelText("settings.sessionManagementCurtainComposerPlaceholder"),
+      screen.queryByLabelText(
+        "settings.sessionManagementCurtainComposerPlaceholder",
+      ),
     ).toBeNull();
-    expect(screen.queryByRole("button", { name: "settings.sessionManagementCurtainSend" })).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "settings.sessionManagementCurtainSend",
+      }),
+    ).toBeNull();
+  });
+
+  it("closes a loading session curtain when that session is deleted", async () => {
+    vi.mocked(listWorkspaceSessions).mockResolvedValue({
+      data: [
+        {
+          sessionId: "codex:chat",
+          workspaceId: "ws-1",
+          title: "Chat session",
+          updatedAt: 1710000000000,
+          engine: "codex",
+          archivedAt: null,
+          threadKind: "native",
+        },
+      ],
+      nextCursor: null,
+      partialSource: null,
+    });
+    vi.mocked(loadCodexSession).mockReturnValueOnce(
+      new Promise(() => undefined) as ReturnType<typeof loadCodexSession>,
+    );
+    vi.mocked(resumeThread).mockReturnValueOnce(
+      new Promise(() => undefined) as ReturnType<typeof resumeThread>,
+    );
+    vi.mocked(deleteWorkspaceSessions).mockResolvedValue({
+      results: [{ sessionId: "codex:chat", ok: true }],
+    });
+
+    render(
+      <SessionManagementSection
+        title="Session Management"
+        description="Manage sessions"
+        workspaces={[workspace]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
+        initialWorkspaceId="ws-1"
+      />,
+    );
+
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Chat session" }),
+    );
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
+
+    expect(
+      await screen.findByText("settings.sessionManagementCurtainLoading"),
+    ).toBeTruthy();
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+
+    await waitFor(() => {
+      expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-1", [
+        "codex:chat",
+      ]);
+    });
+    await waitFor(() => {
+      expect(
+        screen.queryByText("settings.sessionManagementCurtainLoading"),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("dialog", {
+          name: "settings.sessionManagementCurtainTitle",
+        }),
+      ).toBeNull();
+    });
   });
 
   it("keeps the codex curtain timeout visible when late sources return no messages", async () => {
@@ -455,7 +590,9 @@ describe("SessionManagementSection", () => {
     let resolveLocal!: (
       value: Awaited<ReturnType<typeof loadCodexSession>>,
     ) => void;
-    let resolveResume!: (value: Awaited<ReturnType<typeof resumeThread>>) => void;
+    let resolveResume!: (
+      value: Awaited<ReturnType<typeof resumeThread>>,
+    ) => void;
     vi.mocked(loadCodexSession).mockReturnValueOnce(
       new Promise((resolve) => {
         resolveLocal = resolve;
@@ -472,19 +609,27 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Chat session")).toBeTruthy();
     vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button", { name: "settings.sessionManagementOpenCurtain" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
 
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
-    expect(screen.getByText("settings.sessionManagementCurtainLoadTimeout")).toBeTruthy();
+    expect(
+      screen.getByText("settings.sessionManagementCurtainLoadTimeout"),
+    ).toBeTruthy();
 
     await act(async () => {
       resolveLocal(null);
@@ -492,8 +637,12 @@ describe("SessionManagementSection", () => {
       await Promise.resolve();
     });
 
-    expect(screen.getByText("settings.sessionManagementCurtainLoadTimeout")).toBeTruthy();
-    expect(screen.getByText("settings.sessionManagementCurtainEmpty")).toBeTruthy();
+    expect(
+      screen.getByText("settings.sessionManagementCurtainLoadTimeout"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("settings.sessionManagementCurtainEmpty"),
+    ).toBeTruthy();
   });
 
   it("allows late codex curtain history to replace a timeout notice", async () => {
@@ -529,19 +678,27 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Chat session")).toBeTruthy();
     vi.useFakeTimers();
-    fireEvent.click(screen.getByRole("button", { name: "settings.sessionManagementOpenCurtain" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "settings.sessionManagementOpenCurtain",
+      }),
+    );
 
     act(() => {
       vi.advanceTimersByTime(10_000);
     });
-    expect(screen.getByText("settings.sessionManagementCurtainLoadTimeout")).toBeTruthy();
+    expect(
+      screen.getByText("settings.sessionManagementCurtainLoadTimeout"),
+    ).toBeTruthy();
 
     await act(async () => {
       resolveLocal({
@@ -560,7 +717,9 @@ describe("SessionManagementSection", () => {
     });
 
     expect(screen.getByText("Late assistant reply")).toBeTruthy();
-    expect(screen.queryByText("settings.sessionManagementCurtainLoadTimeout")).toBeNull();
+    expect(
+      screen.queryByText("settings.sessionManagementCurtainLoadTimeout"),
+    ).toBeNull();
   });
 
   it("renders selected project session folders and filters strict sessions by folder", async () => {
@@ -597,52 +756,62 @@ describe("SessionManagementSection", () => {
       ],
     });
     const allFolderEntries = [
-        {
-          sessionId: "codex:folder",
-          workspaceId: "ws-1",
-          title: "Folder session",
-          updatedAt: 1710000000000,
-          engine: "codex",
-          archivedAt: null,
-          threadKind: "native",
-          folderId: "folder-a",
-        },
-        {
-          sessionId: "codex:root",
-          workspaceId: "ws-1",
-          title: "Root session",
-          updatedAt: 1710000000001,
-          engine: "codex",
-          archivedAt: null,
-          threadKind: "native",
-          folderId: null,
-        },
+      {
+        sessionId: "codex:folder",
+        workspaceId: "ws-1",
+        title: "Folder session",
+        updatedAt: 1710000000000,
+        engine: "codex",
+        archivedAt: null,
+        threadKind: "native",
+        folderId: "folder-a",
+      },
+      {
+        sessionId: "codex:root",
+        workspaceId: "ws-1",
+        title: "Root session",
+        updatedAt: 1710000000001,
+        engine: "codex",
+        archivedAt: null,
+        threadKind: "native",
+        folderId: null,
+      },
     ];
-    vi.mocked(listWorkspaceSessions).mockImplementation(async (_workspaceId, options) => ({
-      data: options?.query?.folderId === "folder-a"
-        ? allFolderEntries.filter((entry) => entry.folderId === "folder-a")
-        : allFolderEntries,
-      nextCursor: null,
-      partialSource: null,
-    }));
+    vi.mocked(listWorkspaceSessions).mockImplementation(
+      async (_workspaceId, options) => ({
+        data:
+          options?.query?.folderId === "folder-a"
+            ? allFolderEntries.filter((entry) => entry.folderId === "folder-a")
+            : allFolderEntries,
+        nextCursor: null,
+        partialSource: null,
+      }),
+    );
 
     render(
       <SessionManagementSection
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    expect((await screen.findAllByText("settings.sessionManagementFolderAll")).length).toBeGreaterThan(0);
+    expect(
+      (await screen.findAllByText("settings.sessionManagementFolderAll"))
+        .length,
+    ).toBeGreaterThan(0);
     expect((await screen.findAllByText("Planning")).length).toBeGreaterThan(0);
     expect((await screen.findAllByText("Bugs")).length).toBeGreaterThan(0);
     expect(screen.getAllByText("20").length).toBeGreaterThan(0);
     expect(screen.getByText("7")).toBeTruthy();
     expect(screen.getByText("3")).toBeTruthy();
-    const planningButton = (await screen.findAllByText("Planning"))[0].closest("button");
+    const planningButton = (await screen.findAllByText("Planning"))[0].closest(
+      "button",
+    );
     expect(planningButton).toBeTruthy();
     fireEvent.click(planningButton as HTMLButtonElement);
 
@@ -699,7 +868,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -718,13 +889,17 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
         onUpdateWorkspaceSettings={onUpdateWorkspaceSettings}
       />,
     );
 
-    expect(await screen.findByText("settings.sessionManagementCurrentPageCount")).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementCurrentPageCount"),
+    ).toBeTruthy();
 
     const input = screen.getByTestId(
       "settings-project-sessions-visible-root-count-input",
@@ -749,7 +924,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
         onUpdateWorkspaceSettings={onUpdateWorkspaceSettings}
       />,
@@ -796,8 +973,8 @@ describe("SessionManagementSection", () => {
         threadKind: "native",
       })),
       nextCursor: "offset:3",
-      requestedLimit: 999,
-      effectiveLimit: 200,
+      requestedLimit: 9_999,
+      effectiveLimit: 9_999,
       limitCapped: true,
       partialSource: null,
     });
@@ -807,18 +984,32 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(await screen.findByText("Session 0")).toBeTruthy();
-    expect(screen.getAllByText("settings.sessionManagementFilteredTotalCount")).not.toHaveLength(0);
-    expect(screen.getAllByText("settings.sessionManagementCurrentPageCount")).not.toHaveLength(0);
-    expect(screen.getByText("settings.sessionManagementVisibleWindowHint")).toBeTruthy();
-    expect(screen.getByText("settings.sessionManagementActiveProjectionScopeHint")).toBeTruthy();
-    expect(screen.getAllByText("settings.sessionManagementPartialSource")).not.toHaveLength(0);
-    expect(screen.getByText("settings.sessionManagementPageLimitCapped")).toBeTruthy();
+    expect(
+      screen.getAllByText("settings.sessionManagementFilteredTotalCount"),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getAllByText("settings.sessionManagementCurrentPageCount"),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getByText("settings.sessionManagementVisibleWindowHint"),
+    ).toBeTruthy();
+    expect(
+      screen.getByText("settings.sessionManagementActiveProjectionScopeHint"),
+    ).toBeTruthy();
+    expect(
+      screen.getAllByText("settings.sessionManagementPartialSource"),
+    ).not.toHaveLength(0);
+    expect(
+      screen.getByText("settings.sessionManagementPageLimitCapped"),
+    ).toBeTruthy();
   });
 
   it("switches to global archive mode and renders unassigned history label", async () => {
@@ -849,7 +1040,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -858,9 +1051,13 @@ describe("SessionManagementSection", () => {
 
     expect(await screen.findByText("Detached session")).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "settings.sessionManagementDetailToggle" }),
+      screen.getByRole("button", {
+        name: "settings.sessionManagementDetailToggle",
+      }),
     );
-    expect(await screen.findByText("settings.sessionManagementWorkspaceUnassigned")).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementWorkspaceUnassigned"),
+    ).toBeTruthy();
     expect(listGlobalCodexSessions).toHaveBeenCalled();
   });
 
@@ -886,7 +1083,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -914,7 +1113,9 @@ describe("SessionManagementSection", () => {
     );
 
     fireEvent.click(
-      await screen.findByRole("button", { name: "settings.sessionManagementModeGlobal" }),
+      await screen.findByRole("button", {
+        name: "settings.sessionManagementModeGlobal",
+      }),
     );
 
     await waitFor(() => {
@@ -944,7 +1145,9 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
@@ -976,16 +1179,22 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
     expect(
-      await screen.findByText("settings.sessionManagementProjectEmptyStrictHint"),
+      await screen.findByText(
+        "settings.sessionManagementProjectEmptyStrictHint",
+      ),
     ).toBeTruthy();
     expect(
-      await screen.findByRole("button", { name: "settings.sessionManagementViewGlobalCta" }),
+      await screen.findByRole("button", {
+        name: "settings.sessionManagementViewGlobalCta",
+      }),
     ).toBeTruthy();
   });
 
@@ -1055,23 +1264,37 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    expect(await screen.findByText("settings.projectSessionEmpty")).toBeTruthy();
     expect(
-      await screen.findByText("settings.sessionManagementProjectEmptyStrictHint"),
+      await screen.findByText("settings.projectSessionEmpty"),
     ).toBeTruthy();
-    expect(await screen.findByText("settings.sessionManagementRelatedSectionTitle")).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "settings.sessionManagementProjectEmptyStrictHint",
+      ),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementRelatedSectionTitle"),
+    ).toBeTruthy();
     expect(await screen.findByText("Sibling worktree session")).toBeTruthy();
     fireEvent.click(
-      screen.getByRole("button", { name: "settings.sessionManagementDetailToggle" }),
+      screen.getByRole("button", {
+        name: "settings.sessionManagementDetailToggle",
+      }),
     );
-    expect(await screen.findByText("settings.sessionManagementBadgeRelated")).toBeTruthy();
     expect(
-      await screen.findByText("settings.sessionManagementAttributionReasonWorktreeFamily"),
+      await screen.findByText("settings.sessionManagementBadgeRelated"),
+    ).toBeTruthy();
+    expect(
+      await screen.findByText(
+        "settings.sessionManagementAttributionReasonWorktreeFamily",
+      ),
     ).toBeTruthy();
   });
 
@@ -1097,12 +1320,16 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    expect(await screen.findByText("settings.sessionManagementProjectScopeHint")).toBeTruthy();
+    expect(
+      await screen.findByText("settings.sessionManagementProjectScopeHint"),
+    ).toBeTruthy();
   });
 
   it("reloads related sessions after a successful related delete", async () => {
@@ -1147,23 +1374,35 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Sibling worktree session" }));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Sibling worktree session" }),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
 
     await waitFor(() => {
-      expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-2", ["codex:related"]);
+      expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-2", [
+        "codex:related",
+      ]);
     });
     await waitFor(() => {
       expect(listProjectRelatedSessions).toHaveBeenCalledTimes(2);
     });
     await waitFor(() => {
-      expect(screen.queryByRole("checkbox", { name: "Sibling worktree session" })).toBeNull();
+      expect(
+        screen.queryByRole("checkbox", { name: "Sibling worktree session" }),
+      ).toBeNull();
     });
   });
 
@@ -1228,14 +1467,20 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Ok session" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Ok session" }),
+    );
     fireEvent.click(getCheckboxByName("Failed session"));
-    fireEvent.click(getEnabledButtonByName("settings.sessionManagementArchiveSelected"));
+    fireEvent.click(
+      getEnabledButtonByName("settings.sessionManagementArchiveSelected"),
+    );
 
     await waitFor(() => {
       expect(archiveWorkspaceSessions).toHaveBeenCalledWith("ws-1", [
@@ -1248,9 +1493,7 @@ describe("SessionManagementSection", () => {
       expect(screen.queryByRole("checkbox", { name: "Ok session" })).toBeNull();
     });
 
-    expect(
-      getCheckboxByName("Failed session").checked,
-    ).toBe(true);
+    expect(getCheckboxByName("Failed session").checked).toBe(true);
   });
 
   it("groups delete requests by entry owner workspace", async () => {
@@ -1291,19 +1534,31 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Main session" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Main session" }),
+    );
     fireEvent.click(getCheckboxByName("Worktree session"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
 
     await waitFor(() => {
-      expect(deleteWorkspaceSessions).toHaveBeenNthCalledWith(1, "ws-1", ["codex:main"]);
-      expect(deleteWorkspaceSessions).toHaveBeenNthCalledWith(2, "ws-2", ["codex:worktree"]);
+      expect(deleteWorkspaceSessions).toHaveBeenNthCalledWith(1, "ws-1", [
+        "codex:main",
+      ]);
+      expect(deleteWorkspaceSessions).toHaveBeenNthCalledWith(2, "ws-2", [
+        "codex:worktree",
+      ]);
     });
   });
 
@@ -1365,15 +1620,23 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         initialWorkspaceId="ws-1"
       />,
     );
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Ghost session" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Ghost session" }),
+    );
     fireEvent.click(getCheckboxByName("Protected session"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
 
     await waitFor(() => {
       expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-1", [
@@ -1383,7 +1646,9 @@ describe("SessionManagementSection", () => {
     });
 
     await waitFor(() => {
-      expect(screen.queryByRole("checkbox", { name: "Ghost session" })).toBeNull();
+      expect(
+        screen.queryByRole("checkbox", { name: "Ghost session" }),
+      ).toBeNull();
     });
 
     expect(getCheckboxByName("Protected session").checked).toBe(true);
@@ -1428,25 +1693,36 @@ describe("SessionManagementSection", () => {
         title="Session Management"
         description="Manage sessions"
         workspaces={[workspace, worktree]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace, worktree] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace, worktree] },
+        ]}
         initialWorkspaceId="ws-1"
         onSessionsMutated={onSessionsMutated}
       />,
     );
 
-    fireEvent.click(await screen.findByRole("checkbox", { name: "Main session" }));
+    fireEvent.click(
+      await screen.findByRole("checkbox", { name: "Main session" }),
+    );
     fireEvent.click(getCheckboxByName("Worktree session"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
-    fireEvent.click(getEnabledButtonByTestId("settings-project-sessions-delete-selected"));
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
+    fireEvent.click(
+      getEnabledButtonByTestId("settings-project-sessions-delete-selected"),
+    );
 
     await waitFor(() => {
       expect(onSessionsMutated).toHaveBeenCalledTimes(2);
-      expect(onSessionsMutated).toHaveBeenNthCalledWith(1, "ws-1");
-      expect(onSessionsMutated).toHaveBeenNthCalledWith(2, "ws-2");
+      expect(onSessionsMutated).toHaveBeenNthCalledWith(1, "ws-1", {
+        deletedThreadIds: ["codex:main"],
+      });
+      expect(onSessionsMutated).toHaveBeenNthCalledWith(2, "ws-2", {
+        deletedThreadIds: ["codex:worktree"],
+      });
     });
     await waitFor(() => {
       expect(getWorkspaceSessionProjectionSummary).toHaveBeenCalledTimes(2);
     });
   });
-
 });

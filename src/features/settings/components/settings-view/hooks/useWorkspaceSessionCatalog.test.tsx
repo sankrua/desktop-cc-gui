@@ -70,8 +70,8 @@ describe("useWorkspaceSessionCatalog", () => {
             updatedAt: number;
             threadKind: string;
           }>;
-            nextCursor: string | null;
-            partialSource: string | null;
+          nextCursor: string | null;
+          partialSource: string | null;
         }) => void)
       | null = null;
 
@@ -96,9 +96,14 @@ describe("useWorkspaceSessionCatalog", () => {
 
     await waitFor(() => {
       expect(vi.mocked(listWorkspaceSessions)).toHaveBeenCalledWith("ws-1", {
-        query: { keyword: null, engine: null, status: "active", folderId: null },
+        query: {
+          keyword: null,
+          engine: null,
+          status: "active",
+          folderId: null,
+        },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
 
@@ -141,9 +146,9 @@ describe("useWorkspaceSessionCatalog", () => {
         },
       ],
       nextCursor: "stable:next",
-      requestedLimit: 999,
-      effectiveLimit: 200,
-      limitCapped: true,
+      requestedLimit: 9_999,
+      effectiveLimit: 9_999,
+      limitCapped: false,
       partialSource: null,
     });
 
@@ -158,11 +163,11 @@ describe("useWorkspaceSessionCatalog", () => {
     await waitFor(() => {
       expect(result.current.entries).toHaveLength(1);
     });
-    expect(result.current.nextCursor).toBe("stable:next");
+    expect(result.current.nextCursor).toBeNull();
     expect(result.current.pageLimit).toEqual({
-      requestedLimit: 999,
-      effectiveLimit: 200,
-      limitCapped: true,
+      requestedLimit: 9_999,
+      effectiveLimit: 9_999,
+      limitCapped: false,
     });
   });
 
@@ -209,14 +214,14 @@ describe("useWorkspaceSessionCatalog", () => {
       expect(result.current.entries).toHaveLength(2);
     });
 
-    let response:
-      | Awaited<ReturnType<typeof result.current.mutate>>
-      | undefined;
+    let response: Awaited<ReturnType<typeof result.current.mutate>> | undefined;
     await act(async () => {
       response = await result.current.mutate("archive", result.current.entries);
     });
 
-    expect(archiveWorkspaceSessions).toHaveBeenNthCalledWith(1, "ws-main", ["codex:main"]);
+    expect(archiveWorkspaceSessions).toHaveBeenNthCalledWith(1, "ws-main", [
+      "codex:main",
+    ]);
     expect(archiveWorkspaceSessions).toHaveBeenNthCalledWith(2, "ws-worktree", [
       "codex:worktree",
     ]);
@@ -282,9 +287,7 @@ describe("useWorkspaceSessionCatalog", () => {
       expect(result.current.entries).toHaveLength(1);
     });
 
-    let response:
-      | Awaited<ReturnType<typeof result.current.mutate>>
-      | undefined;
+    let response: Awaited<ReturnType<typeof result.current.mutate>> | undefined;
     await act(async () => {
       response = await result.current.mutate("archive", result.current.entries);
     });
@@ -342,9 +345,7 @@ describe("useWorkspaceSessionCatalog", () => {
       expect(result.current.entries).toHaveLength(2);
     });
 
-    let response:
-      | Awaited<ReturnType<typeof result.current.mutate>>
-      | undefined;
+    let response: Awaited<ReturnType<typeof result.current.mutate>> | undefined;
     await act(async () => {
       response = await result.current.mutate("archive", result.current.entries);
     });
@@ -407,9 +408,14 @@ describe("useWorkspaceSessionCatalog", () => {
 
     await waitFor(() => {
       expect(listGlobalCodexSessions).toHaveBeenCalledWith({
-        query: { keyword: null, engine: "claude", status: "active", folderId: null },
+        query: {
+          keyword: null,
+          engine: "claude",
+          status: "active",
+          folderId: null,
+        },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
 
@@ -486,9 +492,14 @@ describe("useWorkspaceSessionCatalog", () => {
 
     await waitFor(() => {
       expect(listProjectRelatedSessions).toHaveBeenCalledWith("ws-main", {
-        query: { keyword: null, engine: null, status: "active", folderId: null },
+        query: {
+          keyword: null,
+          engine: null,
+          status: "active",
+          folderId: null,
+        },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
 
@@ -535,7 +546,7 @@ describe("useWorkspaceSessionCatalog", () => {
           folderId: null,
         },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
 

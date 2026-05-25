@@ -202,7 +202,7 @@
         assert_eq!(build_catalog_scan_limit(Some("offset:50"), None), 101);
         assert_eq!(
             build_catalog_scan_limit(Some("offset:50"), Some(10_000)),
-            251
+            10_050
         );
     }
 

@@ -87,9 +87,9 @@ vi.mock("../utils/sidebarSnapshot", () => ({
 }));
 
 vi.mock("../../../services/globalRuntimeNotices", async () => {
-  const actual = await vi.importActual<typeof import("../../../services/globalRuntimeNotices")>(
-    "../../../services/globalRuntimeNotices",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../../services/globalRuntimeNotices")
+  >("../../../services/globalRuntimeNotices");
   return actual;
 });
 
@@ -110,10 +110,12 @@ describe("useThreadActions thread list recovery and pagination", () => {
     vi.mocked(setThreadTitle).mockResolvedValue("title");
     vi.mocked(connectWorkspace).mockResolvedValue(undefined);
     vi.mocked(createWorkspaceDirectory).mockResolvedValue(undefined);
-    vi.mocked(previewThreadName).mockImplementation((text: string, fallback: string) => {
-      const trimmed = text.trim();
-      return trimmed || fallback;
-    });
+    vi.mocked(previewThreadName).mockImplementation(
+      (text: string, fallback: string) => {
+        const trimmed = text.trim();
+        return trimmed || fallback;
+      },
+    );
     vi.mocked(deleteClaudeSession).mockResolvedValue(undefined);
     vi.mocked(deleteGeminiSession).mockResolvedValue(undefined);
     vi.mocked(deleteOpenCodeSession).mockResolvedValue({
@@ -321,40 +323,42 @@ describe("useThreadActions thread list recovery and pagination", () => {
         nextCursor: "runtime-next",
       },
     });
-    vi.mocked(listWorkspaceSessions).mockImplementation(async (_workspaceId, options) => {
-      if (options?.query?.status === "all") {
+    vi.mocked(listWorkspaceSessions).mockImplementation(
+      async (_workspaceId, options) => {
+        if (options?.query?.status === "all") {
+          return {
+            data: [],
+            nextCursor: null,
+            partialSource: null,
+          };
+        }
         return {
-          data: [],
-          nextCursor: null,
+          data: [
+            {
+              sessionId: "claude:older-catalog",
+              workspaceId: "ws-1",
+              engine: "claude",
+              title: "Claude older catalog",
+              updatedAt: 5000,
+              archivedAt: null,
+              threadKind: "native",
+              folderId: "folder-a",
+            },
+            {
+              sessionId: "gemini:older-catalog",
+              workspaceId: "ws-1",
+              engine: "gemini",
+              title: "Gemini older catalog",
+              updatedAt: 4500,
+              archivedAt: null,
+              threadKind: "native",
+            },
+          ],
+          nextCursor: "catalog-next",
           partialSource: null,
         };
-      }
-      return {
-        data: [
-          {
-            sessionId: "claude:older-catalog",
-            workspaceId: "ws-1",
-            engine: "claude",
-            title: "Claude older catalog",
-            updatedAt: 5000,
-            archivedAt: null,
-            threadKind: "native",
-            folderId: "folder-a",
-          },
-          {
-            sessionId: "gemini:older-catalog",
-            workspaceId: "ws-1",
-            engine: "gemini",
-            title: "Gemini older catalog",
-            updatedAt: 4500,
-            archivedAt: null,
-            threadKind: "native",
-          },
-        ],
-        nextCursor: "catalog-next",
-        partialSource: null,
-      };
-    });
+      },
+    );
 
     const { result, dispatch } = renderActions({
       threadsByWorkspace: {
@@ -370,7 +374,7 @@ describe("useThreadActions thread list recovery and pagination", () => {
     expect(listWorkspaceSessions).toHaveBeenCalledWith("ws-1", {
       query: { status: "active" },
       cursor: "offset:200",
-      limit: 200,
+      limit: 9_999,
     });
     expect(listThreads).not.toHaveBeenCalled();
     expectSetThreadsDispatched(dispatch, "ws-1", [
@@ -418,7 +422,14 @@ describe("useThreadActions thread list recovery and pagination", () => {
 
     const { result, dispatch } = renderActions({
       threadsByWorkspace: {
-        "ws-1": [{ id: "thread-1", name: "Agent 1", updatedAt: 6000, engineSource: "codex" }],
+        "ws-1": [
+          {
+            id: "thread-1",
+            name: "Agent 1",
+            updatedAt: 6000,
+            engineSource: "codex",
+          },
+        ],
       },
       activeThreadIdByWorkspace: {
         "ws-1": "thread-active",

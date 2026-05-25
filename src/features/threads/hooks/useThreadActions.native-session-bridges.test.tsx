@@ -176,33 +176,36 @@ describe("useThreadActions native session bridges", () => {
         updatedAt: 1_730_100_000_000,
       },
     ]);
-    vi.mocked(listWorkspaceSessions).mockImplementation(async (_workspaceId, options) => {
-      if (options?.query?.status === "active") {
+    vi.mocked(listWorkspaceSessions).mockImplementation(
+      async (_workspaceId, options) => {
+        if (options?.query?.status === "active") {
+          return {
+            data: [
+              {
+                sessionId: "codex-history-1",
+                workspaceId: "ws-1",
+                engine: "codex",
+                title:
+                  "Generate a concise git commit message for the following changes.",
+                updatedAt: 1_730_200_000_000,
+                archivedAt: null,
+                threadKind: "native",
+                source: "mossx",
+                provider: "openai",
+                sourceLabel: "mossx/openai",
+              },
+            ],
+            nextCursor: null,
+            partialSource: null,
+          };
+        }
         return {
-          data: [
-            {
-              sessionId: "codex-history-1",
-              workspaceId: "ws-1",
-              engine: "codex",
-              title: "Generate a concise git commit message for the following changes.",
-              updatedAt: 1_730_200_000_000,
-              archivedAt: null,
-              threadKind: "native",
-              source: "mossx",
-              provider: "openai",
-              sourceLabel: "mossx/openai",
-            },
-          ],
+          data: [],
           nextCursor: null,
           partialSource: null,
         };
-      }
-      return {
-        data: [],
-        nextCursor: null,
-        partialSource: null,
-      };
-    });
+      },
+    );
     vi.mocked(getOpenCodeSessionList).mockResolvedValue([]);
 
     const { result, dispatch } = renderActions();
@@ -215,7 +218,7 @@ describe("useThreadActions native session bridges", () => {
     expect(listWorkspaceSessions).toHaveBeenCalledWith("ws-1", {
       query: { status: "active" },
       cursor: null,
-      limit: 200,
+      limit: 9_999,
     });
     expectSetThreadsDispatched(dispatch, "ws-1", [
       {
@@ -327,34 +330,37 @@ describe("useThreadActions native session bridges", () => {
       .mockRejectedValueOnce(new Error("workspace not connected"));
     vi.mocked(listClaudeSessions).mockResolvedValue([]);
     vi.mocked(getOpenCodeSessionList).mockResolvedValue([]);
-    vi.mocked(listWorkspaceSessions).mockImplementation(async (_workspaceId, options) => {
-      if (options?.query?.status === "active") {
-        await new Promise((resolve) => setTimeout(resolve, 20_000));
+    vi.mocked(listWorkspaceSessions).mockImplementation(
+      async (_workspaceId, options) => {
+        if (options?.query?.status === "active") {
+          await new Promise((resolve) => setTimeout(resolve, 20_000));
+          return {
+            data: [
+              {
+                sessionId: "codex-history-slow",
+                workspaceId: "ws-1",
+                engine: "codex",
+                title:
+                  "最近对话你什么时候加进来的.还是显示出来的.之前这里没有才对啊.",
+                updatedAt: 1_730_300_000_000,
+                archivedAt: null,
+                threadKind: "native",
+                source: "mossx",
+                provider: "openai",
+                sourceLabel: "mossx/openai",
+              },
+            ],
+            nextCursor: null,
+            partialSource: null,
+          };
+        }
         return {
-          data: [
-            {
-              sessionId: "codex-history-slow",
-              workspaceId: "ws-1",
-              engine: "codex",
-              title: "最近对话你什么时候加进来的.还是显示出来的.之前这里没有才对啊.",
-              updatedAt: 1_730_300_000_000,
-              archivedAt: null,
-              threadKind: "native",
-              source: "mossx",
-              provider: "openai",
-              sourceLabel: "mossx/openai",
-            },
-          ],
+          data: [],
           nextCursor: null,
           partialSource: null,
         };
-      }
-      return {
-        data: [],
-        nextCursor: null,
-        partialSource: null,
-      };
-    });
+      },
+    );
 
     const { result, dispatch } = renderActions();
 
@@ -456,7 +462,10 @@ describe("useThreadActions native session bridges", () => {
     const { result } = renderActions();
 
     await act(async () => {
-      await result.current.deleteThreadForWorkspace("ws-1", "opencode:ses_opc_1");
+      await result.current.deleteThreadForWorkspace(
+        "ws-1",
+        "opencode:ses_opc_1",
+      );
     });
 
     expect(archiveThread).not.toHaveBeenCalled();
@@ -501,17 +510,27 @@ describe("useThreadActions native session bridges", () => {
     const { result, dispatch } = renderActions();
 
     await act(async () => {
-      await result.current.listThreadsForWorkspace(workspace, { preserveState: true });
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
     });
 
     await act(async () => {
-      await result.current.deleteThreadForWorkspace("ws-1", "claude:session-delete-me");
+      await result.current.deleteThreadForWorkspace(
+        "ws-1",
+        "claude:session-delete-me",
+      );
     });
 
-    expect(deleteClaudeSession).toHaveBeenCalledWith("/tmp/codex", "session-delete-me");
+    expect(deleteClaudeSession).toHaveBeenCalledWith(
+      "/tmp/codex",
+      "session-delete-me",
+    );
 
     await act(async () => {
-      await result.current.listThreadsForWorkspace(workspace, { preserveState: true });
+      await result.current.listThreadsForWorkspace(workspace, {
+        preserveState: true,
+      });
     });
 
     const setThreadsActions = dispatch.mock.calls
@@ -632,7 +651,8 @@ describe("useThreadActions native session bridges", () => {
 
     const setThreadItemsCall = dispatch.mock.calls.find(
       ([action]) =>
-        action.type === "setThreadItems" && action.threadId === "claude:session-1",
+        action.type === "setThreadItems" &&
+        action.threadId === "claude:session-1",
     );
     expect(setThreadItemsCall).toBeTruthy();
 

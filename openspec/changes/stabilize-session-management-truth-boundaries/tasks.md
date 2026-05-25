@@ -42,6 +42,13 @@
 - [x] 7.3 [P1] Run typecheck and OpenSpec validation; input: full changed tree; output: green gates; verify with `npm run typecheck`, `openspec validate stabilize-session-management-truth-boundaries --strict --no-interactive`, and `openspec validate --all --strict --no-interactive`.
 - [x] 7.4 [P1] Update implementation evidence in this change before archive; input: test logs and behavior notes; output: tasks/proposal/design evidence refresh; verify with `git diff --check`.
 
+## 8. Delete Tombstone And Settings Window Follow-up
+
+- [x] 8.1 [P1] Cancel Settings pagination and request a large management window; input: Settings/session catalog fetch path; output: `9999` session request window with cursor pagination disabled in the management surface; verify with focused Settings/session catalog tests.
+- [x] 8.2 [P1] Propagate explicit delete tombstones from Settings mutations to workspace thread refresh; input: per-entry delete results; output: deleted thread ids passed through SettingsView -> app shell -> workspace list hydration -> thread actions; verify with focused thread/settings Vitest.
+- [x] 8.3 [P1] Prevent degraded last-good fallback from reviving explicitly deleted sessions; input: `deletedThreadIds` plus uncertain/degraded empty source status; output: deleted rows removed from cached summaries, reducer state, fallback snapshots, visible summaries, and remembered last-good candidates; verify with `useThreadActions` regression.
+- [x] 8.4 [P1] Close stale Settings session curtain when the currently opened session is deleted; input: successful delete results while curtain is loading; output: curtain closes, timeout cleanup runs, stale load sequence is invalidated; verify with `SessionManagementSection` regression.
+
 ## Evidence - 2026-05-23
 
 - OpenSpec baseline: `openspec status --change stabilize-session-management-truth-boundaries`, `openspec validate stabilize-session-management-truth-boundaries --strict --no-interactive`, `openspec validate --all --strict --no-interactive`.
@@ -57,3 +64,10 @@
 - Heavy-test-noise sentry: `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs` and `npm run check:heavy-test-noise` passed; full sentry covered 532 test files with 0 act/stdout/stderr payload violations.
 - Runtime contracts: `npm run check:runtime-contracts` passed.
 - Hygiene: `cargo fmt --manifest-path src-tauri/Cargo.toml` applied; `git diff --check` passed.
+
+## Evidence - 2026-05-25
+
+- Focused Settings curtain regression: `npx vitest run src/features/settings/components/settings-view/sections/SessionManagementSection.test.tsx` passed with 28 tests.
+- Focused session-management regression set: `npx vitest run src/features/threads/hooks/useThreadActions.test.tsx src/features/settings/components/settings-view/sections/SessionManagementSection.test.tsx src/app-shell-parts/useWorkspaceThreadListHydration.test.tsx src/app-shell-parts/useAppShellSearchRadarSection.test.tsx` passed with 78 tests.
+- Quality gates: `npm run lint`, `npm run check:runtime-contracts`, and `git diff --check` passed.
+- Typecheck qualifier: `npm run typecheck` is currently blocked by unrelated untracked `src/features/project-map/components/ProjectMapPanel.tsx` importing missing `../mockProjectMapData`; this is outside the session-management write set.

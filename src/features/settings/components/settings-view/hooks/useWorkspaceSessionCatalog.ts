@@ -64,7 +64,7 @@ type UseWorkspaceSessionCatalogOptions = {
   enabled?: boolean;
 };
 
-const SESSION_CATALOG_PAGE_SIZE = 999;
+const SESSION_CATALOG_PAGE_SIZE = 9_999;
 const UNASSIGNED_WORKSPACE_ID = "__global_unassigned__";
 const OWNER_UNRESOLVED_CODE = "OWNER_WORKSPACE_UNRESOLVED";
 
@@ -130,7 +130,7 @@ function normalizeCatalogPage(response: WorkspaceSessionCatalogPageLike): {
       : null;
   return {
     data: Array.isArray(response?.data) ? response.data : [],
-    nextCursor: response?.nextCursor ?? null,
+    nextCursor: null,
     partialSource: response?.partialSource ?? null,
     pageLimit: {
       requestedLimit,
@@ -350,7 +350,10 @@ export function useWorkspaceSessionCatalog({
               .map((entry) => {
                 const stableKey = entry.stableSessionKey?.trim();
                 return stableKey
-                  ? ([stableKey, buildWorkspaceSessionSelectionKey(entry)] as const)
+                  ? ([
+                      stableKey,
+                      buildWorkspaceSessionSelectionKey(entry),
+                    ] as const)
                   : null;
               })
               .filter(
@@ -385,7 +388,8 @@ export function useWorkspaceSessionCatalog({
             const respondedSessionIds = new Set<string>();
             response.results.forEach((item) => {
               respondedSessionIds.add(item.sessionId);
-              const ownerWorkspaceId = item.ownerWorkspaceId ?? entryWorkspaceId;
+              const ownerWorkspaceId =
+                item.ownerWorkspaceId ?? entryWorkspaceId;
               const stableSessionKey = item.stableSessionKey?.trim() || null;
               mutationResults.push({
                 selectionKey:

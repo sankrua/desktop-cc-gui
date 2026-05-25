@@ -1,10 +1,6 @@
 import { useCallback } from "react";
 import type { Dispatch, MutableRefObject } from "react";
-import type {
-  DebugEntry,
-  ThreadSummary,
-  WorkspaceInfo,
-} from "../../../types";
+import type { DebugEntry, ThreadSummary, WorkspaceInfo } from "../../../types";
 import type { WorkspaceSessionCatalogPage } from "../../../services/tauri";
 import {
   listThreadTitles as listThreadTitlesService,
@@ -38,6 +34,7 @@ import {
   decodeThreadListCursorState,
   normalizeProjectCatalogSession,
   resolveThreadListCursorForDisplay,
+  sortThreadSummariesForDisplay,
   type ProjectCatalogSessionSummary,
 } from "./useThreadActions.threadList";
 import type {
@@ -261,9 +258,11 @@ export function useLoadOlderThreadsForWorkspace({
           mappedTitles,
           getCustomName,
         );
-        const visibleMergedThreads = applySessionArchiveState(
-          mergedCatalogThreads,
-          await archivedSessionMapPromise,
+        const visibleMergedThreads = sortThreadSummariesForDisplay(
+          applySessionArchiveState(
+            mergedCatalogThreads,
+            await archivedSessionMapPromise,
+          ),
         );
 
         const visibleMergedIds = visibleMergedThreads

@@ -82,10 +82,17 @@ Sidebar 需要 archived map 来过滤 continuity rows，但这条链路不能无
 
 ### Decision 7: Page-size cap 必须成为 contract 字段或 degraded evidence
 
-Settings 可以请求更大的管理窗口，但 backend cap 为保护性能存在。若 requested limit > actual limit，response MUST 让 frontend 知道 actual limit / cap reached / next cursor，UI 不能把当前页误认为完整全量。
+Settings 可以请求更大的管理窗口，当前产品取舍是不提供分页交互，直接请求 `9999` 条 session。backend cap 为保护性能仍可存在；若 requested limit > actual limit，response MUST 让 frontend 知道 actual limit / cap reached / next cursor 或 equivalent partial evidence，UI 不能把当前窗口误认为完整全量。
 
 替代方案：frontend 把 `999` 改成 `200`。
 放弃原因：只能消除不一致，不能解释过滤后还有更多数据的事实。
+
+### Decision 8: Delete success 是最高优先级 removal evidence
+
+Settings 删除、Sidebar refresh、workspace thread rows 和 session curtain 都必须把 delete success 视为显式 tombstone。即使当前 catalog source 返回 `uncertain_empty`、degraded partial 或 last-good fallback，已删除 session 也不得被重新合并回可见列表；如果详情幕布正在加载该 session，删除成功后必须关闭幕布并使旧 load sequence 失效。
+
+替代方案：只依赖下一次 catalog reload 自然刷新。
+放弃原因：degraded continuity 设计会刻意保留 last-good rows，不能区分“source 暂时不完整”和“用户刚刚明确删除”；详情幕布也有独立 pending state，不会随列表为空自动关闭。
 
 ## Risks / Trade-offs
 
@@ -119,6 +126,7 @@ Rollback：所有新增字段为 additive；若 stable cursor 有问题，backen
 - Session Management page response 暴露 `requestedLimit`、`effectiveLimit` 与 `limitCapped`，Settings UI 在 backend cap 截断时展示继续加载提示。
 - Batch mutation owner-group metadata failures 降级为 per-entry failure；request-level error 继续保留给 workspace 缺失、请求不可解析等全局前置条件失败。
 - Large-file hardening: batch folder assignment 拆到 `session_management_batch_assign.rs`，`session_management.rs` 保持在 hard gate 下方。
+- Follow-up 2026-05-25: Settings 管理页取消分页交互并统一请求 `9999` 条 session；delete mutation 将成功删除的 thread ids 传给 workspace thread refresh，sidebar/list merge 在 degraded last-good fallback 前先应用 tombstone；Settings session curtain 若命中被删 session，会关闭幕布并递增 load sequence，防止旧异步加载回写“正在加载会话”。
 
 ## Open Questions
 

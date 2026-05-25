@@ -1,4 +1,11 @@
-import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { useTranslation } from "react-i18next";
 import { SessionListSection } from "./SessionManagementSessionList";
 import Archive from "lucide-react/dist/esm/icons/archive";
@@ -46,9 +53,7 @@ import {
   buildItemsFromThread,
   mergeThreadItems,
 } from "../../../../../utils/threadItems";
-import {
-  parseClaudeHistoryMessagesWithShadowRecovery,
-} from "../../../../threads/loaders/claudeHistoryLoader";
+import { parseClaudeHistoryMessagesWithShadowRecovery } from "../../../../threads/loaders/claudeHistoryLoader";
 import { parseCodexSessionHistory } from "../../../../threads/loaders/codexSessionHistory";
 import { parseGeminiHistoryMessages } from "../../../../threads/loaders/geminiHistoryParser";
 import {
@@ -97,7 +102,10 @@ type SessionManagementSectionProps = {
     workspaceId: string,
     settings: Partial<WorkspaceSettings>,
   ) => Promise<void>;
-  onSessionsMutated?: (workspaceId: string) => void;
+  onSessionsMutated?: (
+    workspaceId: string,
+    options?: { deletedThreadIds?: string[] },
+  ) => void;
 };
 
 type SessionFolderFilter = "__all__" | "__root__" | string;
@@ -423,6 +431,21 @@ export function collectSucceededWorkspaceIds(
   ];
 }
 
+function collectDeletedThreadIdsByWorkspaceId(
+  results: WorkspaceSessionCatalogMutationResponse["results"],
+): Map<string, string[]> {
+  const threadIdsByWorkspaceId = new Map<string, string[]>();
+  results.forEach((item) => {
+    if (!item.ok || !item.sessionId.trim()) {
+      return;
+    }
+    const list = threadIdsByWorkspaceId.get(item.workspaceId) ?? [];
+    list.push(item.sessionId);
+    threadIdsByWorkspaceId.set(item.workspaceId, list);
+  });
+  return threadIdsByWorkspaceId;
+}
+
 export function SessionManagementSection({
   title,
   description,
@@ -463,6 +486,7 @@ export function SessionManagementSection({
   const appliedInitialWorkspaceIdRef = useRef<string | null>(null);
   const sessionCurtainLoadSeqRef = useRef(0);
   const sessionCurtainTimeoutCleanupRef = useRef<(() => void) | null>(null);
+  const sessionCurtainRef = useRef<SessionCurtainState | null>(null);
   const [mode, setMode] = useState<WorkspaceSessionCatalogMode>("project");
   const [filters, setFilters] =
     useState<WorkspaceSessionCatalogFilters>(DEFAULT_FILTERS);
@@ -490,6 +514,7 @@ export function SessionManagementSection({
     useState(false);
   const [sessionCurtain, setSessionCurtain] =
     useState<SessionCurtainState | null>(null);
+  sessionCurtainRef.current = sessionCurtain;
   const primarySource: WorkspaceSessionCatalogSource = "strict";
   const summaryQuery = useMemo(
     () => ({
@@ -1092,6 +1117,26 @@ export function SessionManagementSection({
     setSessionCurtain(null);
   };
 
+  const closeSessionCurtainIfDeleted = (
+    results: WorkspaceSessionCatalogMutationResponse["results"],
+  ) => {
+    const current = sessionCurtainRef.current;
+    if (!current) {
+      return;
+    }
+    const deletedSelectionKeys = new Set(
+      results.filter((item) => item.ok).map((item) => item.selectionKey),
+    );
+    if (
+      !deletedSelectionKeys.has(buildWorkspaceSessionSelectionKey(current.entry))
+    ) {
+      return;
+    }
+    clearActiveSessionCurtainTimeout();
+    sessionCurtainLoadSeqRef.current += 1;
+    setSessionCurtain(null);
+  };
+
   useEffect(() => {
     if (workspaceOptions.length === 0) {
       if (workspaceId !== null) {
@@ -1224,6 +1269,9 @@ export function SessionManagementSection({
       const response = await mutate(kind, selectedEntries);
       const succeeded = response.results.filter((item) => item.ok);
       const failed = response.results.filter((item) => !item.ok);
+      if (kind === "delete") {
+        closeSessionCurtainIfDeleted(response.results);
+      }
       if (failed.length === 0) {
         const successKey =
           kind === "archive"
@@ -1267,8 +1315,20 @@ export function SessionManagementSection({
       const succeededWorkspaceIds = collectSucceededWorkspaceIds(
         response.results,
       );
+      const deletedThreadIdsByWorkspaceId =
+        kind === "delete"
+          ? collectDeletedThreadIdsByWorkspaceId(response.results)
+          : new Map<string, string[]>();
       succeededWorkspaceIds.forEach((ownerWorkspaceId) => {
-        onSessionsMutated?.(ownerWorkspaceId);
+        onSessionsMutated?.(
+          ownerWorkspaceId,
+          kind === "delete"
+            ? {
+                deletedThreadIds:
+                  deletedThreadIdsByWorkspaceId.get(ownerWorkspaceId) ?? [],
+              }
+            : undefined,
+        );
       });
       if (failed.length > 0) {
         keepOnlySelected(failed.map((item) => item.selectionKey));
@@ -2101,13 +2161,10 @@ export function SessionManagementSection({
                           relatedPageLimit.requestedLimit != null &&
                           relatedPageLimit.effectiveLimit != null ? (
                             <div className="settings-project-sessions-notice">
-                              {t(
-                                "settings.sessionManagementPageLimitCapped",
-                                {
-                                  requested: relatedPageLimit.requestedLimit,
-                                  effective: relatedPageLimit.effectiveLimit,
-                                },
-                              )}
+                              {t("settings.sessionManagementPageLimitCapped", {
+                                requested: relatedPageLimit.requestedLimit,
+                                effective: relatedPageLimit.effectiveLimit,
+                              })}
                             </div>
                           ) : null}
                           {relatedError ? (

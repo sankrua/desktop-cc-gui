@@ -42,7 +42,7 @@ Batch archive, unarchive, delete, and folder assignment operations that target m
 
 ### Requirement: Session Management Page Size Caps MUST Be Explicit
 
-Session Management MUST make backend page-size caps visible to the frontend when the requested limit exceeds the backend maximum or when a capped scan prevents complete results.
+Session Management MUST make backend page-size caps visible to the frontend when the requested limit exceeds the backend maximum or when a capped scan prevents complete results. The Settings management surface SHOULD request a large bounded window, currently `9999` sessions, rather than relying on user-visible pagination for ordinary management.
 
 #### Scenario: requested page size exceeds backend cap
 - **WHEN** the frontend requests a page size larger than the backend-supported maximum
@@ -58,3 +58,19 @@ Session Management MUST make backend page-size caps visible to the frontend when
 - **WHEN** results are capped only because the requested page size exceeded backend limits
 - **THEN** the system MUST distinguish that cap from engine source failure
 - **AND** it MUST NOT mark healthy engine sources as failed solely because a page limit was enforced
+
+### Requirement: Successful Deletes MUST Clear Derived Session UI State
+
+Session Management delete success MUST be treated as explicit removal evidence across Settings, Sidebar, workspace thread rows, and session curtain state. Degraded or uncertain source status MUST NOT override a successful delete result for the same session identity.
+
+#### Scenario: deleted session is not revived by degraded fallback
+- **WHEN** a session delete mutation succeeds
+- **AND** the subsequent workspace catalog refresh is degraded, partial, or `uncertain_empty`
+- **THEN** frontend continuity fallback MUST NOT reinsert the deleted session from last-good snapshots or cached summaries
+- **AND** visible sidebar/workspace rows MUST remain without that session
+
+#### Scenario: deleting the open session closes the Settings curtain
+- **WHEN** the Settings session curtain is open or loading a session
+- **AND** a delete mutation succeeds for that same session identity
+- **THEN** the curtain MUST close or otherwise leave loading state
+- **AND** stale async load results for the deleted session MUST NOT reopen or repopulate the curtain

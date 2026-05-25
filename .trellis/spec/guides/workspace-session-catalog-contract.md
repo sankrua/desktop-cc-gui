@@ -25,7 +25,7 @@
 ### 3. Contracts
 
 - Backend catalog active strict projection MUST be the default membership truth for Sidebar and Session Management.
-- Session Management may use a larger first-page catalog window than Sidebar. Current Settings catalog hook uses page size `999`; Sidebar keeps its own startup/load-older catalog page size to avoid broadening startup pressure.
+- Session Management may use a larger first-page catalog window than Sidebar. Current Settings catalog hook uses page size `9999` and does not expose user-visible pagination; Sidebar keeps its own startup/load-older catalog page size to avoid broadening startup pressure.
 - Workspace Home MUST NOT derive an independent session membership set from `recentThreads`; if it later displays sessions, it MUST consume the same catalog projection or document an explicit display-window difference.
 - Native engine list APIs such as `listClaudeSessions` MAY provide transcript restore, diagnostics, or continuity seed, but MUST NOT widen or shrink complete catalog membership.
 - Frontend MUST NOT reapply exact `entry.workspaceId === selectedWorkspaceId` membership filtering on active strict projection rows. Project aggregate rows may have child/worktree `workspaceId`, and that owner must survive to UI state.
@@ -46,6 +46,7 @@
 | Claude scan uncertain/partial/degraded | preserve last-good continuity and expose source status | treat omission as authoritative deletion |
 | cwd and Claude project dir conflict | unresolved diagnostic; no strict membership | guess parent/child owner |
 | archive/move/delete child row from aggregate | write child owner metadata by stable key | write selected parent metadata |
+| settings delete success | remove deleted ids from sidebar/list/cache/curtain derived state | degraded fallback revives deleted row or leaves deleted curtain loading |
 | source-fact cache hit | rerun ownership resolver and metadata overlay | reuse cached owner/membership |
 | cache missing/corrupt/deleted | direct scan and rebuild when possible | convert cache failure into authoritative empty |
 

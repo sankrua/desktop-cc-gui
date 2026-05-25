@@ -13,8 +13,7 @@ export const THREAD_LIST_MAX_EMPTY_PAGES_WITH_ACTIVITY = 20;
 export const THREAD_LIST_MAX_TOTAL_PAGES = 40;
 export const THREAD_LIST_MAX_EMPTY_PAGES_LOAD_OLDER = 10;
 export const SIDEBAR_THREAD_LIST_TIMEOUT_MS = 30_000;
-export const THREAD_LIST_MAX_FETCH_DURATION_MS =
-  SIDEBAR_THREAD_LIST_TIMEOUT_MS;
+export const THREAD_LIST_MAX_FETCH_DURATION_MS = SIDEBAR_THREAD_LIST_TIMEOUT_MS;
 export const THREAD_LIST_LIVE_REQUEST_TIMEOUT_MS =
   SIDEBAR_THREAD_LIST_TIMEOUT_MS;
 export const THREAD_RECOVERY_MAX_PAGES = 3;
@@ -24,13 +23,12 @@ export const THREAD_RECOVERY_HISTORY_MATCH_CANDIDATES = 8;
 export const RELATED_THREAD_LOAD_CONCURRENCY = 2;
 export const DEFAULT_CLAUDE_CONTEXT_WINDOW = 200_000;
 export const GEMINI_SESSION_CACHE_TTL_MS = 60_000;
-export const GEMINI_SESSION_FETCH_TIMEOUT_MS =
-  SIDEBAR_THREAD_LIST_TIMEOUT_MS;
+export const GEMINI_SESSION_FETCH_TIMEOUT_MS = SIDEBAR_THREAD_LIST_TIMEOUT_MS;
 export const NATIVE_SESSION_LIST_FETCH_TIMEOUT_MS =
   SIDEBAR_THREAD_LIST_TIMEOUT_MS;
 export const CODEX_SESSION_CATALOG_FETCH_TIMEOUT_MS =
   SIDEBAR_THREAD_LIST_TIMEOUT_MS;
-export const SESSION_CATALOG_PAGE_SIZE = 200;
+export const SESSION_CATALOG_PAGE_SIZE = 9_999;
 
 const MIN_NATIVE_SESSION_LIST_LIMIT = Math.min(
   SESSION_CATALOG_PAGE_SIZE,
@@ -38,9 +36,14 @@ const MIN_NATIVE_SESSION_LIST_LIMIT = Math.min(
 );
 const THREAD_LIST_CURSOR_SOURCE_SEPARATOR = "::";
 const THREAD_LIST_CURSOR_CATALOG_ROOT = "__root__";
-const WORKSPACE_SESSION_SOURCE_COMPLETENESS_VALUES = new Set<
-  WorkspaceSessionSourceCompleteness
->(["complete", "authoritative_empty", "partial", "degraded", "uncertain_empty"]);
+const WORKSPACE_SESSION_SOURCE_COMPLETENESS_VALUES =
+  new Set<WorkspaceSessionSourceCompleteness>([
+    "complete",
+    "authoritative_empty",
+    "partial",
+    "degraded",
+    "uncertain_empty",
+  ]);
 
 type ThreadListCursorSource = "catalog" | "runtime";
 
@@ -156,6 +159,18 @@ export function countCatalogSessionsByEngine(
   }, {});
 }
 
+export function sortThreadSummariesForDisplay(
+  summaries: ThreadSummary[],
+): ThreadSummary[] {
+  return [...summaries].sort((left, right) => {
+    const updatedAtDelta = right.updatedAt - left.updatedAt;
+    if (updatedAtDelta !== 0) {
+      return updatedAtDelta;
+    }
+    return left.id.localeCompare(right.id);
+  });
+}
+
 function normalizeOptionalCatalogString(value: unknown): string | null {
   if (typeof value !== "string") {
     return null;
@@ -210,7 +225,9 @@ export function normalizeProjectCatalogSession(
     sessionId,
     stableSessionKey: normalizeOptionalCatalogString(session.stableSessionKey),
     workspaceId: normalizeOptionalCatalogString(session.workspaceId),
-    matchedWorkspaceId: normalizeOptionalCatalogString(session.matchedWorkspaceId),
+    matchedWorkspaceId: normalizeOptionalCatalogString(
+      session.matchedWorkspaceId,
+    ),
     title: String(session.title ?? "").trim(),
     updatedAt:
       typeof session.updatedAt === "number" &&
@@ -236,7 +253,9 @@ export function normalizeProjectCatalogSession(
     sourceCompleteness: normalizeCatalogSourceCompleteness(
       session.sourceCompleteness,
     ),
-    sourceStatusReason: normalizeOptionalCatalogString(session.sourceStatusReason),
+    sourceStatusReason: normalizeOptionalCatalogString(
+      session.sourceStatusReason,
+    ),
     folderId: normalizeOptionalCatalogString(session.folderId),
   };
 }

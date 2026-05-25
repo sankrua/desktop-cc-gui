@@ -74,7 +74,11 @@ vi.mock("./SkillsSection", () => ({
   }) => {
     skillsSectionMock(props);
     return (
-      <div data-testid={props.embedded ? "embedded-skills-section" : "skills-section"}>
+      <div
+        data-testid={
+          props.embedded ? "embedded-skills-section" : "skills-section"
+        }
+      >
         Mock Skills Section
       </div>
     );
@@ -82,9 +86,9 @@ vi.mock("./SkillsSection", () => ({
 }));
 
 vi.mock("../../../services/tauri", async () => {
-  const actual = await vi.importActual<typeof import("../../../services/tauri")>(
-    "../../../services/tauri",
-  );
+  const actual = await vi.importActual<
+    typeof import("../../../services/tauri")
+  >("../../../services/tauri");
   return {
     ...actual,
     getWorkspaceSessionProjectionSummary: vi.fn(),
@@ -155,7 +159,9 @@ beforeEach(() => {
     filePath: "/tmp/diagnostics.json",
     generatedAt: "123",
   });
-  vi.mocked(localUsageStatistics).mockResolvedValue(createLocalUsageStatistics());
+  vi.mocked(localUsageStatistics).mockResolvedValue(
+    createLocalUsageStatistics(),
+  );
   vi.mocked(getWebServerStatus).mockResolvedValue({
     running: false,
     rpcEndpoint: "127.0.0.1:4732",
@@ -262,9 +268,8 @@ const baseSettings: AppSettings = {
   showMessageAnchors: true,
   performanceCompatibilityModeEnabled: false,
   uiFontFamily:
-    "Monaco, \"SF Pro Text\", \"SF Pro Display\", -apple-system, \"Helvetica Neue\", sans-serif",
-  codeFontFamily:
-    "Monaco, \"SF Mono\", \"SFMono-Regular\", Menlo, monospace",
+    'Monaco, "SF Pro Text", "SF Pro Display", -apple-system, "Helvetica Neue", sans-serif',
+  codeFontFamily: 'Monaco, "SF Mono", "SFMono-Regular", Menlo, monospace',
   codeFontSize: 11,
   notificationSoundsEnabled: true,
   notificationSoundId: "default",
@@ -374,8 +379,12 @@ const renderDisplaySection = (
   options: {
     appSettings?: Partial<AppSettings>;
     reduceTransparency?: boolean;
-    onUpdateAppSettings?: ComponentProps<typeof SettingsView>["onUpdateAppSettings"];
-    onToggleTransparency?: ComponentProps<typeof SettingsView>["onToggleTransparency"];
+    onUpdateAppSettings?: ComponentProps<
+      typeof SettingsView
+    >["onUpdateAppSettings"];
+    onToggleTransparency?: ComponentProps<
+      typeof SettingsView
+    >["onToggleTransparency"];
   } = {},
 ) => {
   cleanup();
@@ -421,7 +430,9 @@ const renderDisplaySection = (
 const renderComposerSection = (
   options: {
     appSettings?: Partial<AppSettings>;
-    onUpdateAppSettings?: ComponentProps<typeof SettingsView>["onUpdateAppSettings"];
+    onUpdateAppSettings?: ComponentProps<
+      typeof SettingsView
+    >["onUpdateAppSettings"];
   } = {},
 ) => {
   cleanup();
@@ -582,31 +593,61 @@ describe("SettingsView Display", () => {
   it("shows consolidated settings entries and keeps removed sidebar entries hidden", async () => {
     renderDisplaySection();
     await flushSettingsViewEffects();
-    const sidebar = document.querySelector(".settings-sidebar") as HTMLElement | null;
+    const sidebar = document.querySelector(
+      ".settings-sidebar",
+    ) as HTMLElement | null;
     if (!sidebar) {
       throw new Error("Expected settings sidebar");
     }
     const sidebarQueries = within(sidebar);
 
-    expect(sidebarQueries.queryByRole("button", { name: "Dictation" })).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Dictation" }),
+    ).toBeNull();
     expect(sidebarQueries.queryByRole("button", { name: "Git" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Projects" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Sessions" })).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Projects" }),
+    ).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Sessions" }),
+    ).toBeNull();
     expect(sidebarQueries.queryByRole("button", { name: "Agents" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Prompts" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Shortcuts" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Open in" })).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Prompts" }),
+    ).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Shortcuts" }),
+    ).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Open in" }),
+    ).toBeNull();
     expect(sidebarQueries.queryByRole("button", { name: "Usage" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Web Service" })).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Web Service" }),
+    ).toBeNull();
     expect(sidebarQueries.queryByRole("button", { name: "Email" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "Runtime Pool" })).toBeNull();
-    expect(sidebarQueries.queryByRole("button", { name: "CLI Validation" })).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Runtime Pool" }),
+    ).toBeNull();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "CLI Validation" }),
+    ).toBeNull();
     expect(sidebarQueries.queryByRole("button", { name: "Skills" })).toBeNull();
-    expect(sidebarQueries.getByRole("button", { name: "Project Management" })).toBeTruthy();
-    expect(sidebarQueries.getByRole("button", { name: "MCP / Skills" })).toBeTruthy();
-    expect(sidebarQueries.getByRole("button", { name: "Agents / Prompts" })).toBeTruthy();
-    expect(sidebarQueries.getByRole("button", { name: "Runtime Environment" })).toBeTruthy();
-    expect(sidebarQueries.queryByRole("button", { name: "Experimental" })).toBeNull();
+    expect(
+      sidebarQueries.getByRole("button", { name: "Project Management" }),
+    ).toBeTruthy();
+    expect(
+      sidebarQueries.getByRole("button", { name: "MCP / Skills" }),
+    ).toBeTruthy();
+    expect(
+      sidebarQueries.getByRole("button", { name: "Agents / Prompts" }),
+    ).toBeTruthy();
+    expect(
+      sidebarQueries.getByRole("button", { name: "Runtime Environment" }),
+    ).toBeTruthy();
+    expect(
+      sidebarQueries.queryByRole("button", { name: "Experimental" }),
+    ).toBeNull();
   });
 
   it("removes the dead multi-agent toggle and no longer shows background terminal in experimental", async () => {
@@ -779,7 +820,8 @@ describe("SettingsView Display", () => {
     await waitFor(() => {
       expect(document.querySelector(".settings-doctor-body")).toBeTruthy();
     });
-    const doctorBodyText = document.querySelector(".settings-doctor-body")?.textContent ?? "";
+    const doctorBodyText =
+      document.querySelector(".settings-doctor-body")?.textContent ?? "";
     expect(doctorBodyText).toContain("App Server Probe: fallback-ok");
     expect(doctorBodyText).toContain(
       "Resolved Binary: C:/Users/test/AppData/Roaming/npm/codex.cmd",
@@ -890,9 +932,9 @@ describe("SettingsView Display", () => {
       expect(onRunDoctor).toHaveBeenCalled();
     });
     await waitFor(() => {
-      expect(document.querySelector(".settings-doctor-body")?.textContent ?? "").toContain(
-        "Platform:",
-      );
+      expect(
+        document.querySelector(".settings-doctor-body")?.textContent ?? "",
+      ).toContain("Platform:");
     });
   });
 
@@ -1031,7 +1073,9 @@ describe("SettingsView Display", () => {
     renderDisplaySection({ onUpdateAppSettings });
 
     const basicSection = document.querySelector(".settings-section-basic");
-    const behaviorTab = basicSection?.querySelectorAll(".settings-basic-tab")[1];
+    const behaviorTab = basicSection?.querySelectorAll(
+      ".settings-basic-tab",
+    )[1];
     if (!(behaviorTab instanceof HTMLElement)) {
       throw new Error("Expected behavior tab");
     }
@@ -1044,7 +1088,9 @@ describe("SettingsView Display", () => {
     fireEvent.change(screen.getByLabelText("Terminal shell path"), {
       target: { value: "  C:\\Program Files\\PowerShell\\7\\pwsh.exe  " },
     });
-    fireEvent.click(screen.getByRole("button", { name: "Save terminal shell path" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Save terminal shell path" }),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1063,9 +1109,11 @@ describe("SettingsView Display", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
-    fireEvent.click(screen.getByRole("switch", {
-      name: "Enable low-performance compatibility mode",
-    }));
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Enable low-performance compatibility mode",
+      }),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1091,14 +1139,18 @@ describe("SettingsView Display", () => {
   });
 
   it("shows a readable diagnostics bundle export failure", async () => {
-    vi.mocked(exportDiagnosticsBundle).mockRejectedValueOnce(new Error("disk full"));
+    vi.mocked(exportDiagnosticsBundle).mockRejectedValueOnce(
+      new Error("disk full"),
+    );
     renderDisplaySection();
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
     fireEvent.click(screen.getByRole("button", { name: "Export diagnostics" }));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent ?? "").toContain("disk full");
+      expect(screen.getByRole("alert").textContent ?? "").toContain(
+        "disk full",
+      );
     });
   });
 
@@ -1111,7 +1163,9 @@ describe("SettingsView Display", () => {
     renderDisplaySection();
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
-    const exportButton = screen.getByRole("button", { name: "Export diagnostics" });
+    const exportButton = screen.getByRole("button", {
+      name: "Export diagnostics",
+    });
     await act(async () => {
       fireEvent.click(exportButton);
       fireEvent.click(exportButton);
@@ -1145,7 +1199,9 @@ describe("SettingsView Display", () => {
 
   it("ignores diagnostics bundle export completion after settings unmount", async () => {
     const pendingExport = createDeferred<DiagnosticsBundleExportResult>();
-    vi.mocked(exportDiagnosticsBundle).mockReturnValueOnce(pendingExport.promise);
+    vi.mocked(exportDiagnosticsBundle).mockReturnValueOnce(
+      pendingExport.promise,
+    );
     const { unmount } = renderDisplaySection();
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
@@ -1344,19 +1400,27 @@ describe("SettingsView Display", () => {
       throw new Error("Expected client UI visibility rows");
     }
     expect(
-      topSessionTabsRow.querySelector(".settings-client-ui-visibility-row-icon svg"),
+      topSessionTabsRow.querySelector(
+        ".settings-client-ui-visibility-row-icon svg",
+      ),
     ).toBeTruthy();
     expect(
       terminalRow.querySelector(".settings-client-ui-visibility-row-icon svg"),
     ).toBeTruthy();
     expect(
-      stickyUserBubbleRow.querySelector(".settings-client-ui-visibility-row-icon svg"),
+      stickyUserBubbleRow.querySelector(
+        ".settings-client-ui-visibility-row-icon svg",
+      ),
     ).toBeTruthy();
     expect(
-      contextSourcesCardRow.querySelector(".settings-client-ui-visibility-row-icon svg"),
+      contextSourcesCardRow.querySelector(
+        ".settings-client-ui-visibility-row-icon svg",
+      ),
     ).toBeTruthy();
     expect(
-      runtimeNoticeDockRow.querySelector(".settings-client-ui-visibility-row-icon svg"),
+      runtimeNoticeDockRow.querySelector(
+        ".settings-client-ui-visibility-row-icon svg",
+      ),
     ).toBeTruthy();
 
     fireEvent.click(within(topSessionTabsRow).getByRole("switch"));
@@ -1427,17 +1491,23 @@ describe("SettingsView Display", () => {
     document.body.appendChild(appRoot);
     renderDisplaySection({ onUpdateAppSettings });
 
-    fireEvent.click(screen.getByTestId("settings-user-msg-color-preset-6e40c9"));
+    fireEvent.click(
+      screen.getByTestId("settings-user-msg-color-preset-6e40c9"),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({ userMsgColor: "#6e40c9" }),
       );
     });
-    expect(document.documentElement.style.getPropertyValue("--color-message-user-bg")).toBe(
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--color-message-user-bg",
+      ),
+    ).toBe("#6e40c9");
+    expect(appRoot.style.getPropertyValue("--color-message-user-bg")).toBe(
       "#6e40c9",
     );
-    expect(appRoot.style.getPropertyValue("--color-message-user-bg")).toBe("#6e40c9");
 
     fireEvent.change(screen.getByTestId("settings-user-msg-color-hex-input"), {
       target: { value: "#cf222e" },
@@ -1448,10 +1518,14 @@ describe("SettingsView Display", () => {
         expect.objectContaining({ userMsgColor: "#cf222e" }),
       );
     });
-    expect(document.documentElement.style.getPropertyValue("--color-message-user-bg")).toBe(
+    expect(
+      document.documentElement.style.getPropertyValue(
+        "--color-message-user-bg",
+      ),
+    ).toBe("#cf222e");
+    expect(appRoot.style.getPropertyValue("--color-message-user-bg")).toBe(
       "#cf222e",
     );
-    expect(appRoot.style.getPropertyValue("--color-message-user-bg")).toBe("#cf222e");
 
     const callCountBeforeInvalid = onUpdateAppSettings.mock.calls.length;
     fireEvent.change(screen.getByTestId("settings-user-msg-color-hex-input"), {
@@ -1498,7 +1572,10 @@ describe("SettingsView Display", () => {
 
   it("resets ui scale to 100% from settings", async () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
-    renderDisplaySection({ onUpdateAppSettings, appSettings: { uiScale: 1.25 } });
+    renderDisplaySection({
+      onUpdateAppSettings,
+      appSettings: { uiScale: 1.25 },
+    });
 
     fireEvent.click(screen.getByTestId("settings-ui-scale-reset"));
     fireEvent.click(screen.getByTestId("settings-ui-scale-save"));
@@ -1517,7 +1594,9 @@ describe("SettingsView Display", () => {
 
     const uiFontSelect = screen.getByTestId("settings-ui-font-select");
     await waitFor(() => {
-      expect(within(uiFontSelect).getByRole("option", { name: "Avenir" })).toBeTruthy();
+      expect(
+        within(uiFontSelect).getByRole("option", { name: "Avenir" }),
+      ).toBeTruthy();
     });
     fireEvent.change(uiFontSelect, { target: { value: "Avenir" } });
 
@@ -1544,10 +1623,18 @@ describe("SettingsView Display", () => {
     await waitFor(() => {
       const uiFontSelect = screen.getByTestId("settings-ui-font-select");
       const codeFontSelect = screen.getByTestId("settings-code-font-select");
-      expect(within(uiFontSelect).getByRole("option", { name: "Avenir" })).toBeTruthy();
-      expect(within(uiFontSelect).getByRole("option", { name: "Monaco" })).toBeTruthy();
-      expect(within(codeFontSelect).getByRole("option", { name: "Avenir" })).toBeTruthy();
-      expect(within(codeFontSelect).getByRole("option", { name: "Monaco" })).toBeTruthy();
+      expect(
+        within(uiFontSelect).getByRole("option", { name: "Avenir" }),
+      ).toBeTruthy();
+      expect(
+        within(uiFontSelect).getByRole("option", { name: "Monaco" }),
+      ).toBeTruthy();
+      expect(
+        within(codeFontSelect).getByRole("option", { name: "Avenir" }),
+      ).toBeTruthy();
+      expect(
+        within(codeFontSelect).getByRole("option", { name: "Monaco" }),
+      ).toBeTruthy();
     });
   });
 
@@ -1560,14 +1647,18 @@ describe("SettingsView Display", () => {
     if (!uiFontRow) {
       throw new Error("Expected UI font row");
     }
-    fireEvent.click(within(uiFontRow as HTMLElement).getByRole("button", { name: "Reset" }));
+    fireEvent.click(
+      within(uiFontRow as HTMLElement).getByRole("button", { name: "Reset" }),
+    );
 
     const codeFontInput = screen.getByLabelText("Code font family");
     const codeFontRow = codeFontInput.closest(".settings-field-row");
     if (!codeFontRow) {
       throw new Error("Expected code font row");
     }
-    fireEvent.click(within(codeFontRow as HTMLElement).getByRole("button", { name: "Reset" }));
+    fireEvent.click(
+      within(codeFontRow as HTMLElement).getByRole("button", { name: "Reset" }),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1625,7 +1716,10 @@ describe("SettingsView Display", () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderDisplaySection({
       onUpdateAppSettings,
-      appSettings: { notificationSoundsEnabled: true, notificationSoundId: "default" },
+      appSettings: {
+        notificationSoundsEnabled: true,
+        notificationSoundId: "default",
+      },
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
@@ -1656,7 +1750,9 @@ describe("SettingsView Display", () => {
     vi.mocked(pushErrorToast).mockClear();
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
-    const proxyCard = document.querySelector(".settings-basic-proxy-card") as HTMLElement | null;
+    const proxyCard = document.querySelector(
+      ".settings-basic-proxy-card",
+    ) as HTMLElement | null;
     if (!proxyCard) {
       throw new Error("Expected network proxy card");
     }
@@ -1674,9 +1770,15 @@ describe("SettingsView Display", () => {
       );
     });
 
-    expect(document.querySelector(".settings-basic-proxy-card.is-enabled")).toBeTruthy();
+    expect(
+      document.querySelector(".settings-basic-proxy-card.is-enabled"),
+    ).toBeTruthy();
     expect(document.querySelector(".settings-proxy-header-badge")).toBeTruthy();
-    expect(document.querySelectorAll(".settings-basic-proxy-card .proxy-status-badge")).toHaveLength(1);
+    expect(
+      document.querySelectorAll(
+        ".settings-basic-proxy-card .proxy-status-badge",
+      ),
+    ).toHaveLength(1);
     expect((await screen.findByRole("status")).textContent ?? "").toContain(
       "settings.behaviorProxyEnabledSuccess",
     );
@@ -1693,7 +1795,9 @@ describe("SettingsView Display", () => {
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
-    const proxyCard = document.querySelector(".settings-basic-proxy-card") as HTMLElement | null;
+    const proxyCard = document.querySelector(
+      ".settings-basic-proxy-card",
+    ) as HTMLElement | null;
     if (!proxyCard) {
       throw new Error("Expected network proxy card");
     }
@@ -1715,14 +1819,18 @@ describe("SettingsView Display", () => {
   });
 
   it("rolls back proxy toggle and shows failure feedback when auto apply fails", async () => {
-    const onUpdateAppSettings = vi.fn().mockRejectedValue(new Error("proxy apply failed"));
+    const onUpdateAppSettings = vi
+      .fn()
+      .mockRejectedValue(new Error("proxy apply failed"));
     renderDisplaySection({
       onUpdateAppSettings,
       appSettings: { systemProxyEnabled: false, systemProxyUrl: null },
     });
 
     fireEvent.click(screen.getByRole("button", { name: "Behavior" }));
-    const proxyCard = document.querySelector(".settings-basic-proxy-card") as HTMLElement | null;
+    const proxyCard = document.querySelector(
+      ".settings-basic-proxy-card",
+    ) as HTMLElement | null;
     if (!proxyCard) {
       throw new Error("Expected network proxy card");
     }
@@ -1733,10 +1841,14 @@ describe("SettingsView Display", () => {
     fireEvent.click(within(proxyCard).getByRole("switch"));
 
     await waitFor(() => {
-      expect(screen.getByRole("alert").textContent ?? "").toContain("proxy apply failed");
+      expect(screen.getByRole("alert").textContent ?? "").toContain(
+        "proxy apply failed",
+      );
     });
 
-    expect(within(proxyCard).getByRole("switch").getAttribute("aria-checked")).toBe("false");
+    expect(
+      within(proxyCard).getByRole("switch").getAttribute("aria-checked"),
+    ).toBe("false");
     expect(pushErrorToast).toHaveBeenCalledWith({
       title: "common.error",
       message: "proxy apply failed",
@@ -1749,7 +1861,9 @@ describe("SettingsView Composer", () => {
     const onUpdateAppSettings = vi.fn().mockResolvedValue(undefined);
     renderComposerSection({ onUpdateAppSettings });
 
-    fireEvent.click(screen.getByRole("radio", { name: /⌘\/Ctrl\+Enter sends/i }));
+    fireEvent.click(
+      screen.getByRole("radio", { name: /⌘\/Ctrl\+Enter sends/i }),
+    );
 
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
@@ -1770,7 +1884,9 @@ describe("SettingsView Session management", () => {
     render(
       <SettingsView
         workspaceGroups={[]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspaceA, workspaceB] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspaceA, workspaceB] },
+        ]}
         ungroupedLabel="Ungrouped"
         onClose={vi.fn()}
         onMoveWorkspace={vi.fn()}
@@ -1804,9 +1920,14 @@ describe("SettingsView Session management", () => {
 
     await waitFor(() => {
       expect(listWorkspaceSessions).toHaveBeenCalledWith("ws-b", {
-        query: { keyword: null, engine: null, status: "active", folderId: null },
+        query: {
+          keyword: null,
+          engine: null,
+          status: "active",
+          folderId: null,
+        },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
   });
@@ -1840,7 +1961,9 @@ describe("SettingsView Session management", () => {
     render(
       <SettingsView
         workspaceGroups={[]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         ungroupedLabel="Ungrouped"
         onClose={vi.fn()}
         onMoveWorkspace={vi.fn()}
@@ -1874,9 +1997,14 @@ describe("SettingsView Session management", () => {
 
     await waitFor(() => {
       expect(listWorkspaceSessions).toHaveBeenCalledWith("ws-1", {
-        query: { keyword: null, engine: null, status: "active", folderId: null },
+        query: {
+          keyword: null,
+          engine: null,
+          status: "active",
+          folderId: null,
+        },
         cursor: null,
-        limit: 999,
+        limit: 9_999,
       });
     });
     expect(await screen.findByText("Session A")).toBeTruthy();
@@ -1915,7 +2043,9 @@ describe("SettingsView Session management", () => {
     render(
       <SettingsView
         workspaceGroups={[]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         ungroupedLabel="Ungrouped"
         onClose={vi.fn()}
         onMoveWorkspace={vi.fn()}
@@ -1951,12 +2081,16 @@ describe("SettingsView Session management", () => {
     const checkbox = await screen.findByRole("checkbox", { name: "Session A" });
     fireEvent.click(checkbox);
 
-    const deleteButton = screen.getByTestId("settings-project-sessions-delete-selected");
+    const deleteButton = screen.getByTestId(
+      "settings-project-sessions-delete-selected",
+    );
     fireEvent.click(deleteButton);
     fireEvent.click(deleteButton);
 
     await waitFor(() => {
-      expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-1", ["codex:thread-a"]);
+      expect(deleteWorkspaceSessions).toHaveBeenCalledWith("ws-1", [
+        "codex:thread-a",
+      ]);
     });
     await waitFor(() => {
       expect(onEnsureWorkspaceThreads).toHaveBeenCalledWith("ws-1");
@@ -1992,7 +2126,9 @@ describe("SettingsView Session management", () => {
     render(
       <SettingsView
         workspaceGroups={[]}
-        groupedWorkspaces={[{ id: null, name: "Ungrouped", workspaces: [workspace] }]}
+        groupedWorkspaces={[
+          { id: null, name: "Ungrouped", workspaces: [workspace] },
+        ]}
         ungroupedLabel="Ungrouped"
         onClose={vi.fn()}
         onMoveWorkspace={vi.fn()}
@@ -2026,7 +2162,9 @@ describe("SettingsView Session management", () => {
 
     expect(await screen.findByText("Session A")).toBeTruthy();
 
-    const toggleButton = screen.getByTestId("settings-project-sessions-expand-toggle");
+    const toggleButton = screen.getByTestId(
+      "settings-project-sessions-expand-toggle",
+    );
     fireEvent.click(toggleButton);
     expect(screen.queryByText("Session A")).toBeNull();
 
@@ -2055,7 +2193,11 @@ describe("SettingsView Shortcuts", () => {
     fireEvent.click(screen.getByRole("button", { name: "Shortcuts" }));
     await flushSettingsViewEffects();
     expect(screen.getAllByText("Shortcuts").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByText("Customize keyboard shortcuts for file actions, composer, panels, and navigation.")).toBeTruthy();
+    expect(
+      screen.getByText(
+        "Customize keyboard shortcuts for file actions, composer, panels, and navigation.",
+      ),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Open in" }));
     await flushSettingsViewEffects();
@@ -2065,12 +2207,16 @@ describe("SettingsView Shortcuts", () => {
     fireEvent.click(screen.getByRole("button", { name: "Web Service" }));
     await flushSettingsViewEffects();
     expect(screen.getAllByText("Web Service").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByLabelText("settings.webServicePortAriaLabel")).toBeTruthy();
+    expect(
+      screen.getByLabelText("settings.webServicePortAriaLabel"),
+    ).toBeTruthy();
 
     fireEvent.click(screen.getByRole("button", { name: "Email" }));
     await flushSettingsViewEffects();
     expect(screen.getAllByText("Email").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("switch", { name: "settings.emailEnableTitle" })).toBeTruthy();
+    expect(
+      screen.getByRole("switch", { name: "settings.emailEnableTitle" }),
+    ).toBeTruthy();
   });
 
   it("reaches all consolidated parent tabs", async () => {
@@ -2085,7 +2231,9 @@ describe("SettingsView Shortcuts", () => {
     expectTabButtonHasIcon("Usage");
     fireEvent.click(screen.getByRole("button", { name: "Session Management" }));
     await flushSettingsViewEffects();
-    expect(screen.getByTestId("settings-project-sessions-expand-toggle")).toBeTruthy();
+    expect(
+      screen.getByTestId("settings-project-sessions-expand-toggle"),
+    ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Usage" }));
     await flushSettingsViewEffects();
     expect(screen.getAllByText("Usage").length).toBeGreaterThanOrEqual(1);
@@ -2118,14 +2266,18 @@ describe("SettingsView Shortcuts", () => {
       }),
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Runtime Environment" }));
+    fireEvent.click(
+      screen.getByRole("button", { name: "Runtime Environment" }),
+    );
     await flushSettingsViewEffects();
     expect(screen.getByRole("button", { name: "Runtime Pool" })).toBeTruthy();
     expectTabButtonHasIcon("Runtime Pool");
     expectTabButtonHasIcon("CLI Validation");
     fireEvent.click(screen.getByRole("button", { name: "CLI Validation" }));
     await flushSettingsViewEffects();
-    expect(screen.getAllByText("CLI Validation").length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText("CLI Validation").length).toBeGreaterThanOrEqual(
+      2,
+    );
   });
 
   it("closes when clicking back to app", async () => {

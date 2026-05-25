@@ -154,7 +154,10 @@ export type SettingsViewProps = {
   onDeleteWorkspace: (id: string) => void;
   onCreateWorkspaceGroup: (name: string) => Promise<WorkspaceGroup | null>;
   onRenameWorkspaceGroup: (id: string, name: string) => Promise<boolean | null>;
-  onMoveWorkspaceGroup: (id: string, direction: "up" | "down") => Promise<boolean | null>;
+  onMoveWorkspaceGroup: (
+    id: string,
+    direction: "up" | "down",
+  ) => Promise<boolean | null>;
   onDeleteWorkspaceGroup: (id: string) => Promise<boolean | null>;
   onAssignWorkspaceGroup: (
     workspaceId: string,
@@ -182,13 +185,19 @@ export type SettingsViewProps = {
   ) => Promise<CodexDoctorResult>;
   activeWorkspace: WorkspaceInfo | null;
   activeEngine: string | null;
-  onUpdateWorkspaceCodexBin: (id: string, codexBin: string | null) => Promise<void>;
+  onUpdateWorkspaceCodexBin: (
+    id: string,
+    codexBin: string | null,
+  ) => Promise<void>;
   onUpdateWorkspaceSettings: (
     id: string,
     settings: Partial<WorkspaceSettings>,
   ) => Promise<void>;
   sessionRadarRecentCompletedSessions?: SessionRadarEntry[];
-  onEnsureWorkspaceThreads?: (workspaceId: string) => void;
+  onEnsureWorkspaceThreads?: (
+    workspaceId: string,
+    options?: { deletedThreadIds?: string[] },
+  ) => void;
   scaleShortcutTitle: string;
   scaleShortcutText: string;
   onTestNotificationSound: (soundId?: string, customSoundPath?: string) => void;
@@ -255,9 +264,15 @@ export function SettingsView({
 }: SettingsViewProps) {
   const { t } = useTranslation();
   const runCodexDoctor = onRunCodexDoctor ?? onRunDoctor;
-  const [activeSection, setActiveSection] = useState<SettingsViewSection>("basic");
+  const [activeSection, setActiveSection] =
+    useState<SettingsViewSection>("basic");
   const [basicSubTab, setBasicSubTab] = useState<
-    "appearance" | "behavior" | "shortcuts" | "open-apps" | "web-service" | "email"
+    | "appearance"
+    | "behavior"
+    | "shortcuts"
+    | "open-apps"
+    | "web-service"
+    | "email"
   >("appearance");
   const [projectManagementSubTab, setProjectManagementSubTab] = useState<
     "groups" | "sessions" | "usage"
@@ -274,23 +289,41 @@ export function SettingsView({
   const [commitPrompt, setCommitPrompt] = useState("");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [appVersion, setAppVersion] = useState<string | null>(null);
-  const [claudePathDraft, setClaudePathDraft] = useState(appSettings.claudeBin ?? "");
-  const [codexPathDraft, setCodexPathDraft] = useState(appSettings.codexBin ?? "");
-  const [codexArgsDraft, setCodexArgsDraft] = useState(appSettings.codexArgs ?? "");
-  const [terminalShellPathDraft, setTerminalShellPathDraft] = useState(appSettings.terminalShellPath ?? "");
-  const [remoteHostDraft, setRemoteHostDraft] = useState(appSettings.remoteBackendHost);
-  const [remoteTokenDraft, setRemoteTokenDraft] = useState(appSettings.remoteBackendToken ?? "");
-  const [uiFontDraft, setUiFontDraft] = useState(() =>
-    extractPrimaryFontFamily(appSettings.uiFontFamily) ||
-    extractPrimaryFontFamily(DEFAULT_UI_FONT_FAMILY),
+  const [claudePathDraft, setClaudePathDraft] = useState(
+    appSettings.claudeBin ?? "",
+  );
+  const [codexPathDraft, setCodexPathDraft] = useState(
+    appSettings.codexBin ?? "",
+  );
+  const [codexArgsDraft, setCodexArgsDraft] = useState(
+    appSettings.codexArgs ?? "",
+  );
+  const [terminalShellPathDraft, setTerminalShellPathDraft] = useState(
+    appSettings.terminalShellPath ?? "",
+  );
+  const [remoteHostDraft, setRemoteHostDraft] = useState(
+    appSettings.remoteBackendHost,
+  );
+  const [remoteTokenDraft, setRemoteTokenDraft] = useState(
+    appSettings.remoteBackendToken ?? "",
+  );
+  const [uiFontDraft, setUiFontDraft] = useState(
+    () =>
+      extractPrimaryFontFamily(appSettings.uiFontFamily) ||
+      extractPrimaryFontFamily(DEFAULT_UI_FONT_FAMILY),
   );
   const [uiFontOptions, setUiFontOptions] = useState<string[]>([]);
-  const [codeFontDraft, setCodeFontDraft] = useState(() =>
-    extractPrimaryFontFamily(appSettings.codeFontFamily) ||
-    extractPrimaryFontFamily(DEFAULT_CODE_FONT_FAMILY),
+  const [codeFontDraft, setCodeFontDraft] = useState(
+    () =>
+      extractPrimaryFontFamily(appSettings.codeFontFamily) ||
+      extractPrimaryFontFamily(DEFAULT_CODE_FONT_FAMILY),
   );
-  const [codeFontSizeDraft, setCodeFontSizeDraft] = useState(appSettings.codeFontSize);
-  const [uiScaleDraft, setUiScaleDraft] = useState(clampUiScale(appSettings.uiScale));
+  const [codeFontSizeDraft, setCodeFontSizeDraft] = useState(
+    appSettings.codeFontSize,
+  );
+  const [uiScaleDraft, setUiScaleDraft] = useState(
+    clampUiScale(appSettings.uiScale),
+  );
   const [userMsgHexDraft, setUserMsgHexDraft] = useState(() =>
     normalizeHexColor(appSettings.userMsgColor),
   );
@@ -337,10 +370,11 @@ export function SettingsView({
     status: "idle" | "reloading" | "applied" | "failed";
     message: string | null;
   }>({ status: "idle", message: null });
-  const [diagnosticsBundleExportState, setDiagnosticsBundleExportState] = useState<{
-    status: "idle" | "exporting" | "exported" | "failed";
-    message: string | null;
-  }>({ status: "idle", message: null });
+  const [diagnosticsBundleExportState, setDiagnosticsBundleExportState] =
+    useState<{
+      status: "idle" | "exporting" | "exported" | "failed";
+      message: string | null;
+    }>({ status: "idle", message: null });
   const diagnosticsBundleRequestIdRef = useRef(0);
   const diagnosticsBundleMountedRef = useRef(true);
   const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -450,7 +484,12 @@ export function SettingsView({
     return Array.from(options).sort((left, right) =>
       left.localeCompare(right, undefined, { sensitivity: "base" }),
     );
-  }, [appSettings.uiFontFamily, defaultUiPrimaryFont, uiFontDraft, uiFontOptions]);
+  }, [
+    appSettings.uiFontFamily,
+    defaultUiPrimaryFont,
+    uiFontDraft,
+    uiFontOptions,
+  ]);
   const defaultCodePrimaryFont = useMemo(
     () => extractPrimaryFontFamily(DEFAULT_CODE_FONT_FAMILY),
     [],
@@ -470,7 +509,12 @@ export function SettingsView({
     return Array.from(options).sort((left, right) =>
       left.localeCompare(right, undefined, { sensitivity: "base" }),
     );
-  }, [appSettings.codeFontFamily, codeFontDraft, defaultCodePrimaryFont, uiFontOptions]);
+  }, [
+    appSettings.codeFontFamily,
+    codeFontDraft,
+    defaultCodePrimaryFont,
+    uiFontOptions,
+  ]);
   const selectedNotificationSound = useMemo(() => {
     const raw = appSettings.notificationSoundId?.trim();
     if (!raw) {
@@ -506,23 +550,30 @@ export function SettingsView({
     [groupedWorkspaces],
   );
   const sessionWorkspaceOptions = useMemo(
-    () => (allWorkspaces && allWorkspaces.length > 0 ? allWorkspaces : projects),
+    () =>
+      allWorkspaces && allWorkspaces.length > 0 ? allWorkspaces : projects,
     [allWorkspaces, projects],
   );
-  const [settingsWorkspaceId, setSettingsWorkspaceId] = useState<string | null>(null);
+  const [settingsWorkspaceId, setSettingsWorkspaceId] = useState<string | null>(
+    null,
+  );
   const selectedSettingsWorkspace = useMemo(() => {
     if (sessionWorkspaceOptions.length === 0) {
       return activeWorkspace;
     }
     if (settingsWorkspaceId) {
-      const matched = sessionWorkspaceOptions.find((workspace) => workspace.id === settingsWorkspaceId);
+      const matched = sessionWorkspaceOptions.find(
+        (workspace) => workspace.id === settingsWorkspaceId,
+      );
       if (matched) {
         return matched;
       }
     }
     if (
       activeWorkspace &&
-      sessionWorkspaceOptions.some((workspace) => workspace.id === activeWorkspace.id)
+      sessionWorkspaceOptions.some(
+        (workspace) => workspace.id === activeWorkspace.id,
+      )
     ) {
       return activeWorkspace;
     }
@@ -544,19 +595,24 @@ export function SettingsView({
   );
   const shouldShowWorkspaceSelector = false;
   const mcpSectionDisabled = TEMPORARILY_DISABLED_SIDEBAR_SECTIONS.has("mcp");
-  const permissionsSectionDisabled = TEMPORARILY_DISABLED_SIDEBAR_SECTIONS.has("permissions");
+  const permissionsSectionDisabled =
+    TEMPORARILY_DISABLED_SIDEBAR_SECTIONS.has("permissions");
   const hasCodexHomeOverrides = useMemo(
     () => projects.some((workspace) => workspace.settings.codexHome != null),
     [projects],
   );
   useEffect(() => {
     let active = true;
-    void getVersion().then((v) => {
-      if (active) setAppVersion(v);
-    }).catch(() => {
-      if (active) setAppVersion(null);
-    });
-    return () => { active = false; };
+    void getVersion()
+      .then((v) => {
+        if (active) setAppVersion(v);
+      })
+      .catch(() => {
+        if (active) setAppVersion(null);
+      });
+    return () => {
+      active = false;
+    };
   }, [t]);
   useEffect(() => {
     let active = true;
@@ -634,7 +690,9 @@ export function SettingsView({
   }, [normalizedUserMsgColor]);
 
   useEffect(() => {
-    setNotificationSoundPathDraft(appSettings.notificationSoundCustomPath ?? "");
+    setNotificationSoundPathDraft(
+      appSettings.notificationSoundCustomPath ?? "",
+    );
   }, [appSettings.notificationSoundCustomPath]);
 
   useEffect(() => {
@@ -652,12 +710,17 @@ export function SettingsView({
       return;
     }
     setSettingsWorkspaceId((current) => {
-      if (current && sessionWorkspaceOptions.some((workspace) => workspace.id === current)) {
+      if (
+        current &&
+        sessionWorkspaceOptions.some((workspace) => workspace.id === current)
+      ) {
         return current;
       }
       if (
         activeWorkspace &&
-        sessionWorkspaceOptions.some((workspace) => workspace.id === activeWorkspace.id)
+        sessionWorkspaceOptions.some(
+          (workspace) => workspace.id === activeWorkspace.id,
+        )
       ) {
         return activeWorkspace.id;
       }
@@ -1122,7 +1185,10 @@ export function SettingsView({
     });
   };
 
-  const handleOpenAppKindChange = (index: number, kind: OpenAppTarget["kind"]) => {
+  const handleOpenAppKindChange = (
+    index: number,
+    kind: OpenAppTarget["kind"],
+  ) => {
     setOpenAppDrafts((prev) => {
       const next = [...prev];
       const current = next[index];
@@ -1132,8 +1198,8 @@ export function SettingsView({
       next[index] = {
         ...current,
         kind,
-        appName: kind === "app" ? current.appName ?? "" : null,
-        command: kind === "command" ? current.command ?? "" : null,
+        appName: kind === "app" ? (current.appName ?? "") : null,
+        command: kind === "command" ? (current.command ?? "") : null,
         argsText: kind === "finder" ? "" : current.argsText,
       };
       void handleCommitOpenApps(next);
@@ -1160,7 +1226,9 @@ export function SettingsView({
     const removed = openAppDrafts[index];
     const next = openAppDrafts.filter((_, draftIndex) => draftIndex !== index);
     const nextSelected =
-      removed?.id === openAppSelectedId ? next[0]?.id ?? DEFAULT_OPEN_APP_ID : openAppSelectedId;
+      removed?.id === openAppSelectedId
+        ? (next[0]?.id ?? DEFAULT_OPEN_APP_ID)
+        : openAppSelectedId;
     setOpenAppDrafts(next);
     void handleCommitOpenApps(next, nextSelected);
   };
@@ -1330,7 +1398,10 @@ export function SettingsView({
     }
   }, [t]);
 
-  const updateShortcut = async (key: ShortcutSettingKey, value: string | null) => {
+  const updateShortcut = async (
+    key: ShortcutSettingKey,
+    value: string | null,
+  ) => {
     const draftKey = shortcutDraftKeyBySetting[key];
     setShortcutDrafts((prev) => ({
       ...prev,
@@ -1436,7 +1507,8 @@ export function SettingsView({
 
   const handleDeleteGroup = async (group: WorkspaceGroup) => {
     const groupProjects =
-      groupedWorkspaces.find((entry) => entry.id === group.id)?.workspaces ?? [];
+      groupedWorkspaces.find((entry) => entry.id === group.id)?.workspaces ??
+      [];
     const detail =
       groupProjects.length > 0
         ? `\n\n${t("settings.deleteGroupWarning")} "${ungroupedLabel}".`
@@ -1490,74 +1562,80 @@ export function SettingsView({
   return (
     <div className="settings-embedded">
       <div className="settings-header" />
-      <div className={`settings-body${sidebarCollapsed ? " is-sidebar-collapsed" : ""}`}>
-        <aside className={`settings-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`}>
-            <button
-              type="button"
-              className="settings-nav settings-nav-return"
-              onClick={onClose}
-              aria-label={t("settings.backToApp")}
-              title={sidebarCollapsed ? t("settings.backToApp") : ""}
-            >
-              <ArrowLeft aria-hidden />
-              {!sidebarCollapsed && t("settings.backToApp")}
-            </button>
-            <button
-              type="button"
-              className={`settings-nav ${activeSection === "basic" ? "active" : ""}`}
-              onClick={() => setActiveSection("basic")}
-              title={sidebarCollapsed ? t("settings.sidebarBasic") : ""}
-            >
-              <Settings aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarBasic")}
-            </button>
-            <button
-              type="button"
-              className={`settings-nav ${activeSection === "providers" || activeSection === "vendors" ? "active" : ""}`}
-              onClick={() => setActiveSection("providers")}
-              title={sidebarCollapsed ? t("settings.sidebarProviders") : ""}
-            >
-              <span className="codicon codicon-vm-connect" />
-              {!sidebarCollapsed && t("settings.sidebarProviders")}
-            </button>
-            <button
-              type="button"
-              className={`settings-nav ${activeSection === "project-management" ? "active" : ""}`}
-              onClick={() => setActiveSection("project-management")}
-              title={sidebarCollapsed ? t("settings.sidebarProjectManagement") : ""}
-            >
-              <LayoutGrid aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarProjectManagement")}
-            </button>
-            <button
-              type="button"
-              className={`settings-nav ${!mcpSectionDisabled && activeSection === "mcp" ? "active" : ""}${mcpSectionDisabled ? " is-disabled" : ""}`}
-              onClick={() => {
-                if (!mcpSectionDisabled) {
-                  setActiveSection("mcp");
-                }
-              }}
-              disabled={mcpSectionDisabled}
-              title={sidebarCollapsed ? t("settings.sidebarMcpSkills") : ""}
-            >
-              <Server aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarMcpSkills")}
-            </button>
-            <button
-              type="button"
-              className={`settings-nav ${!permissionsSectionDisabled && activeSection === "permissions" ? "active" : ""}${permissionsSectionDisabled ? " is-disabled" : ""}`}
-              onClick={() => {
-                if (!permissionsSectionDisabled) {
-                  setActiveSection("permissions");
-                }
-              }}
-              disabled={permissionsSectionDisabled}
-              title={sidebarCollapsed ? t("settings.sidebarPermissions") : ""}
-            >
-              <Shield aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarPermissions")}
-            </button>
-            {SHOW_COMMIT_ENTRY && (
+      <div
+        className={`settings-body${sidebarCollapsed ? " is-sidebar-collapsed" : ""}`}
+      >
+        <aside
+          className={`settings-sidebar${sidebarCollapsed ? " is-collapsed" : ""}`}
+        >
+          <button
+            type="button"
+            className="settings-nav settings-nav-return"
+            onClick={onClose}
+            aria-label={t("settings.backToApp")}
+            title={sidebarCollapsed ? t("settings.backToApp") : ""}
+          >
+            <ArrowLeft aria-hidden />
+            {!sidebarCollapsed && t("settings.backToApp")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "basic" ? "active" : ""}`}
+            onClick={() => setActiveSection("basic")}
+            title={sidebarCollapsed ? t("settings.sidebarBasic") : ""}
+          >
+            <Settings aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarBasic")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "providers" || activeSection === "vendors" ? "active" : ""}`}
+            onClick={() => setActiveSection("providers")}
+            title={sidebarCollapsed ? t("settings.sidebarProviders") : ""}
+          >
+            <span className="codicon codicon-vm-connect" />
+            {!sidebarCollapsed && t("settings.sidebarProviders")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "project-management" ? "active" : ""}`}
+            onClick={() => setActiveSection("project-management")}
+            title={
+              sidebarCollapsed ? t("settings.sidebarProjectManagement") : ""
+            }
+          >
+            <LayoutGrid aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarProjectManagement")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${!mcpSectionDisabled && activeSection === "mcp" ? "active" : ""}${mcpSectionDisabled ? " is-disabled" : ""}`}
+            onClick={() => {
+              if (!mcpSectionDisabled) {
+                setActiveSection("mcp");
+              }
+            }}
+            disabled={mcpSectionDisabled}
+            title={sidebarCollapsed ? t("settings.sidebarMcpSkills") : ""}
+          >
+            <Server aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarMcpSkills")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${!permissionsSectionDisabled && activeSection === "permissions" ? "active" : ""}${permissionsSectionDisabled ? " is-disabled" : ""}`}
+            onClick={() => {
+              if (!permissionsSectionDisabled) {
+                setActiveSection("permissions");
+              }
+            }}
+            disabled={permissionsSectionDisabled}
+            title={sidebarCollapsed ? t("settings.sidebarPermissions") : ""}
+          >
+            <Shield aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarPermissions")}
+          </button>
+          {SHOW_COMMIT_ENTRY && (
             <button
               type="button"
               className={`settings-nav ${activeSection === "commit" ? "active" : ""}`}
@@ -1567,17 +1645,19 @@ export function SettingsView({
               <GitCommitHorizontal aria-hidden />
               {!sidebarCollapsed && t("settings.sidebarCommit")}
             </button>
-            )}
-            <button
-              type="button"
-              className={`settings-nav ${activeSection === "agent-prompt-management" ? "active" : ""}`}
-              onClick={() => setActiveSection("agent-prompt-management")}
-              title={sidebarCollapsed ? t("settings.sidebarAgentPromptManagement") : ""}
-            >
-              <span className="codicon codicon-robot" />
-              {!sidebarCollapsed && t("settings.sidebarAgentPromptManagement")}
-            </button>
-            {SHOW_COMPOSER_ENTRY && (
+          )}
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "agent-prompt-management" ? "active" : ""}`}
+            onClick={() => setActiveSection("agent-prompt-management")}
+            title={
+              sidebarCollapsed ? t("settings.sidebarAgentPromptManagement") : ""
+            }
+          >
+            <span className="codicon codicon-robot" />
+            {!sidebarCollapsed && t("settings.sidebarAgentPromptManagement")}
+          </button>
+          {SHOW_COMPOSER_ENTRY && (
             <button
               type="button"
               className={`settings-nav ${activeSection === "composer" ? "active" : ""}`}
@@ -1587,669 +1667,727 @@ export function SettingsView({
               <FileText aria-hidden />
               {!sidebarCollapsed && t("settings.sidebarComposer")}
             </button>
-            )}
-            {SHOW_DICTATION_ENTRY && (
-              <button
-                type="button"
-                className={`settings-nav ${activeSection === "dictation" ? "active" : ""}`}
-                onClick={() => setActiveSection("dictation")}
-                title={sidebarCollapsed ? t("settings.sidebarDictation") : ""}
-              >
-                <Mic aria-hidden />
-                {!sidebarCollapsed && t("settings.sidebarDictation")}
-              </button>
-            )}
-            {SHOW_GIT_ENTRY && (
-              <button
-                type="button"
-                className={`settings-nav ${activeSection === "git" ? "active" : ""}`}
-                onClick={() => setActiveSection("git")}
-                title={sidebarCollapsed ? t("settings.sidebarGit") : ""}
-              >
-                <GitBranch aria-hidden />
-                {!sidebarCollapsed && t("settings.sidebarGit")}
-              </button>
-            )}
+          )}
+          {SHOW_DICTATION_ENTRY && (
             <button
               type="button"
-              className={`settings-nav ${activeSection === "runtime-environment" ? "active" : ""}`}
-              onClick={() => setActiveSection("runtime-environment")}
-              title={sidebarCollapsed ? t("settings.sidebarRuntimeEnvironment") : ""}
+              className={`settings-nav ${activeSection === "dictation" ? "active" : ""}`}
+              onClick={() => setActiveSection("dictation")}
+              title={sidebarCollapsed ? t("settings.sidebarDictation") : ""}
             >
-              <TerminalSquare aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarRuntimeEnvironment")}
+              <Mic aria-hidden />
+              {!sidebarCollapsed && t("settings.sidebarDictation")}
             </button>
+          )}
+          {SHOW_GIT_ENTRY && (
             <button
               type="button"
-              className={`settings-nav ${activeSection === "other" ? "active" : ""}`}
-              onClick={() => setActiveSection("other")}
-              title={sidebarCollapsed ? t("settings.sidebarOther") : ""}
+              className={`settings-nav ${activeSection === "git" ? "active" : ""}`}
+              onClick={() => setActiveSection("git")}
+              title={sidebarCollapsed ? t("settings.sidebarGit") : ""}
             >
-              <MoreHorizontalIcon aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarOther")}
+              <GitBranch aria-hidden />
+              {!sidebarCollapsed && t("settings.sidebarGit")}
             </button>
-            {SHOW_EXPERIMENTAL_ENTRY && (
-              <>
+          )}
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "runtime-environment" ? "active" : ""}`}
+            onClick={() => setActiveSection("runtime-environment")}
+            title={
+              sidebarCollapsed ? t("settings.sidebarRuntimeEnvironment") : ""
+            }
+          >
+            <TerminalSquare aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarRuntimeEnvironment")}
+          </button>
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "other" ? "active" : ""}`}
+            onClick={() => setActiveSection("other")}
+            title={sidebarCollapsed ? t("settings.sidebarOther") : ""}
+          >
+            <MoreHorizontalIcon aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarOther")}
+          </button>
+          {SHOW_EXPERIMENTAL_ENTRY && (
+            <>
+              <button
+                type="button"
+                className={`settings-nav ${activeSection === "experimental" ? "active" : ""}`}
+                onClick={() => setActiveSection("experimental")}
+                title={
+                  sidebarCollapsed ? t("settings.sidebarExperimental") : ""
+                }
+              >
+                <FlaskConical aria-hidden />
+                {!sidebarCollapsed && t("settings.sidebarExperimental")}
+              </button>
+            </>
+          )}
+          <button
+            type="button"
+            className={`settings-nav ${activeSection === "community" ? "active" : ""}`}
+            onClick={() => setActiveSection("community")}
+            title={sidebarCollapsed ? t("settings.sidebarCommunity") : ""}
+          >
+            <Users aria-hidden />
+            {!sidebarCollapsed && t("settings.sidebarCommunity")}
+          </button>
+          <button
+            type="button"
+            className="settings-sidebar-toggle"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            aria-label={
+              sidebarCollapsed
+                ? t("settings.sidebarExpand")
+                : t("settings.sidebarCollapse")
+            }
+            title={
+              sidebarCollapsed
+                ? t("settings.sidebarExpand")
+                : t("settings.sidebarCollapse")
+            }
+          >
+            <span
+              className={`codicon ${sidebarCollapsed ? "codicon-chevron-right" : "codicon-chevron-left"}`}
+            />
+          </button>
+        </aside>
+        <ScrollArea className="settings-content">
+          {shouldShowWorkspaceSelector && (
+            <div className="settings-workspace-picker">
+              <div className="settings-workspace-picker-label">
+                {t("settings.workspacePickerLabel")}
+              </div>
+              {projects.length > 0 ? (
+                <div className="settings-select-wrap">
+                  <select
+                    className="settings-select"
+                    value={selectedSettingsWorkspace?.id ?? ""}
+                    onChange={(event) =>
+                      setSettingsWorkspaceId(event.target.value || null)
+                    }
+                  >
+                    {projects.map((workspace) => (
+                      <option key={workspace.id} value={workspace.id}>
+                        {workspace.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : (
+                <div className="settings-inline-muted">
+                  {t("settings.workspacePickerEmpty")}
+                </div>
+              )}
+            </div>
+          )}
+          {activeSection === "basic" && (
+            <section
+              className="settings-section settings-section-basic"
+              data-basic-tab={basicSubTab}
+            >
+              <div className="settings-section-title">
+                {t("settings.sidebarBasic")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.basicDescription")}
+              </div>
+              <div className="settings-basic-tabs">
                 <button
                   type="button"
-                  className={`settings-nav ${activeSection === "experimental" ? "active" : ""}`}
-                  onClick={() => setActiveSection("experimental")}
-                  title={sidebarCollapsed ? t("settings.sidebarExperimental") : ""}
+                  className={`settings-basic-tab ${basicSubTab === "appearance" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("appearance")}
                 >
-                  <FlaskConical aria-hidden />
-                  {!sidebarCollapsed && t("settings.sidebarExperimental")}
+                  <Monitor className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.basicAppearance")}
                 </button>
-              </>
-            )}
-            <button
-              type="button"
-              className={`settings-nav ${activeSection === "community" ? "active" : ""}`}
-              onClick={() => setActiveSection("community")}
-              title={sidebarCollapsed ? t("settings.sidebarCommunity") : ""}
-            >
-              <Users aria-hidden />
-              {!sidebarCollapsed && t("settings.sidebarCommunity")}
-            </button>
-            <button
-              type="button"
-              className="settings-sidebar-toggle"
-              onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              aria-label={sidebarCollapsed ? t("settings.sidebarExpand") : t("settings.sidebarCollapse")}
-              title={sidebarCollapsed ? t("settings.sidebarExpand") : t("settings.sidebarCollapse")}
-            >
-              <span className={`codicon ${sidebarCollapsed ? "codicon-chevron-right" : "codicon-chevron-left"}`} />
-            </button>
-          </aside>
-          <ScrollArea className="settings-content">
-            {shouldShowWorkspaceSelector && (
-              <div className="settings-workspace-picker">
-                <div className="settings-workspace-picker-label">
-                  {t("settings.workspacePickerLabel")}
-                </div>
-                {projects.length > 0 ? (
-                  <div className="settings-select-wrap">
-                    <select
-                      className="settings-select"
-                      value={selectedSettingsWorkspace?.id ?? ""}
-                      onChange={(event) => setSettingsWorkspaceId(event.target.value || null)}
-                    >
-                      {projects.map((workspace) => (
-                        <option key={workspace.id} value={workspace.id}>
-                          {workspace.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                ) : (
-                  <div className="settings-inline-muted">
-                    {t("settings.workspacePickerEmpty")}
-                  </div>
-                )}
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${basicSubTab === "behavior" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("behavior")}
+                >
+                  <Cog className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.basicBehavior")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${basicSubTab === "shortcuts" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("shortcuts")}
+                >
+                  <Keyboard className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.basicShortcutsTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${basicSubTab === "open-apps" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("open-apps")}
+                >
+                  <ExternalLink
+                    className="settings-basic-tab-icon"
+                    aria-hidden
+                  />
+                  {t("settings.basicOpenAppsTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${basicSubTab === "web-service" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("web-service")}
+                >
+                  <Globe className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.basicWebServiceTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${basicSubTab === "email" ? "active" : ""}`}
+                  onClick={() => setBasicSubTab("email")}
+                >
+                  <Mail className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.basicEmailTab")}
+                </button>
               </div>
-            )}
-            {activeSection === "basic" && (
-              <section className="settings-section settings-section-basic" data-basic-tab={basicSubTab}>
-                <div className="settings-section-title">{t("settings.sidebarBasic")}</div>
-                <div className="settings-section-subtitle">
-                  {t("settings.basicDescription")}
-                </div>
-                <div className="settings-basic-tabs">
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "appearance" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("appearance")}
-                  >
-                    <Monitor className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicAppearance")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "behavior" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("behavior")}
-                  >
-                    <Cog className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicBehavior")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "shortcuts" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("shortcuts")}
-                  >
-                    <Keyboard className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicShortcutsTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "open-apps" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("open-apps")}
-                  >
-                    <ExternalLink className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicOpenAppsTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "web-service" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("web-service")}
-                  >
-                    <Globe className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicWebServiceTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${basicSubTab === "email" ? "active" : ""}`}
-                    onClick={() => setBasicSubTab("email")}
-                  >
-                    <Mail className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.basicEmailTab")}
-                  </button>
-                </div>
-                <BasicBehaviorSection
-                  active={basicSubTab === "behavior"}
+              <BasicBehaviorSection
+                active={basicSubTab === "behavior"}
+                t={t}
+                appSettings={appSettings}
+                onUpdateAppSettings={onUpdateAppSettings}
+                handleComposerSendShortcutChange={
+                  handleComposerSendShortcutChange
+                }
+                handleExportDiagnosticsBundle={handleExportDiagnosticsBundle}
+                diagnosticsBundleExportState={diagnosticsBundleExportState}
+                terminalShellPathDraft={terminalShellPathDraft}
+                setTerminalShellPathDraft={setTerminalShellPathDraft}
+                terminalShellPathDirty={terminalShellPathDirty}
+                handleSaveTerminalShellPath={handleSaveTerminalShellPath}
+                handleClearTerminalShellPath={handleClearTerminalShellPath}
+                systemProxyEnabledDraft={systemProxyEnabledDraft}
+                systemProxyUrlDraft={systemProxyUrlDraft}
+                handleToggleSystemProxy={handleToggleSystemProxy}
+                handleSystemProxyUrlChange={handleSystemProxyUrlChange}
+                handleSaveSystemProxy={handleSaveSystemProxy}
+                systemProxySaving={systemProxySaving}
+                systemProxyDirty={systemProxyDirty}
+                systemProxyNotice={systemProxyNotice}
+                systemProxyError={systemProxyError}
+                selectedNotificationSound={selectedNotificationSound}
+                soundOptions={soundOptions}
+                handleNotificationSoundOptionChange={
+                  handleNotificationSoundOptionChange
+                }
+                onTestNotificationSound={onTestNotificationSound}
+                notificationSoundPathDraft={notificationSoundPathDraft}
+                setNotificationSoundPathDraft={setNotificationSoundPathDraft}
+                handleBrowseNotificationSoundPath={
+                  handleBrowseNotificationSoundPath
+                }
+                handleSaveNotificationSoundPath={
+                  handleSaveNotificationSoundPath
+                }
+              />
+              {basicSubTab === "appearance" && (
+                <BasicAppearanceSection
+                  appSettings={appSettings}
+                  onUpdateAppSettings={onUpdateAppSettings}
+                  activeThemePresetId={activeThemePresetId}
+                  resolvedAppearanceTheme={resolvedAppearanceTheme}
+                  themePresetOptions={themePresetOptions}
+                  onThemePresetChange={handleThemePresetChange}
+                  uiScaleDraft={uiScaleDraft}
+                  clampedUiScale={clampedUiScale}
+                  uiScaleDraftPercentLabel={uiScaleDraftPercentLabel}
+                  setUiScaleDraft={setUiScaleDraft}
+                  handleResetUiScaleDraft={handleResetUiScaleDraft}
+                  handleSaveUiScale={handleSaveUiScale}
+                  scaleShortcutTitle={scaleShortcutTitle}
+                  scaleShortcutText={scaleShortcutText}
+                  userMsgPresets={userMsgPresets}
+                  isUserMsgPresetActive={isUserMsgPresetActive}
+                  handleUserMsgPresetClick={handleUserMsgPresetClick}
+                  normalizedUserMsgColor={normalizedUserMsgColor}
+                  defaultUserMsgColor={defaultUserMsgColor}
+                  handleUserMsgColorPickerChange={
+                    handleUserMsgColorPickerChange
+                  }
+                  userMsgHexDraft={userMsgHexDraft}
+                  handleUserMsgHexInputChange={handleUserMsgHexInputChange}
+                  handleResetUserMsgColor={handleResetUserMsgColor}
+                  uiFontDraft={uiFontDraft}
+                  handleUiFontSelectChange={handleUiFontSelectChange}
+                  uiFontSelectOptions={uiFontSelectOptions}
+                  defaultUiPrimaryFont={defaultUiPrimaryFont}
+                  setUiFontDraft={setUiFontDraft}
+                  codeFontDraft={codeFontDraft}
+                  codeFontSelectOptions={codeFontSelectOptions}
+                  handleCodeFontSelectChange={handleCodeFontSelectChange}
+                  defaultCodePrimaryFont={defaultCodePrimaryFont}
+                  setCodeFontDraft={setCodeFontDraft}
+                  codeFontSizeDraft={codeFontSizeDraft}
+                  setCodeFontSizeDraft={setCodeFontSizeDraft}
+                  handleCommitCodeFontSize={handleCommitCodeFontSize}
+                />
+              )}
+              <ShortcutsSection
+                active={basicSubTab === "shortcuts"}
+                t={t}
+                shortcutDrafts={shortcutDrafts}
+                handleShortcutKeyDown={handleShortcutKeyDown}
+                updateShortcut={updateShortcut}
+              />
+              <OpenAppsSection
+                active={basicSubTab === "open-apps"}
+                t={t}
+                openAppDrafts={openAppDrafts}
+                openAppIconById={openAppIconById}
+                openAppSelectedId={openAppSelectedId}
+                handleOpenAppDraftChange={handleOpenAppDraftChange}
+                handleCommitOpenApps={handleCommitOpenApps}
+                handleOpenAppKindChange={handleOpenAppKindChange}
+                handleSelectOpenAppDefault={handleSelectOpenAppDefault}
+                handleMoveOpenApp={handleMoveOpenApp}
+                handleDeleteOpenApp={handleDeleteOpenApp}
+                handleAddOpenApp={handleAddOpenApp}
+              />
+              {basicSubTab === "web-service" && (
+                <WebServiceSettings
                   t={t}
                   appSettings={appSettings}
                   onUpdateAppSettings={onUpdateAppSettings}
-                  handleComposerSendShortcutChange={handleComposerSendShortcutChange}
-                  handleExportDiagnosticsBundle={handleExportDiagnosticsBundle}
-                  diagnosticsBundleExportState={diagnosticsBundleExportState}
-                  terminalShellPathDraft={terminalShellPathDraft}
-                  setTerminalShellPathDraft={setTerminalShellPathDraft}
-                  terminalShellPathDirty={terminalShellPathDirty}
-                  handleSaveTerminalShellPath={handleSaveTerminalShellPath}
-                  handleClearTerminalShellPath={handleClearTerminalShellPath}
-                  systemProxyEnabledDraft={systemProxyEnabledDraft}
-                  systemProxyUrlDraft={systemProxyUrlDraft}
-                  handleToggleSystemProxy={handleToggleSystemProxy}
-                  handleSystemProxyUrlChange={handleSystemProxyUrlChange}
-                  handleSaveSystemProxy={handleSaveSystemProxy}
-                  systemProxySaving={systemProxySaving}
-                  systemProxyDirty={systemProxyDirty}
-                  systemProxyNotice={systemProxyNotice}
-                  systemProxyError={systemProxyError}
-                  selectedNotificationSound={selectedNotificationSound}
-                  soundOptions={soundOptions}
-                  handleNotificationSoundOptionChange={handleNotificationSoundOptionChange}
-                  onTestNotificationSound={onTestNotificationSound}
-                  notificationSoundPathDraft={notificationSoundPathDraft}
-                  setNotificationSoundPathDraft={setNotificationSoundPathDraft}
-                  handleBrowseNotificationSoundPath={handleBrowseNotificationSoundPath}
-                  handleSaveNotificationSoundPath={handleSaveNotificationSoundPath}
                 />
-                {basicSubTab === "appearance" && (
-                  <BasicAppearanceSection
-                    appSettings={appSettings}
-                    onUpdateAppSettings={onUpdateAppSettings}
-                    activeThemePresetId={activeThemePresetId}
-                    resolvedAppearanceTheme={resolvedAppearanceTheme}
-                    themePresetOptions={themePresetOptions}
-                    onThemePresetChange={handleThemePresetChange}
-                    uiScaleDraft={uiScaleDraft}
-                    clampedUiScale={clampedUiScale}
-                    uiScaleDraftPercentLabel={uiScaleDraftPercentLabel}
-                    setUiScaleDraft={setUiScaleDraft}
-                    handleResetUiScaleDraft={handleResetUiScaleDraft}
-                    handleSaveUiScale={handleSaveUiScale}
-                    scaleShortcutTitle={scaleShortcutTitle}
-                    scaleShortcutText={scaleShortcutText}
-                    userMsgPresets={userMsgPresets}
-                    isUserMsgPresetActive={isUserMsgPresetActive}
-                    handleUserMsgPresetClick={handleUserMsgPresetClick}
-                    normalizedUserMsgColor={normalizedUserMsgColor}
-                    defaultUserMsgColor={defaultUserMsgColor}
-                    handleUserMsgColorPickerChange={handleUserMsgColorPickerChange}
-                    userMsgHexDraft={userMsgHexDraft}
-                    handleUserMsgHexInputChange={handleUserMsgHexInputChange}
-                    handleResetUserMsgColor={handleResetUserMsgColor}
-                    uiFontDraft={uiFontDraft}
-                    handleUiFontSelectChange={handleUiFontSelectChange}
-                    uiFontSelectOptions={uiFontSelectOptions}
-                    defaultUiPrimaryFont={defaultUiPrimaryFont}
-                    setUiFontDraft={setUiFontDraft}
-                    codeFontDraft={codeFontDraft}
-                    codeFontSelectOptions={codeFontSelectOptions}
-                    handleCodeFontSelectChange={handleCodeFontSelectChange}
-                    defaultCodePrimaryFont={defaultCodePrimaryFont}
-                    setCodeFontDraft={setCodeFontDraft}
-                    codeFontSizeDraft={codeFontSizeDraft}
-                    setCodeFontSizeDraft={setCodeFontSizeDraft}
-                    handleCommitCodeFontSize={handleCommitCodeFontSize}
-                  />
-                )}
-                <ShortcutsSection
-                  active={basicSubTab === "shortcuts"}
+              )}
+              {basicSubTab === "email" && (
+                <EmailSenderSettings
                   t={t}
-                  shortcutDrafts={shortcutDrafts}
-                  handleShortcutKeyDown={handleShortcutKeyDown}
-                  updateShortcut={updateShortcut}
+                  appSettings={appSettings}
+                  onUpdateAppSettings={onUpdateAppSettings}
+                  onOpenMailSession={onOpenMailSession}
                 />
-                <OpenAppsSection
-                  active={basicSubTab === "open-apps"}
-                  t={t}
-                  openAppDrafts={openAppDrafts}
-                  openAppIconById={openAppIconById}
-                  openAppSelectedId={openAppSelectedId}
-                  handleOpenAppDraftChange={handleOpenAppDraftChange}
-                  handleCommitOpenApps={handleCommitOpenApps}
-                  handleOpenAppKindChange={handleOpenAppKindChange}
-                  handleSelectOpenAppDefault={handleSelectOpenAppDefault}
-                  handleMoveOpenApp={handleMoveOpenApp}
-                  handleDeleteOpenApp={handleDeleteOpenApp}
-                  handleAddOpenApp={handleAddOpenApp}
-                />
-                {basicSubTab === "web-service" && (
-                  <WebServiceSettings
-                    t={t}
-                    appSettings={appSettings}
-                    onUpdateAppSettings={onUpdateAppSettings}
-                  />
-                )}
-                {basicSubTab === "email" && (
-                  <EmailSenderSettings
-                    t={t}
-                    appSettings={appSettings}
-                    onUpdateAppSettings={onUpdateAppSettings}
-                    onOpenMailSession={onOpenMailSession}
-                  />
-                )}
-              </section>
-            )}
-            {activeSection === "project-management" && (
-              <section
-                className="settings-section settings-section-tabbed"
-                data-settings-tab={projectManagementSubTab}
-              >
-                <div className="settings-section-title">
-                  {t("settings.sidebarProjectManagement")}
-                </div>
-                <div className="settings-section-subtitle">
-                  {t("settings.projectManagementDescription")}
-                </div>
-                <div className="settings-basic-tabs">
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${projectManagementSubTab === "groups" ? "active" : ""}`}
-                    onClick={() => setProjectManagementSubTab("groups")}
-                  >
-                    <LayoutGrid className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.projectManagementGroupsTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${projectManagementSubTab === "sessions" ? "active" : ""}`}
-                    onClick={() => setProjectManagementSubTab("sessions")}
-                  >
-                    <Archive className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.projectManagementSessionsTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${projectManagementSubTab === "usage" ? "active" : ""}`}
-                    onClick={() => setProjectManagementSubTab("usage")}
-                  >
-                    <BarChart3 className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.projectManagementUsageTab")}
-                  </button>
-                </div>
-                <ProjectsSection
-                  active={projectManagementSubTab === "groups"}
-                  t={t}
-                  createGroupOpen={createGroupOpen}
-                  setCreateGroupOpen={setCreateGroupOpen}
-                  newGroupName={newGroupName}
-                  setNewGroupName={setNewGroupName}
-                  canCreateGroup={canCreateGroup}
-                  handleCreateGroup={handleCreateGroup}
-                  groupError={groupError}
-                  workspaceGroups={workspaceGroups}
-                  handleDragEnd={handleDragEnd}
-                  renamingGroupId={renamingGroupId}
-                  setRenamingGroupId={setRenamingGroupId}
-                  groupDrafts={groupDrafts}
-                  setGroupDrafts={setGroupDrafts}
-                  handleRenameGroup={handleRenameGroup}
-                  handleChooseGroupCopiesFolder={handleChooseGroupCopiesFolder}
-                  handleClearGroupCopiesFolder={handleClearGroupCopiesFolder}
-                  handleDeleteGroup={handleDeleteGroup}
-                  groupedWorkspaces={groupedWorkspaces}
-                  onAssignWorkspaceGroup={onAssignWorkspaceGroup}
-                  ungroupedLabel={ungroupedLabel}
-                  onMoveWorkspace={onMoveWorkspace}
-                  onDeleteWorkspace={onDeleteWorkspace}
-                />
-                {projectManagementSubTab === "sessions" && (
-                  <SessionManagementSection
-                    title={t("settings.projectSessionTitle")}
-                    description={t("settings.sessionManagementDescription")}
-                    workspaces={sessionWorkspaceOptions}
-                    groupedWorkspaces={groupedWorkspaces}
-                    initialWorkspaceId={selectedSettingsWorkspace?.id ?? null}
-                    onUpdateWorkspaceSettings={onUpdateWorkspaceSettings}
-                    onSessionsMutated={_onEnsureWorkspaceThreads}
-                  />
-                )}
-                {projectManagementSubTab === "usage" && (
-                  <UsageSection
-                    activeWorkspace={selectedSettingsWorkspace}
-                    activeEngine={activeEngine}
-                    workspaces={projects}
-                    selectedWorkspaceId={selectedSettingsWorkspace?.id ?? ""}
-                    onWorkspaceChange={(workspaceId) => setSettingsWorkspaceId(workspaceId || null)}
-                  />
-                )}
-              </section>
-            )}
-            {activeSection === "providers" && (
-              <VendorSettingsPanel
-                codexReloadStatus={codexRuntimeReloadState.status}
-                codexReloadMessage={codexRuntimeReloadState.message}
-                handleReloadCodexRuntimeConfig={handleReloadCodexRuntimeConfig}
+              )}
+            </section>
+          )}
+          {activeSection === "project-management" && (
+            <section
+              className="settings-section settings-section-tabbed"
+              data-settings-tab={projectManagementSubTab}
+            >
+              <div className="settings-section-title">
+                {t("settings.sidebarProjectManagement")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.projectManagementDescription")}
+              </div>
+              <div className="settings-basic-tabs">
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${projectManagementSubTab === "groups" ? "active" : ""}`}
+                  onClick={() => setProjectManagementSubTab("groups")}
+                >
+                  <LayoutGrid className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.projectManagementGroupsTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${projectManagementSubTab === "sessions" ? "active" : ""}`}
+                  onClick={() => setProjectManagementSubTab("sessions")}
+                >
+                  <Archive className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.projectManagementSessionsTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${projectManagementSubTab === "usage" ? "active" : ""}`}
+                  onClick={() => setProjectManagementSubTab("usage")}
+                >
+                  <BarChart3 className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.projectManagementUsageTab")}
+                </button>
+              </div>
+              <ProjectsSection
+                active={projectManagementSubTab === "groups"}
+                t={t}
+                createGroupOpen={createGroupOpen}
+                setCreateGroupOpen={setCreateGroupOpen}
+                newGroupName={newGroupName}
+                setNewGroupName={setNewGroupName}
+                canCreateGroup={canCreateGroup}
+                handleCreateGroup={handleCreateGroup}
+                groupError={groupError}
+                workspaceGroups={workspaceGroups}
+                handleDragEnd={handleDragEnd}
+                renamingGroupId={renamingGroupId}
+                setRenamingGroupId={setRenamingGroupId}
+                groupDrafts={groupDrafts}
+                setGroupDrafts={setGroupDrafts}
+                handleRenameGroup={handleRenameGroup}
+                handleChooseGroupCopiesFolder={handleChooseGroupCopiesFolder}
+                handleClearGroupCopiesFolder={handleClearGroupCopiesFolder}
+                handleDeleteGroup={handleDeleteGroup}
+                groupedWorkspaces={groupedWorkspaces}
+                onAssignWorkspaceGroup={onAssignWorkspaceGroup}
+                ungroupedLabel={ungroupedLabel}
+                onMoveWorkspace={onMoveWorkspace}
+                onDeleteWorkspace={onDeleteWorkspace}
               />
-            )}
-            {activeSection === "mcp" && (
-              <section
-                className="settings-section settings-section-tabbed"
-                data-settings-tab={mcpManagementSubTab}
-              >
-                <div className="settings-section-title">
-                  {t("settings.sidebarMcpSkills")}
-                </div>
-                <div className="settings-section-subtitle">
-                  {t("settings.mcpSkillsDescription")}
-                </div>
-                <div className="settings-basic-tabs">
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${mcpManagementSubTab === "servers" ? "active" : ""}`}
-                    onClick={() => setMcpManagementSubTab("servers")}
-                  >
-                    <Server className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.mcpPanel.title")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${mcpManagementSubTab === "skills" ? "active" : ""}`}
-                    onClick={() => setMcpManagementSubTab("skills")}
-                  >
-                    <BookOpen className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.skillsPanel.title")}
-                  </button>
-                </div>
-                {mcpManagementSubTab === "servers" ? (
-                  <McpSection
-                    activeWorkspace={mcpContextWorkspace}
-                    activeEngine={activeEngine}
-                    embedded
+              {projectManagementSubTab === "sessions" && (
+                <SessionManagementSection
+                  title={t("settings.projectSessionTitle")}
+                  description={t("settings.sessionManagementDescription")}
+                  workspaces={sessionWorkspaceOptions}
+                  groupedWorkspaces={groupedWorkspaces}
+                  initialWorkspaceId={selectedSettingsWorkspace?.id ?? null}
+                  onUpdateWorkspaceSettings={onUpdateWorkspaceSettings}
+                  onSessionsMutated={_onEnsureWorkspaceThreads}
+                />
+              )}
+              {projectManagementSubTab === "usage" && (
+                <UsageSection
+                  activeWorkspace={selectedSettingsWorkspace}
+                  activeEngine={activeEngine}
+                  workspaces={projects}
+                  selectedWorkspaceId={selectedSettingsWorkspace?.id ?? ""}
+                  onWorkspaceChange={(workspaceId) =>
+                    setSettingsWorkspaceId(workspaceId || null)
+                  }
+                />
+              )}
+            </section>
+          )}
+          {activeSection === "providers" && (
+            <VendorSettingsPanel
+              codexReloadStatus={codexRuntimeReloadState.status}
+              codexReloadMessage={codexRuntimeReloadState.message}
+              handleReloadCodexRuntimeConfig={handleReloadCodexRuntimeConfig}
+            />
+          )}
+          {activeSection === "mcp" && (
+            <section
+              className="settings-section settings-section-tabbed"
+              data-settings-tab={mcpManagementSubTab}
+            >
+              <div className="settings-section-title">
+                {t("settings.sidebarMcpSkills")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.mcpSkillsDescription")}
+              </div>
+              <div className="settings-basic-tabs">
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${mcpManagementSubTab === "servers" ? "active" : ""}`}
+                  onClick={() => setMcpManagementSubTab("servers")}
+                >
+                  <Server className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.mcpPanel.title")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${mcpManagementSubTab === "skills" ? "active" : ""}`}
+                  onClick={() => setMcpManagementSubTab("skills")}
+                >
+                  <BookOpen className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.skillsPanel.title")}
+                </button>
+              </div>
+              {mcpManagementSubTab === "servers" ? (
+                <McpSection
+                  activeWorkspace={mcpContextWorkspace}
+                  activeEngine={activeEngine}
+                  embedded
+                />
+              ) : (
+                <SkillsSection
+                  activeWorkspace={selectedSettingsWorkspace}
+                  embedded
+                  appSettings={appSettings}
+                  onUpdateAppSettings={onUpdateAppSettings}
+                />
+              )}
+            </section>
+          )}
+          {activeSection === "permissions" && (
+            <PlaceholderSection type="permissions" />
+          )}
+          {activeSection === "commit" && (
+            <CommitSection
+              commitPrompt={commitPrompt}
+              onCommitPromptChange={setCommitPrompt}
+              onSaveCommitPrompt={async () => {
+                void onUpdateAppSettings({
+                  ...appSettings,
+                  commitPrompt,
+                });
+              }}
+            />
+          )}
+          {activeSection === "agent-prompt-management" && (
+            <section
+              className="settings-section settings-section-tabbed"
+              data-settings-tab={agentPromptSubTab}
+            >
+              <div className="settings-section-title">
+                {t("settings.sidebarAgentPromptManagement")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.agentPromptManagementDescription")}
+              </div>
+              <div className="settings-basic-tabs">
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${agentPromptSubTab === "agents" ? "active" : ""}`}
+                  onClick={() => setAgentPromptSubTab("agents")}
+                >
+                  <Bot className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.agentPromptAgentsTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${agentPromptSubTab === "prompts" ? "active" : ""}`}
+                  onClick={() => setAgentPromptSubTab("prompts")}
+                >
+                  <NotebookPen
+                    className="settings-basic-tab-icon"
+                    aria-hidden
                   />
-                ) : (
-                  <SkillsSection
-                    activeWorkspace={selectedSettingsWorkspace}
-                    embedded
-                    appSettings={appSettings}
-                    onUpdateAppSettings={onUpdateAppSettings}
+                  {t("settings.agentPromptPromptsTab")}
+                </button>
+              </div>
+              <AgentSettingsSection active={agentPromptSubTab === "agents"} />
+              {agentPromptSubTab === "prompts" && (
+                <PromptSection
+                  activeWorkspace={selectedSettingsWorkspace}
+                  workspaces={projects}
+                  selectedWorkspaceId={selectedSettingsWorkspace?.id ?? null}
+                  onWorkspaceChange={(workspaceId) =>
+                    setSettingsWorkspaceId(workspaceId || null)
+                  }
+                />
+              )}
+            </section>
+          )}
+          {activeSection === "skills" && (
+            <SkillsSection
+              activeWorkspace={selectedSettingsWorkspace}
+              embedded
+              appSettings={appSettings}
+              onUpdateAppSettings={onUpdateAppSettings}
+            />
+          )}
+          {activeSection === "other" && (
+            <OtherSection
+              title={t("settings.sidebarOther")}
+              description={t("settings.otherDescription")}
+              sessionRadarRecentCompletedSessions={
+                sessionRadarRecentCompletedSessions
+              }
+              onDeleteSessionRadarHistory={
+                handleDeleteSessionRadarHistoryInSettings
+              }
+            />
+          )}
+          {activeSection === "runtime-environment" && (
+            <section
+              className="settings-section settings-section-tabbed"
+              data-settings-tab={runtimeEnvironmentSubTab}
+            >
+              <div className="settings-section-title">
+                {t("settings.sidebarRuntimeEnvironment")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.runtimeEnvironmentDescription")}
+              </div>
+              <div className="settings-basic-tabs">
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${runtimeEnvironmentSubTab === "runtime-pool" ? "active" : ""}`}
+                  onClick={() => setRuntimeEnvironmentSubTab("runtime-pool")}
+                >
+                  <Boxes className="settings-basic-tab-icon" aria-hidden />
+                  {t("settings.runtimeEnvironmentPoolTab")}
+                </button>
+                <button
+                  type="button"
+                  className={`settings-basic-tab ${runtimeEnvironmentSubTab === "cli-validation" ? "active" : ""}`}
+                  onClick={() => setRuntimeEnvironmentSubTab("cli-validation")}
+                >
+                  <TerminalSquare
+                    className="settings-basic-tab-icon"
+                    aria-hidden
                   />
-                )}
-              </section>
-            )}
-            {activeSection === "permissions" && (
-              <PlaceholderSection type="permissions" />
-            )}
-            {activeSection === "commit" && (
-              <CommitSection
-                commitPrompt={commitPrompt}
-                onCommitPromptChange={setCommitPrompt}
-                onSaveCommitPrompt={async () => {
-                  void onUpdateAppSettings({
-                    ...appSettings,
-                    commitPrompt,
-                  });
+                  {t("settings.runtimeEnvironmentCliValidationTab")}
+                </button>
+              </div>
+              {runtimeEnvironmentSubTab === "runtime-pool" && (
+                <RuntimePoolSection
+                  t={t}
+                  appSettings={appSettings}
+                  workspaces={runtimePanelWorkspaces}
+                  onUpdateAppSettings={onUpdateAppSettings}
+                />
+              )}
+              <CodexSection
+                active={runtimeEnvironmentSubTab === "cli-validation"}
+                t={t}
+                appSettings={appSettings}
+                onUpdateAppSettings={onUpdateAppSettings}
+                claudePathDraft={claudePathDraft}
+                setClaudePathDraft={setClaudePathDraft}
+                claudeDirty={claudeDirty}
+                handleBrowseClaude={handleBrowseClaude}
+                handleSaveClaudeSettings={handleSaveClaudeSettings}
+                handleRunClaudeDoctor={handleRunClaudeDoctor}
+                claudeDoctorState={claudeDoctorState}
+                codexPathDraft={codexPathDraft}
+                setCodexPathDraft={setCodexPathDraft}
+                codexArgsDraft={codexArgsDraft}
+                setCodexArgsDraft={setCodexArgsDraft}
+                codexDirty={codexDirty}
+                handleBrowseCodex={handleBrowseCodex}
+                handleSaveCodexSettings={handleSaveCodexSettings}
+                isSavingSettings={isSavingSettings}
+                handleRunDoctor={handleRunDoctor}
+                doctorState={doctorState}
+                remoteHostDraft={remoteHostDraft}
+                setRemoteHostDraft={setRemoteHostDraft}
+                remoteTokenDraft={remoteTokenDraft}
+                setRemoteTokenDraft={setRemoteTokenDraft}
+                handleCommitRemoteHost={handleCommitRemoteHost}
+                handleCommitRemoteToken={handleCommitRemoteToken}
+                onInstallerDoctorResult={(engine, result) => {
+                  if (!result) {
+                    return;
+                  }
+                  if (engine === "codex") {
+                    setDoctorState({ status: "done", result });
+                  } else {
+                    setClaudeDoctorState({ status: "done", result });
+                  }
                 }}
               />
-            )}
-            {activeSection === "agent-prompt-management" && (
-              <section
-                className="settings-section settings-section-tabbed"
-                data-settings-tab={agentPromptSubTab}
-              >
-                <div className="settings-section-title">
-                  {t("settings.sidebarAgentPromptManagement")}
-                </div>
-                <div className="settings-section-subtitle">
-                  {t("settings.agentPromptManagementDescription")}
-                </div>
-                <div className="settings-basic-tabs">
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${agentPromptSubTab === "agents" ? "active" : ""}`}
-                    onClick={() => setAgentPromptSubTab("agents")}
-                  >
-                    <Bot className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.agentPromptAgentsTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${agentPromptSubTab === "prompts" ? "active" : ""}`}
-                    onClick={() => setAgentPromptSubTab("prompts")}
-                  >
-                    <NotebookPen className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.agentPromptPromptsTab")}
-                  </button>
-                </div>
-                <AgentSettingsSection active={agentPromptSubTab === "agents"} />
-                {agentPromptSubTab === "prompts" && (
-                  <PromptSection
-                    activeWorkspace={selectedSettingsWorkspace}
-                    workspaces={projects}
-                    selectedWorkspaceId={selectedSettingsWorkspace?.id ?? null}
-                    onWorkspaceChange={(workspaceId) => setSettingsWorkspaceId(workspaceId || null)}
-                  />
+            </section>
+          )}
+          {activeSection === "community" && (
+            <section className="settings-section settings-about-section">
+              <div className="settings-about-name">
+                ccgui
+                {appVersion && (
+                  <span className="settings-about-version">{appVersion}</span>
                 )}
-              </section>
-            )}
-            {activeSection === "skills" && (
-              <SkillsSection
-                activeWorkspace={selectedSettingsWorkspace}
-                embedded
+              </div>
+              <div className="settings-about-tagline">{t("about.tagline")}</div>
+              <div className="settings-about-links">
+                <button
+                  type="button"
+                  className="ghost"
+                  onClick={() =>
+                    void openUrl(
+                      "https://github.com/zhukunpenglinyutong/desktop-cc-gui",
+                    )
+                  }
+                >
+                  {t("about.github")}
+                </button>
+              </div>
+              <div className="settings-about-wechat">
+                <div className="settings-about-wechat-label">
+                  {t("about.wechatGroupTitle")}
+                </div>
+                <img
+                  className="settings-about-wechat-qr"
+                  src={wxqImage}
+                  alt={t("about.wechatGroupTitle")}
+                />
+              </div>
+            </section>
+          )}
+          <ComposerSection
+            active={activeSection === "composer"}
+            t={t}
+            appSettings={appSettings}
+            onUpdateAppSettings={onUpdateAppSettings}
+            handleComposerPresetChange={handleComposerPresetChange}
+            handleComposerSendShortcutChange={handleComposerSendShortcutChange}
+            historyCompletionEnabled={historyCompletionEnabled}
+            handleHistoryCompletionToggle={handleHistoryCompletionToggle}
+            reduceTransparency={reduceTransparency}
+          />
+          <DictationSection
+            active={activeSection === "dictation"}
+            t={t}
+            appSettings={appSettings}
+            onUpdateAppSettings={onUpdateAppSettings}
+            dictationModelStatus={dictationModelStatus}
+            onDownloadDictationModel={onDownloadDictationModel}
+            onCancelDictationDownload={onCancelDictationDownload}
+            onRemoveDictationModel={onRemoveDictationModel}
+          />
+          {activeSection === "git" && (
+            <section className="settings-section">
+              <div className="settings-section-title">
+                {t("settings.gitTitle")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.gitDescription")}
+              </div>
+              <DetachedExternalChangeToggles
+                t={t}
                 appSettings={appSettings}
                 onUpdateAppSettings={onUpdateAppSettings}
               />
-            )}
-            {activeSection === "other" && (
-              <OtherSection
-                title={t("settings.sidebarOther")}
-                description={t("settings.otherDescription")}
-                sessionRadarRecentCompletedSessions={sessionRadarRecentCompletedSessions}
-                onDeleteSessionRadarHistory={handleDeleteSessionRadarHistoryInSettings}
+            </section>
+          )}
+          {/* vendors is now mapped to providers above */}
+          {/* about is now mapped to community above */}
+          {activeSection === "experimental" && (
+            <section className="settings-section">
+              <div className="settings-section-title">
+                {t("settings.experimentalTitle")}
+              </div>
+              <div className="settings-section-subtitle">
+                {t("settings.experimentalDescription")}
+              </div>
+              {hasCodexHomeOverrides && (
+                <div className="settings-help">
+                  {t("settings.experimentalWarning1")}
+                  <br />
+                  {t("settings.experimentalWarning2")}
+                </div>
+              )}
+              <ExperimentalToggleRow
+                title={t("settings.collaborationModes")}
+                description={t("settings.collaborationModesDesc")}
+                markerLabel={t("settings.experimentalBadgeRecommended")}
+                markerTone="success"
+                markerDetail={t("settings.collaborationModesMarkerDesc")}
+                highlighted={
+                  highlightedRow === "experimental-collaboration-modes"
+                }
+                checked={appSettings.experimentalCollaborationModesEnabled}
+                onCheckedChange={(checked) =>
+                  void onUpdateAppSettings({
+                    ...appSettings,
+                    experimentalCollaborationModesEnabled: checked,
+                  })
+                }
               />
-            )}
-            {activeSection === "runtime-environment" && (
-              <section
-                className="settings-section settings-section-tabbed"
-                data-settings-tab={runtimeEnvironmentSubTab}
-              >
-                <div className="settings-section-title">
-                  {t("settings.sidebarRuntimeEnvironment")}
-                </div>
-                <div className="settings-section-subtitle">
-                  {t("settings.runtimeEnvironmentDescription")}
-                </div>
-                <div className="settings-basic-tabs">
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${runtimeEnvironmentSubTab === "runtime-pool" ? "active" : ""}`}
-                    onClick={() => setRuntimeEnvironmentSubTab("runtime-pool")}
-                  >
-                    <Boxes className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.runtimeEnvironmentPoolTab")}
-                  </button>
-                  <button
-                    type="button"
-                    className={`settings-basic-tab ${runtimeEnvironmentSubTab === "cli-validation" ? "active" : ""}`}
-                    onClick={() => setRuntimeEnvironmentSubTab("cli-validation")}
-                  >
-                    <TerminalSquare className="settings-basic-tab-icon" aria-hidden />
-                    {t("settings.runtimeEnvironmentCliValidationTab")}
-                  </button>
-                </div>
-                {runtimeEnvironmentSubTab === "runtime-pool" && (
-                  <RuntimePoolSection
-                    t={t}
-                    appSettings={appSettings}
-                    workspaces={runtimePanelWorkspaces}
-                    onUpdateAppSettings={onUpdateAppSettings}
-                  />
-                )}
-                <CodexSection
-                  active={runtimeEnvironmentSubTab === "cli-validation"}
-                  t={t}
-                  appSettings={appSettings}
-                  onUpdateAppSettings={onUpdateAppSettings}
-                  claudePathDraft={claudePathDraft}
-                  setClaudePathDraft={setClaudePathDraft}
-                  claudeDirty={claudeDirty}
-                  handleBrowseClaude={handleBrowseClaude}
-                  handleSaveClaudeSettings={handleSaveClaudeSettings}
-                  handleRunClaudeDoctor={handleRunClaudeDoctor}
-                  claudeDoctorState={claudeDoctorState}
-                  codexPathDraft={codexPathDraft}
-                  setCodexPathDraft={setCodexPathDraft}
-                  codexArgsDraft={codexArgsDraft}
-                  setCodexArgsDraft={setCodexArgsDraft}
-                  codexDirty={codexDirty}
-                  handleBrowseCodex={handleBrowseCodex}
-                  handleSaveCodexSettings={handleSaveCodexSettings}
-                  isSavingSettings={isSavingSettings}
-                  handleRunDoctor={handleRunDoctor}
-                  doctorState={doctorState}
-                  remoteHostDraft={remoteHostDraft}
-                  setRemoteHostDraft={setRemoteHostDraft}
-                  remoteTokenDraft={remoteTokenDraft}
-                  setRemoteTokenDraft={setRemoteTokenDraft}
-                  handleCommitRemoteHost={handleCommitRemoteHost}
-                  handleCommitRemoteToken={handleCommitRemoteToken}
-                  onInstallerDoctorResult={(engine, result) => {
-                    if (!result) {
-                      return;
-                    }
-                    if (engine === "codex") {
-                      setDoctorState({ status: "done", result });
-                    } else {
-                      setClaudeDoctorState({ status: "done", result });
-                    }
-                  }}
-                />
-              </section>
-            )}
-            {activeSection === "community" && (
-              <section className="settings-section settings-about-section">
-                <div className="settings-about-name">
-                  ccgui
-                  {appVersion && (
-                    <span className="settings-about-version">{appVersion}</span>
-                  )}
-                </div>
-                <div className="settings-about-tagline">
-                  {t("about.tagline")}
-                </div>
-                <div className="settings-about-links">
-                  <button
-                    type="button"
-                    className="ghost"
-                    onClick={() => void openUrl("https://github.com/zhukunpenglinyutong/desktop-cc-gui")}
-                  >
-                    {t("about.github")}
-                  </button>
-                </div>
-                <div className="settings-about-wechat">
-                  <div className="settings-about-wechat-label">{t("about.wechatGroupTitle")}</div>
-                  <img
-                    className="settings-about-wechat-qr"
-                    src={wxqImage}
-                    alt={t("about.wechatGroupTitle")}
-                  />
-                </div>
-              </section>
-            )}
-            <ComposerSection
-              active={activeSection === "composer"}
-              t={t}
-              appSettings={appSettings}
-              onUpdateAppSettings={onUpdateAppSettings}
-              handleComposerPresetChange={handleComposerPresetChange}
-              handleComposerSendShortcutChange={handleComposerSendShortcutChange}
-              historyCompletionEnabled={historyCompletionEnabled}
-              handleHistoryCompletionToggle={handleHistoryCompletionToggle}
-              reduceTransparency={reduceTransparency}
-            />
-            <DictationSection
-              active={activeSection === "dictation"}
-              t={t}
-              appSettings={appSettings}
-              onUpdateAppSettings={onUpdateAppSettings}
-              dictationModelStatus={dictationModelStatus}
-              onDownloadDictationModel={onDownloadDictationModel}
-              onCancelDictationDownload={onCancelDictationDownload}
-              onRemoveDictationModel={onRemoveDictationModel}
-            />
-            {activeSection === "git" && (
-              <section className="settings-section">
-                <div className="settings-section-title">{t("settings.gitTitle")}</div>
-                <div className="settings-section-subtitle">
-                  {t("settings.gitDescription")}
-                </div>
-                <DetachedExternalChangeToggles
-                  t={t}
-                  appSettings={appSettings}
-                  onUpdateAppSettings={onUpdateAppSettings}
-                />
-              </section>
-            )}
-            {/* vendors is now mapped to providers above */}
-            {/* about is now mapped to community above */}
-            {activeSection === "experimental" && (
-              <section className="settings-section">
-                <div className="settings-section-title">{t("settings.experimentalTitle")}</div>
-                <div className="settings-section-subtitle">
-                  {t("settings.experimentalDescription")}
-                </div>
-                {hasCodexHomeOverrides && (
-                  <div className="settings-help">
-                    {t("settings.experimentalWarning1")}
-                    <br />
-                    {t("settings.experimentalWarning2")}
-                  </div>
-                )}
-                <ExperimentalToggleRow
-                  title={t("settings.collaborationModes")}
-                  description={t("settings.collaborationModesDesc")}
-                  markerLabel={t("settings.experimentalBadgeRecommended")}
-                  markerTone="success"
-                  markerDetail={t("settings.collaborationModesMarkerDesc")}
-                  highlighted={highlightedRow === "experimental-collaboration-modes"}
-                  checked={appSettings.experimentalCollaborationModesEnabled}
-                  onCheckedChange={(checked) =>
-                    void onUpdateAppSettings({
-                      ...appSettings,
-                      experimentalCollaborationModesEnabled: checked,
-                    })
-                  }
-                />
-                <ExperimentalToggleRow
-                  title={t("settings.steerMode")}
-                  description={t("settings.steerModeDesc")}
-                  markerLabel={t("settings.experimentalBadgeAvailable")}
-                  markerTone="success"
-                  markerDetail={t("settings.steerModeMarkerDesc")}
-                  checked={appSettings.experimentalSteerEnabled}
-                  onCheckedChange={(checked) =>
-                    void onUpdateAppSettings({
-                      ...appSettings,
-                      experimentalSteerEnabled: checked,
-                    })
-                  }
-                />
-              </section>
-            )}
-          </ScrollArea>
-        </div>
+              <ExperimentalToggleRow
+                title={t("settings.steerMode")}
+                description={t("settings.steerModeDesc")}
+                markerLabel={t("settings.experimentalBadgeAvailable")}
+                markerTone="success"
+                markerDetail={t("settings.steerModeMarkerDesc")}
+                checked={appSettings.experimentalSteerEnabled}
+                onCheckedChange={(checked) =>
+                  void onUpdateAppSettings({
+                    ...appSettings,
+                    experimentalSteerEnabled: checked,
+                  })
+                }
+              />
+            </section>
+          )}
+        </ScrollArea>
+      </div>
     </div>
   );
 }

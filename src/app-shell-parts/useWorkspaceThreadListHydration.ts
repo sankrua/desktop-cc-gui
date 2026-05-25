@@ -20,6 +20,7 @@ type ListThreadsForWorkspace = (
   options?: {
     preserveState?: boolean;
     includeOpenCodeSessions?: boolean;
+    deletedThreadIds?: string[];
     startupHydrationMode?: "full-catalog";
   },
 ) => Promise<void | { applied?: boolean; stale?: boolean }>;
@@ -36,7 +37,11 @@ type UseWorkspaceThreadListHydrationOptions = {
 type UseWorkspaceThreadListHydrationResult = {
   ensureWorkspaceThreadListLoaded: (
     workspaceId: string,
-    options?: { preserveState?: boolean; force?: boolean },
+    options?: {
+      preserveState?: boolean;
+      force?: boolean;
+      deletedThreadIds?: string[];
+    },
   ) => void;
   hydratedThreadListWorkspaceIdsRef: MutableRefObject<Set<string>>;
   listThreadsForWorkspaceTracked: ListThreadsForWorkspace;
@@ -45,10 +50,9 @@ type UseWorkspaceThreadListHydrationResult = {
 
 type ThreadHydrationPhase = "active-workspace" | "idle-prewarm" | "on-demand";
 type ThreadHydrationKind = "full-catalog" | "session-radar";
-type ThreadListHydrationResult =
-  | void
-  | { applied?: boolean; stale?: boolean };
-const ACTIVE_WORKSPACE_READY_MILESTONE: StartupMilestoneName = "active-workspace-ready";
+type ThreadListHydrationResult = void | { applied?: boolean; stale?: boolean };
+const ACTIVE_WORKSPACE_READY_MILESTONE: StartupMilestoneName =
+  "active-workspace-ready";
 
 function isDiscardedStaleHydrationResult(
   result: ThreadListHydrationResult,
@@ -62,7 +66,9 @@ function isDiscardedStaleHydrationResult(
 }
 
 function hasRecordedActiveWorkspaceReady() {
-  return Boolean(getStartupTraceSnapshot().milestones[ACTIVE_WORKSPACE_READY_MILESTONE]);
+  return Boolean(
+    getStartupTraceSnapshot().milestones[ACTIVE_WORKSPACE_READY_MILESTONE],
+  );
 }
 
 function createThreadHydrationTask(
@@ -76,14 +82,22 @@ function createThreadHydrationTask(
     id: `thread-list:${kind}:${workspace.id}`,
     phase,
     priority:
-      phase === "active-workspace" ? 90 : phase === "on-demand" ? 85 : kind === "session-radar" ? 30 : 20,
+      phase === "active-workspace"
+        ? 90
+        : phase === "on-demand"
+          ? 85
+          : kind === "session-radar"
+            ? 30
+            : 20,
     dedupeKey,
     concurrencyKey: "thread-session-scan",
     timeoutMs: phase === "active-workspace" ? 12_000 : 20_000,
     workspaceScope: { workspaceId: workspace.id },
     cancelPolicy: "soft-ignore",
     traceLabel:
-      kind === "session-radar" ? "session-radar workspace prewarm" : `thread/list ${kind} hydration`,
+      kind === "session-radar"
+        ? "session-radar workspace prewarm"
+        : `thread/list ${kind} hydration`,
     commandLabel: "list_threads",
     run,
     fallback: () => undefined,
@@ -101,8 +115,12 @@ export function useWorkspaceThreadListHydration({
   const hydratedThreadListWorkspaceIdsRef = useRef(new Set<string>());
   const fullyHydratedThreadListWorkspaceIdsRef = useRef(new Set<string>());
   const hydratingThreadListWorkspaceIdsRef = useRef(new Set<string>());
-  const hydrationPhaseByWorkspaceIdRef = useRef(new Map<string, ThreadHydrationPhase>());
-  const hydrationKindByWorkspaceIdRef = useRef(new Map<string, ThreadHydrationKind>());
+  const hydrationPhaseByWorkspaceIdRef = useRef(
+    new Map<string, ThreadHydrationPhase>(),
+  );
+  const hydrationKindByWorkspaceIdRef = useRef(
+    new Map<string, ThreadHydrationKind>(),
+  );
   const autoHydratedActiveWorkspaceIdRef = useRef<string | null>(null);
   const [hydrationCycle, setHydrationCycle] = useState(0);
 
@@ -127,8 +145,7 @@ export function useWorkspaceThreadListHydration({
     async (workspace, options) => {
       hydratingThreadListWorkspaceIdsRef.current.add(workspace.id);
       const phase =
-        hydrationPhaseByWorkspaceIdRef.current.get(workspace.id) ??
-        "on-demand";
+        hydrationPhaseByWorkspaceIdRef.current.get(workspace.id) ?? "on-demand";
       const kind =
         hydrationKindByWorkspaceIdRef.current.get(workspace.id) ??
         "full-catalog";
@@ -170,7 +187,11 @@ export function useWorkspaceThreadListHydration({
   const ensureWorkspaceThreadListLoaded = useCallback(
     (
       workspaceId: string,
-      options?: { preserveState?: boolean; force?: boolean },
+      options?: {
+        preserveState?: boolean;
+        force?: boolean;
+        deletedThreadIds?: string[];
+      },
     ) => {
       const workspace = workspacesById.get(workspaceId);
       if (!workspace) {
@@ -198,12 +219,10 @@ export function useWorkspaceThreadListHydration({
           ? "active-workspace"
           : "idle-prewarm";
       hydrationPhaseByWorkspaceIdRef.current.set(workspaceId, phase);
-      hydrationKindByWorkspaceIdRef.current.set(
-        workspaceId,
-        "full-catalog",
-      );
+      hydrationKindByWorkspaceIdRef.current.set(workspaceId, "full-catalog");
       void listThreadsForWorkspaceTracked(workspace, {
         preserveState: options?.preserveState,
+        deletedThreadIds: options?.deletedThreadIds,
       });
     },
     [
@@ -236,7 +255,11 @@ export function useWorkspaceThreadListHydration({
         includeOpenCodeSessions: false,
       });
     },
-    [listThreadsForWorkspaceTracked, threadListLoadingByWorkspace, workspacesById],
+    [
+      listThreadsForWorkspaceTracked,
+      threadListLoadingByWorkspace,
+      workspacesById,
+    ],
   );
 
   const prewarmFullCatalogForWorkspace = useCallback(
@@ -260,7 +283,11 @@ export function useWorkspaceThreadListHydration({
         preserveState: true,
       });
     },
-    [listThreadsForWorkspaceTracked, threadListLoadingByWorkspace, workspacesById],
+    [
+      listThreadsForWorkspaceTracked,
+      threadListLoadingByWorkspace,
+      workspacesById,
+    ],
   );
 
   useEffect(() => {
@@ -294,9 +321,10 @@ export function useWorkspaceThreadListHydration({
   const nextBackgroundWorkspaceThreadHydrationId =
     resolveNextWorkspaceThreadListHydrationId({
       workspaces: backgroundHydrationWorkspaces,
-      activeWorkspaceProjectionOwnerIds: activeWorkspaceProjectionOwnerIds.filter(
-        (workspaceId) => workspaceId !== activeWorkspaceId,
-      ),
+      activeWorkspaceProjectionOwnerIds:
+        activeWorkspaceProjectionOwnerIds.filter(
+          (workspaceId) => workspaceId !== activeWorkspaceId,
+        ),
       hydratedWorkspaceIds: fullyHydratedThreadListWorkspaceIdsRef.current,
       hydratingWorkspaceIds: hydratingThreadListWorkspaceIdsRef.current,
       loadingByWorkspace: threadListLoadingByWorkspace,
