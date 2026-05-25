@@ -624,3 +624,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 576: 稳定 Sidebar 会话文件夹测试
+
+**Date**: 2026-05-25
+**Task**: 稳定 Sidebar 会话文件夹测试
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `032998db` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
