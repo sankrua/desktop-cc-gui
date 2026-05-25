@@ -835,3 +835,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 582: 修复设置会话删除测试超时
+
+**Date**: 2026-05-26
+**Task**: 修复设置会话删除测试超时
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+CI 中 SettingsView 删除会话测试仍断言旧刷新签名；更新为包含 deletedThreadIds tombstone 的新调用，focused Settings 测试组 61 项通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `15a4a882` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
