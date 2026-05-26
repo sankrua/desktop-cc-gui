@@ -999,3 +999,53 @@ CI 中 SettingsView 删除会话测试仍断言旧刷新签名；更新为包含
 ### Next Steps
 
 - None - task complete
+
+
+## Session 586: 稳定知识地图增量生成与证据链交互
+
+**Date**: 2026-05-26
+**Task**: 稳定知识地图增量生成与证据链交互
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+完成 Project Map 增量合并、节点物理删除、按钮语义化 prompt、证据链/关联证据文件分屏打开、任务卡片压缩与 JSON 输出兼容 hardening，并通过 OpenSpec strict、聚焦测试、typecheck、lint、build。
+
+### Main Changes
+
+本次收口内容：
+- Project Map 生成从覆盖式 snapshot 调整为增量 merge，避免重复收集画像/补全/校准时丢失旧节点。
+- 新增人工删除节点链路，删除非 root 节点时清理 descendants、parent children、pending candidates；root 删除清空 map nodes。
+- 收敛 Collect profile / Complete node / Calibrate node 的 prompt 语义，区分 global delta、selected-node enrichment、selected-node verification。
+- 增强 AI JSON 输出兼容性：valid schema prompt、evidence block isolation、balanced JSON candidate scanner、Project Map payload shape gate、placeholder ellipsis repair。
+- 证据链和 path-like Related Artifacts 复用 TraceChip 文件打开交互；Project Map 来源的文件打开保持左侧 Project Map、右侧 editor。
+- 地球 icon 支持 Project Map surface/editor companion 的打开关闭切换；关闭最后证据文件后回到 Project Map。
+- 压缩顶部信息区与后台任务卡片，任务卡片展示 action、target node、engine/model、scope、run id、path。
+
+验证：
+- npm exec vitest -- run Project Map / layout / app-shell / git controller focused suites：9 files / 111 tests passed。
+- openspec validate stabilize-project-map-incremental-generation --strict passed。
+- npm run typecheck passed。
+- npm run lint passed with one pre-existing warning in src/features/threads/hooks/useThreadActionsResumeThread.ts:1108。
+- npm run check:large-files passed。
+- git diff --check passed。
+- npm run build passed with existing Vite chunk warnings。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `05e9cb9d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
