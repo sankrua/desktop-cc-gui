@@ -1184,3 +1184,63 @@ CI 中 SettingsView 删除会话测试仍断言旧刷新签名；更新为包含
 ### Next Steps
 
 - None - task complete
+
+
+## Session 590: 接通 Project Map 自动补充队列
+
+**Date**: 2026-05-27
+**Task**: 接通 Project Map 自动补充队列
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+接通 Project Map 底部 Auto Ingestion 到真实后台生成队列，替换原先本地 fake completed run 的自动候选写入方式。
+
+## Changes
+
+| Area | Detail |
+| --- | --- |
+| OpenSpec | 新增 `wire-project-map-auto-ingestion` change，定义真实 auto run、interval gate、duplicate guard、success-only processed marker 和 candidate-safe 默认策略。 |
+| Scheduler | `useProjectMapDataset` 根据启用状态、阈值、间隔和 active auto run guard 创建 `kind="auto"` pending run。 |
+| Worker | auto run prompt 接入 bounded Project Memory evidence，默认 `createCandidate` 输出保持候选安全。 |
+| Cursor | auto run 成功后才 mark processed；失败保留 pending memory，允许后续重试。 |
+| UI | 底部 Auto Ingestion 压成单行 compact control bar，并给阈值/间隔数字补 `条` / `分钟` 单位。 |
+| Tests | 覆盖调度、真实入队、worker memory evidence、candidate safety、success/failure cursor 和底部 interval 持久化。 |
+
+## Validation
+
+- `npm exec vitest -- run src/features/project-map/utils/autoIngestion.test.ts src/features/project-map/hooks/useProjectMapDataset.test.tsx src/features/project-map/services/projectMapGenerationWorker.test.ts src/features/project-map/components/ProjectMapPanel.test.tsx --maxWorkers 1 --minWorkers 1`
+- `npm run typecheck`
+- focused `npm exec eslint -- ...`
+- `openspec validate wire-project-map-auto-ingestion --strict`
+- `npm run check:large-files`
+- `git diff --check`
+
+## Notes
+
+当前实现保持通用项目语义，不依赖 mossx 专用节点或路径。默认模式仍优先生成候选，不直接污染 active map。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cca81f59` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
