@@ -1,4 +1,5 @@
 import type {
+  ProjectMapAutoIngestionRunContext,
   ProjectMapDataset,
   ProjectMapGenerationIntent,
   ProjectMapGenerationRequest,
@@ -205,6 +206,9 @@ function inferGenerationIntent(input: {
   if (input.kind === "global" || input.scope.kind === "global") {
     return "global";
   }
+  if (input.kind === "auto" || input.scope.kind === "auto") {
+    return "autoIngestion";
+  }
   return input.scope.kind === "node" ? "completeNode" : "global";
 }
 
@@ -257,18 +261,21 @@ export function createProjectMapGenerationRequest(input: {
   storageLocation: ProjectMapStorageLocation;
   writePath: string;
   node?: ProjectMapNode | null;
+  readSources?: ProjectMapSource[];
+  autoIngestion?: ProjectMapAutoIngestionRunContext;
 }): ProjectMapGenerationRequest {
   const generationIntent = inferGenerationIntent(input);
-  const readSources = input.node
+  const derivedReadSources = input.node
     ? collectNodeScopedSources({
         dataset: input.dataset,
         node: input.node,
         scope: input.scope,
       })
     : uniqueSources([
-      ...input.dataset.lenses.flatMap((lens) => lens.evidence.map(normalizeProjectMapSource)),
-      ...input.dataset.nodes.flatMap((node) => node.sources.map(normalizeProjectMapSource)),
-    ].filter((source): source is ProjectMapSource => Boolean(source))).slice(0, 24);
+        ...(input.readSources ?? []),
+        ...input.dataset.lenses.flatMap((lens) => lens.evidence.map(normalizeProjectMapSource)),
+        ...input.dataset.nodes.flatMap((node) => node.sources.map(normalizeProjectMapSource)),
+      ].filter((source): source is ProjectMapSource => Boolean(source))).slice(0, 24);
 
   return {
     id: requestId(input.kind),
@@ -277,10 +284,11 @@ export function createProjectMapGenerationRequest(input: {
     model: input.model,
     scope: input.scope,
     generationIntent,
-    readSources,
+    readSources: derivedReadSources,
     storageLocation: input.storageLocation,
     writePath: input.writePath,
     createdAt: nowIso(),
+    autoIngestion: input.autoIngestion,
   };
 }
 
@@ -302,6 +310,7 @@ export function createRunMetadataFromRequest(
     readSources: request.readSources,
     storageLocation: request.storageLocation,
     writePath: request.writePath,
+    autoIngestion: request.autoIngestion,
     phase: status === "pending" ? "queued" : undefined,
     progress: status === "pending" ? 5 : undefined,
     threadId: null,

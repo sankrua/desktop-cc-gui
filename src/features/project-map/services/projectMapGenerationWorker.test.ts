@@ -257,6 +257,100 @@ describe("runProjectMapGenerationWorker", () => {
     expect(updates.map((update) => update.phase)).toContain("writingMap");
   });
 
+  it("includes Project Memory evidence for auto runs and keeps default output candidate-safe", async () => {
+    const dataset = datasetWithRuntimeNode();
+    vi.mocked(getWorkspaceFiles).mockResolvedValue({
+      files: ["src/features/project-map/types.ts", "README.md"],
+      directories: [],
+      gitignored_files: [],
+      gitignored_directories: [],
+    });
+    vi.mocked(readWorkspaceFile).mockResolvedValue({
+      content: "export type ProjectMapDataset = {};",
+      truncated: false,
+    });
+    vi.mocked(engineSendMessageSync).mockResolvedValue({
+      engine: "claude",
+      text: JSON.stringify({
+        profile: {},
+        lenses: [],
+        nodes: [
+          {
+            id: "auto-memory-node",
+            lensId: "runtime",
+            nodeKind: "concept",
+            title: "Auto Memory Node",
+            summary: "Memory-backed project-map update.",
+            detail: {
+              coreDescription: "Derived from Project Memory and source evidence.",
+              keyFacts: [],
+              keyLogic: [],
+              riskSignals: [],
+              relatedArtifacts: [],
+            },
+            parentId: "project-core",
+            children: [],
+            sources: [
+              {
+                type: "file",
+                label: "types",
+                path: "src/features/project-map/types.ts",
+              },
+            ],
+            confidence: "high",
+            stale: false,
+            candidate: false,
+          },
+        ],
+      }),
+    });
+
+    const result = await runProjectMapGenerationWorker({
+      workspaceId: "ws-1",
+      dataset,
+      run: baseRun({
+        id: "auto_run_1",
+        kind: "auto",
+        scope: "auto",
+        requestScope: { kind: "auto", messageHashes: ["hash-1"] },
+        generationIntent: "autoIngestion",
+        readSources: [
+          {
+            type: "file",
+            label: "types",
+            path: "src/features/project-map/types.ts",
+          },
+        ],
+        autoIngestion: {
+          applyMode: "createCandidate",
+          consumedMessages: [{ sessionId: "session-1", messageHash: "hash-1" }],
+          memoryEvidence: [
+            {
+              memoryId: "memory-1",
+              sessionId: "session-1",
+              messageHash: "hash-1",
+              title: "Project Map memory",
+              summary: "Project Map references src/features/project-map/types.ts",
+              cleanText: "Project Map references src/features/project-map/types.ts",
+              source: "conversation",
+              updatedAt: 1,
+            },
+          ],
+        },
+      }),
+      onRunUpdate: async () => {},
+    });
+
+    const [, request] = vi.mocked(engineSendMessageSync).mock.calls[0] ?? [];
+    expect(request?.text).toContain("BEGIN_PROJECT_MEMORY_EVIDENCE");
+    expect(request?.text).toContain("Project Map references src/features/project-map/types.ts");
+    expect(readWorkspaceFile).toHaveBeenCalledWith("ws-1", "src/features/project-map/types.ts");
+    expect(result.nodes.find((node) => node.id === "auto-memory-node")).toMatchObject({
+      candidate: true,
+      confidence: "medium",
+    });
+  });
+
   it("rejects non-json AI output before map persistence", async () => {
     const dataset = createEmptyProjectMapDataset({
       identity: {

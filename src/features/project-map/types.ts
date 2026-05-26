@@ -198,6 +198,7 @@ export type ProjectMapRunMetadata = {
   readSources?: ProjectMapSource[];
   storageLocation?: ProjectMapStorageLocation;
   writePath?: string;
+  autoIngestion?: ProjectMapAutoIngestionRunContext;
   error?: string | null;
 };
 
@@ -209,7 +210,11 @@ export type ProjectMapRunLog = {
 
 export type ProjectMapStorageLocation = "global" | "project";
 
-export type ProjectMapGenerationIntent = "global" | "completeNode" | "calibrateNode";
+export type ProjectMapGenerationIntent =
+  | "global"
+  | "completeNode"
+  | "calibrateNode"
+  | "autoIngestion";
 
 export type ProjectMapGenerationScope =
   | { kind: "global"; lensIds: ProjectMapLensId[] }
@@ -228,6 +233,7 @@ export type ProjectMapGenerationRequest = {
   storageLocation: ProjectMapStorageLocation;
   writePath: string;
   createdAt: string;
+  autoIngestion?: ProjectMapAutoIngestionRunContext;
 };
 
 export type ProjectMapNodePatch = {
@@ -266,6 +272,28 @@ export type ProjectMapProcessedMemoryMessage = {
   messageHash: string;
   processedAt?: string;
   runId?: string;
+};
+
+export type ProjectMapAutoIngestionMemoryEvidence = {
+  memoryId: string;
+  sessionId: string;
+  messageHash: string;
+  title: string;
+  summary: string;
+  detail?: string | null;
+  cleanText?: string | null;
+  rawText?: string | null;
+  userInput?: string | null;
+  assistantResponse?: string | null;
+  workspacePath?: string | null;
+  source: string;
+  updatedAt: number;
+};
+
+export type ProjectMapAutoIngestionRunContext = {
+  applyMode: ProjectMapAutoIngestionSettings["applyMode"];
+  consumedMessages: ProjectMapProcessedMemoryMessage[];
+  memoryEvidence: ProjectMapAutoIngestionMemoryEvidence[];
 };
 
 export type ProjectMapMemoryIngestionCursor = {

@@ -2307,6 +2307,7 @@ function ProjectMapSettingsPanel({
         {t("projectMap.settings.threshold")}
         <input
           type="number"
+          aria-label={t("projectMap.settings.threshold")}
           min={1}
           max={50}
           value={settings.newSessionThreshold}
@@ -2322,11 +2323,15 @@ function ProjectMapSettingsPanel({
             }));
           }}
         />
+        <span className="project-map-settings-unit" aria-hidden>
+          {t("projectMap.settings.thresholdUnit")}
+        </span>
       </label>
       <label>
         {t("projectMap.settings.interval")}
         <input
           type="number"
+          aria-label={t("projectMap.settings.interval")}
           min={5}
           max={1440}
           value={settings.checkIntervalMinutes}
@@ -2342,6 +2347,9 @@ function ProjectMapSettingsPanel({
             }));
           }}
         />
+        <span className="project-map-settings-unit" aria-hidden>
+          {t("projectMap.settings.intervalUnit")}
+        </span>
       </label>
       <label>
         {t("projectMap.settings.applyMode")}

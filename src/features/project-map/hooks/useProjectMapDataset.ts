@@ -6,6 +6,7 @@ import type {
   ProjectMapDataset,
   ProjectMapGenerationRequest,
   ProjectMapNode,
+  ProjectMapSource,
   ProjectMapStorageLocation,
   ProjectMapRunMetadata,
 } from "../types";
@@ -30,9 +31,12 @@ import {
 } from "../utils/candidates";
 import { pruneProjectMapNode } from "../utils/incrementalGeneration";
 import {
-  createConversationKnowledgeCandidate,
+  createProjectMapAutoIngestionMemoryEvidence,
+  extractProjectMapMemoryEvidencePaths,
   discoverUnprocessedProjectMemoryMessages,
+  selectProjectMapAutoIngestionMemories,
   markProjectMapMessagesProcessed,
+  shouldEvaluateProjectMapAutoIngestion,
   shouldTriggerProjectMapAutoIngestion,
 } from "../utils/autoIngestion";
 import { deriveProjectMapStorageKey } from "../utils/storageKey";
@@ -336,6 +340,16 @@ function resolveGenerationDefaults(
   };
 }
 
+function projectMapSourceFromPath(path: string): ProjectMapSource {
+  const normalizedPath = path.replace(/\\/g, "/");
+  const label = normalizedPath.split("/").filter(Boolean).pop() ?? normalizedPath;
+  return {
+    type: "file",
+    label,
+    path: normalizedPath,
+  };
+}
+
 export function useProjectMapDataset(
   workspace: WorkspaceInfo | null | undefined,
   options: {
@@ -390,6 +404,13 @@ export function useProjectMapDataset(
     () => getNextActiveRun(dataset.runs)?.id ?? null,
     [dataset.runs],
   );
+  const defaultWritePath = resolveWritePath(
+    DEFAULT_STORAGE_LOCATION,
+    workspacePath,
+    dataset.manifest.storageKey,
+    storageDirByLocation.global,
+  );
+  const generationDefaults = options.generationDefaults ?? null;
 
   const persistDataset = useCallback(
     async (
@@ -591,7 +612,33 @@ export function useProjectMapDataset(
           ...generatedDataset,
           runs: datasetRef.current.runs,
         };
-        const completedDataset = createDatasetWithRunUpdate(generatedWithLatestRuns, activeRun.id, {
+        const completedRun =
+          generatedWithLatestRuns.runs.find((run) => run.id === activeRun.id) ?? activeRun;
+        const generatedWithAutoCursor = completedRun.autoIngestion
+          ? {
+              ...generatedWithLatestRuns,
+              memoryCursor: {
+                ...generatedWithLatestRuns.memoryCursor,
+                pendingMessages: generatedWithLatestRuns.memoryCursor.pendingMessages.filter(
+                  (message) =>
+                    !completedRun.autoIngestion?.consumedMessages.some(
+                      (consumed) =>
+                        consumed.sessionId === message.sessionId &&
+                        consumed.messageHash === message.messageHash,
+                    ),
+                ),
+                processedMessages: markProjectMapMessagesProcessed({
+                  processedMessages: generatedWithLatestRuns.memoryCursor.processedMessages,
+                  consumedMessages: completedRun.autoIngestion.consumedMessages,
+                  runId: activeRun.id,
+                  processedAt: completedAt,
+                  runSucceeded: true,
+                }),
+                lastRunId: activeRun.id,
+              },
+            }
+          : generatedWithLatestRuns;
+        const completedDataset = createDatasetWithRunUpdate(generatedWithAutoCursor, activeRun.id, {
           status: "completed",
           phase: "completed",
           progress: 100,
@@ -639,7 +686,17 @@ export function useProjectMapDataset(
   }, [activeReadLocation, activeRunId, status, workspaceId]);
 
   useEffect(() => {
-    if (!workspaceId || status !== "persisted" || !dataset.autoIngestionSettings.enabled) {
+    const checkedAt = new Date().toISOString();
+    if (
+      !workspaceId ||
+      status !== "persisted" ||
+      !shouldEvaluateProjectMapAutoIngestion({
+        settings: dataset.autoIngestionSettings,
+        cursor: dataset.memoryCursor,
+        runs: dataset.runs,
+        now: checkedAt,
+      })
+    ) {
       return;
     }
 
@@ -649,56 +706,63 @@ export function useProjectMapDataset(
         if (cancelled) {
           return;
         }
+        const currentDataset = datasetRef.current;
         const unprocessedMessages = discoverUnprocessedProjectMemoryMessages({
           memories: result.items,
-          processedMessages: dataset.memoryCursor.processedMessages,
+          processedMessages: currentDataset.memoryCursor.processedMessages,
         });
+        const checkedDataset: ProjectMapDataset = {
+          ...currentDataset,
+          memoryCursor: {
+            ...currentDataset.memoryCursor,
+            lastCheckedAt: checkedAt,
+          },
+        };
         if (
           !shouldTriggerProjectMapAutoIngestion({
-            settings: dataset.autoIngestionSettings,
+            settings: currentDataset.autoIngestionSettings,
             unprocessedMessages,
           })
         ) {
+          await persistDataset(checkedDataset);
+          datasetRef.current = checkedDataset;
           return;
         }
-        const createdAt = new Date().toISOString();
-        const candidates = result.items
-          .map((memory) => createConversationKnowledgeCandidate({ dataset, memory, createdAt }))
-          .filter((candidate): candidate is NonNullable<typeof candidate> => Boolean(candidate));
-        if (candidates.length === 0) {
-          return;
-        }
-        const runId = `auto_${Date.now().toString(36)}`;
-        await persistDataset({
-          ...dataset,
-          candidates: [...(dataset.candidates ?? []), ...candidates],
-          memoryCursor: {
-            ...dataset.memoryCursor,
-            lastCheckedAt: createdAt,
-            pendingMessages: unprocessedMessages,
-            processedMessages: markProjectMapMessagesProcessed({
-              processedMessages: dataset.memoryCursor.processedMessages,
-              consumedMessages: unprocessedMessages,
-              runId,
-              processedAt: createdAt,
-              runSucceeded: true,
-            }),
-            lastRunId: runId,
-          },
-          runs: [
-            {
-              id: runId,
-              kind: "auto",
-              status: "completed",
-              engine: dataset.autoIngestionSettings.engine,
-              model: dataset.autoIngestionSettings.model,
-              startedAt: createdAt,
-              completedAt: createdAt,
-              scope: "auto",
-            },
-            ...dataset.runs,
-          ],
+
+        const consumedMemories = selectProjectMapAutoIngestionMemories({
+          memories: result.items,
+          unprocessedMessages,
         });
+        const request = createProjectMapGenerationRequest({
+          dataset: checkedDataset,
+          kind: "auto",
+          engine: currentDataset.autoIngestionSettings.engine,
+          model: currentDataset.autoIngestionSettings.model,
+          scope: {
+            kind: "auto",
+            messageHashes: unprocessedMessages.map((message) => message.messageHash),
+          },
+          storageLocation: DEFAULT_STORAGE_LOCATION,
+          writePath: defaultWritePath,
+          readSources: extractProjectMapMemoryEvidencePaths(consumedMemories).map(projectMapSourceFromPath),
+          autoIngestion: {
+            applyMode: currentDataset.autoIngestionSettings.applyMode,
+            consumedMessages: unprocessedMessages,
+            memoryEvidence: consumedMemories.map(createProjectMapAutoIngestionMemoryEvidence),
+          },
+        });
+        const queuedDataset = createDatasetWithRun(
+          {
+            ...checkedDataset,
+            memoryCursor: {
+              ...checkedDataset.memoryCursor,
+              pendingMessages: unprocessedMessages,
+            },
+          },
+          createRunMetadataFromRequest(request, "pending"),
+        );
+        await persistDataset(queuedDataset, false, request.storageLocation);
+        datasetRef.current = queuedDataset;
       })
       .catch((ingestionError) => {
         if (!cancelled) {
@@ -709,15 +773,7 @@ export function useProjectMapDataset(
     return () => {
       cancelled = true;
     };
-  }, [dataset, persistDataset, status, workspaceId]);
-
-  const defaultWritePath = resolveWritePath(
-    DEFAULT_STORAGE_LOCATION,
-    workspacePath,
-    dataset.manifest.storageKey,
-    storageDirByLocation.global,
-  );
-  const generationDefaults = options.generationDefaults ?? null;
+  }, [dataset, defaultWritePath, persistDataset, status, workspaceId]);
 
   const openGlobalCollection = useCallback(() => {
     const defaults = resolveGenerationDefaults(dataset, generationDefaults);

@@ -1,9 +1,12 @@
 import type { ProjectMemoryItem } from "../../../services/tauri/projectMemory";
 import type {
+  ProjectMapAutoIngestionMemoryEvidence,
   ProjectMapAutoIngestionSettings,
   ProjectMapCandidate,
   ProjectMapDataset,
+  ProjectMapMemoryIngestionCursor,
   ProjectMapProcessedMemoryMessage,
+  ProjectMapRunMetadata,
 } from "../types";
 
 function hashText(value: string): string {
@@ -13,6 +16,15 @@ function hashText(value: string): string {
     hash = Math.imul(hash, 0x01000193) >>> 0;
   }
   return hash.toString(16).padStart(8, "0");
+}
+
+export function createProjectMapMemoryMessageDescriptor(
+  memory: ProjectMemoryItem,
+): ProjectMapProcessedMemoryMessage {
+  return {
+    sessionId: memory.threadId ?? memory.id,
+    messageHash: messageHash(memory),
+  };
 }
 
 function messageHash(memory: ProjectMemoryItem): string {
@@ -41,11 +53,42 @@ export function discoverUnprocessedProjectMemoryMessages(input: {
   const processed = new Set(input.processedMessages.map(messageKey));
 
   return input.memories
-    .map((memory) => ({
-      sessionId: memory.threadId ?? memory.id,
-      messageHash: messageHash(memory),
-    }))
+    .map(createProjectMapMemoryMessageDescriptor)
     .filter((message) => !processed.has(messageKey(message)));
+}
+
+export function shouldEvaluateProjectMapAutoIngestion(input: {
+  settings: ProjectMapAutoIngestionSettings;
+  cursor: ProjectMapMemoryIngestionCursor;
+  runs: ProjectMapRunMetadata[];
+  now: string;
+}): boolean {
+  if (!input.settings.enabled || hasActiveProjectMapAutoIngestionRun(input.runs)) {
+    return false;
+  }
+
+  const lastCheckedAt = new Date(input.cursor.lastCheckedAt).getTime();
+  if (!Number.isFinite(lastCheckedAt)) {
+    return true;
+  }
+
+  const nowMs = new Date(input.now).getTime();
+  if (!Number.isFinite(nowMs)) {
+    return true;
+  }
+
+  const intervalMs = Math.max(5, input.settings.checkIntervalMinutes) * 60_000;
+  return nowMs - lastCheckedAt >= intervalMs;
+}
+
+export function hasActiveProjectMapAutoIngestionRun(runs: ProjectMapRunMetadata[]): boolean {
+  return runs.some((run) => {
+    const scope = run.requestScope;
+    return (
+      (run.kind === "auto" || scope?.kind === "auto") &&
+      (run.status === "pending" || run.status === "running")
+    );
+  });
 }
 
 export function shouldTriggerProjectMapAutoIngestion(input: {
@@ -54,7 +97,6 @@ export function shouldTriggerProjectMapAutoIngestion(input: {
 }): boolean {
   return (
     input.settings.enabled &&
-    input.settings.applyMode === "createCandidate" &&
     input.unprocessedMessages.length >= input.settings.newSessionThreshold
   );
 }
@@ -79,6 +121,68 @@ export function markProjectMapMessagesProcessed(input: {
     });
   }
   return [...next.values()];
+}
+
+export function selectProjectMapAutoIngestionMemories(input: {
+  memories: ProjectMemoryItem[];
+  unprocessedMessages: ProjectMapProcessedMemoryMessage[];
+}): ProjectMemoryItem[] {
+  const unprocessedKeys = new Set(input.unprocessedMessages.map(messageKey));
+  return input.memories.filter((memory) =>
+    unprocessedKeys.has(messageKey(createProjectMapMemoryMessageDescriptor(memory))),
+  );
+}
+
+export function createProjectMapAutoIngestionMemoryEvidence(
+  memory: ProjectMemoryItem,
+): ProjectMapAutoIngestionMemoryEvidence {
+  const descriptor = createProjectMapMemoryMessageDescriptor(memory);
+  return {
+    memoryId: memory.id,
+    sessionId: descriptor.sessionId,
+    messageHash: descriptor.messageHash,
+    title: memory.title,
+    summary: memory.summary,
+    detail: memory.detail ?? null,
+    cleanText: memory.cleanText,
+    rawText: memory.rawText ?? null,
+    userInput: memory.userInput ?? null,
+    assistantResponse: memory.assistantResponse ?? null,
+    workspacePath: memory.workspacePath ?? null,
+    source: memory.source,
+    updatedAt: memory.updatedAt,
+  };
+}
+
+export function extractProjectMapMemoryEvidencePaths(
+  memories: ProjectMemoryItem[],
+): string[] {
+  const paths: string[] = [];
+  const seen = new Set<string>();
+  for (const memory of memories) {
+    const evidenceText = [
+      memory.workspacePath,
+      memory.rawText,
+      memory.cleanText,
+      memory.detail,
+      memory.userInput,
+      memory.assistantResponse,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    const matches = evidenceText.matchAll(
+      /((?:src|app|server|packages|crates|cmd|internal|openspec|tests?)\/[^\s`'")]+)/g,
+    );
+    for (const match of matches) {
+      const path = match[1];
+      if (!path || seen.has(path)) {
+        continue;
+      }
+      seen.add(path);
+      paths.push(path);
+    }
+  }
+  return paths;
 }
 
 export function createConversationKnowledgeCandidate(input: {

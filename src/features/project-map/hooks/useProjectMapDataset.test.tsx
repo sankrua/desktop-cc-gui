@@ -4,6 +4,8 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import type { WorkspaceInfo } from "../../../types";
+import type { ProjectMemoryItem } from "../../../services/tauri/projectMemory";
+import { projectMemoryList } from "../../../services/tauri/projectMemory";
 import { deriveProjectMapStorageKey } from "../utils/storageKey";
 import type { ProjectMapReadResponse } from "../services/projectMapPersistence";
 import type { ProjectMapCandidate, ProjectMapDataset } from "../types";
@@ -31,6 +33,10 @@ vi.mock("../services/projectMapPersistence", async () => {
 
 vi.mock("../services/projectMapGenerationWorker", () => ({
   runProjectMapGenerationWorker: vi.fn(async ({ dataset }) => dataset),
+}));
+
+vi.mock("../../../services/tauri/projectMemory", () => ({
+  projectMemoryList: vi.fn(async () => ({ items: [], total: 0 })),
 }));
 
 function workspace(overrides: Pick<WorkspaceInfo, "id" | "name" | "path">): WorkspaceInfo {
@@ -156,6 +162,49 @@ function datasetWithPromptNodes(input: {
   };
 }
 
+function datasetWithAutoIngestion(input: {
+  workspace: WorkspaceInfo;
+  storageKey: string;
+  threshold?: number;
+  interval?: number;
+  lastCheckedAt?: string;
+}): ProjectMapDataset {
+  const dataset = datasetWithPromptNodes(input);
+  return {
+    ...dataset,
+    autoIngestionSettings: {
+      ...dataset.autoIngestionSettings,
+      enabled: true,
+      newSessionThreshold: input.threshold ?? 1,
+      checkIntervalMinutes: input.interval ?? 5,
+      applyMode: "createCandidate",
+    },
+    memoryCursor: {
+      ...dataset.memoryCursor,
+      lastCheckedAt: input.lastCheckedAt ?? "1970-01-01T00:00:00.000Z",
+    },
+  };
+}
+
+function projectMemory(overrides: Partial<ProjectMemoryItem> = {}): ProjectMemoryItem {
+  return {
+    id: "memory-1",
+    workspaceId: "ws-spring",
+    kind: "fact",
+    title: "Project map memory",
+    summary: "Project Map references src/features/project-map/types.ts",
+    cleanText: "Project Map references src/features/project-map/types.ts",
+    tags: [],
+    importance: "medium",
+    source: "conversation",
+    fingerprint: "fp-1",
+    createdAt: 1,
+    updatedAt: 2,
+    threadId: "session-1",
+    ...overrides,
+  };
+}
+
 function reviewCandidate(overrides: Partial<ProjectMapCandidate> = {}): ProjectMapCandidate {
   return {
     id: "candidate-runtime",
@@ -192,6 +241,8 @@ describe("useProjectMapDataset", () => {
     vi.mocked(writeProjectMapDataset).mockReset();
     vi.mocked(runProjectMapGenerationWorker).mockReset();
     vi.mocked(runProjectMapGenerationWorker).mockImplementation(async ({ dataset }) => dataset);
+    vi.mocked(projectMemoryList).mockReset();
+    vi.mocked(projectMemoryList).mockResolvedValue({ items: [], total: 0 });
   });
 
   it("clears the previous workspace storage key and ignores stale reads", async () => {
@@ -329,6 +380,60 @@ describe("useProjectMapDataset", () => {
       storageLocation: "global",
       writePath: `/home/user/.ccgui/project-map/${springKey}`,
     });
+  });
+
+  it("persists auto ingestion interval setting updates", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+    const springKey = deriveProjectMapStorageKey({
+      projectName: spring.name,
+      workspacePath: spring.path,
+      workspaceId: spring.id,
+    });
+    const baseDataset = datasetWithPromptNodes({ workspace: spring, storageKey: springKey });
+    const persistedDataset: ProjectMapDataset = {
+      ...baseDataset,
+      autoIngestionSettings: {
+        ...baseDataset.autoIngestionSettings,
+        enabled: false,
+        checkIntervalMinutes: 5,
+      },
+    };
+    vi.mocked(readProjectMapDataset).mockResolvedValue({
+      dataset: persistedDataset,
+      response: {
+        ...emptyReadResponse(springKey, `/repo/springboot-demo/.ccgui/project-map/${springKey}`),
+        exists: true,
+      },
+    });
+    vi.mocked(writeProjectMapDataset).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useProjectMapDataset(spring));
+
+    await waitFor(() => expect(result.current.status).toBe("persisted"));
+
+    await act(async () => {
+      await result.current.updateDataset((current) => ({
+        ...current,
+        autoIngestionSettings: {
+          ...current.autoIngestionSettings,
+          checkIntervalMinutes: 17,
+        },
+      }));
+    });
+
+    expect(writeProjectMapDataset).toHaveBeenCalledWith(
+      expect.objectContaining({
+        dataset: expect.objectContaining({
+          autoIngestionSettings: expect.objectContaining({
+            checkIntervalMinutes: 17,
+          }),
+        }),
+      }),
+    );
   });
 
   it("creates action-specific node requests from the selected node instead of global evidence", async () => {
@@ -939,6 +1044,151 @@ describe("useProjectMapDataset", () => {
     });
     expect(result.current.dataset.runs).toEqual([]);
     expect(runProjectMapGenerationWorker).not.toHaveBeenCalled();
+  });
+
+  it("queues a real auto ingestion generation run when project memory reaches threshold", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+    const springKey = deriveProjectMapStorageKey({
+      projectName: spring.name,
+      workspacePath: spring.path,
+      workspaceId: spring.id,
+    });
+    vi.mocked(readProjectMapDataset).mockResolvedValue({
+      dataset: datasetWithAutoIngestion({ workspace: spring, storageKey: springKey }),
+      response: emptyReadResponse(springKey, `/repo/springboot-demo/.ccgui/project-map/${springKey}`),
+    });
+    vi.mocked(projectMemoryList).mockResolvedValue({
+      items: [projectMemory()],
+      total: 1,
+    });
+    vi.mocked(writeProjectMapDataset).mockResolvedValue(undefined);
+    vi.mocked(runProjectMapGenerationWorker).mockImplementation(() => new Promise(() => {}));
+
+    renderHook(() => useProjectMapDataset(spring));
+
+    await waitFor(() => expect(projectMemoryList).toHaveBeenCalledWith({ workspaceId: spring.id, pageSize: 50 }));
+    await waitFor(() => {
+      expect(writeProjectMapDataset).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dataset: expect.objectContaining({
+            runs: expect.arrayContaining([
+              expect.objectContaining({
+                kind: "auto",
+                status: "pending",
+                requestScope: { kind: "auto", messageHashes: [expect.any(String)] },
+                generationIntent: "autoIngestion",
+                autoIngestion: expect.objectContaining({
+                  applyMode: "createCandidate",
+                  consumedMessages: [expect.objectContaining({ sessionId: "session-1" })],
+                  memoryEvidence: [expect.objectContaining({ memoryId: "memory-1" })],
+                }),
+              }),
+            ]),
+            memoryCursor: expect.objectContaining({
+              pendingMessages: [expect.objectContaining({ sessionId: "session-1" })],
+            }),
+          }),
+        }),
+      );
+    });
+  });
+
+  it("does not scan project memory before the auto ingestion interval elapses", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+    const springKey = deriveProjectMapStorageKey({
+      projectName: spring.name,
+      workspacePath: spring.path,
+      workspaceId: spring.id,
+    });
+    vi.mocked(readProjectMapDataset).mockResolvedValue({
+      dataset: datasetWithAutoIngestion({
+        workspace: spring,
+        storageKey: springKey,
+        interval: 1440,
+        lastCheckedAt: new Date().toISOString(),
+      }),
+      response: emptyReadResponse(springKey, `/repo/springboot-demo/.ccgui/project-map/${springKey}`),
+    });
+
+    const { result } = renderHook(() => useProjectMapDataset(spring));
+
+    await waitFor(() => expect(result.current.status).toBe("persisted"));
+    expect(projectMemoryList).not.toHaveBeenCalled();
+  });
+
+  it("marks auto ingestion memory processed only after successful worker completion", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+    const springKey = deriveProjectMapStorageKey({
+      projectName: spring.name,
+      workspacePath: spring.path,
+      workspaceId: spring.id,
+    });
+    vi.mocked(readProjectMapDataset).mockResolvedValue({
+      dataset: datasetWithAutoIngestion({ workspace: spring, storageKey: springKey }),
+      response: emptyReadResponse(springKey, `/repo/springboot-demo/.ccgui/project-map/${springKey}`),
+    });
+    vi.mocked(projectMemoryList).mockResolvedValue({
+      items: [projectMemory()],
+      total: 1,
+    });
+    vi.mocked(writeProjectMapDataset).mockResolvedValue(undefined);
+
+    const { result } = renderHook(() => useProjectMapDataset(spring));
+
+    await waitFor(() => expect(runProjectMapGenerationWorker).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(result.current.dataset.memoryCursor.processedMessages).toHaveLength(1);
+      expect(result.current.dataset.memoryCursor.pendingMessages).toHaveLength(0);
+      expect(result.current.dataset.runs[0]).toMatchObject({ kind: "auto", status: "completed" });
+    });
+  });
+
+  it("keeps auto ingestion memory unprocessed when the worker fails", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+    const springKey = deriveProjectMapStorageKey({
+      projectName: spring.name,
+      workspacePath: spring.path,
+      workspaceId: spring.id,
+    });
+    vi.mocked(readProjectMapDataset).mockResolvedValue({
+      dataset: datasetWithAutoIngestion({ workspace: spring, storageKey: springKey }),
+      response: emptyReadResponse(springKey, `/repo/springboot-demo/.ccgui/project-map/${springKey}`),
+    });
+    vi.mocked(projectMemoryList).mockResolvedValue({
+      items: [projectMemory()],
+      total: 1,
+    });
+    vi.mocked(writeProjectMapDataset).mockResolvedValue(undefined);
+    vi.mocked(runProjectMapGenerationWorker).mockRejectedValueOnce(new Error("auto failed"));
+
+    const { result } = renderHook(() => useProjectMapDataset(spring));
+
+    await waitFor(() => expect(runProjectMapGenerationWorker).toHaveBeenCalledTimes(1));
+    await waitFor(() => {
+      expect(result.current.dataset.memoryCursor.processedMessages).toHaveLength(0);
+      expect(result.current.dataset.memoryCursor.pendingMessages).toHaveLength(1);
+      expect(result.current.dataset.runs[0]).toMatchObject({
+        kind: "auto",
+        status: "failed",
+        error: "auto failed",
+      });
+    });
   });
 
   it("marks a generation run failed when the worker cannot persist its claimed slot", async () => {

@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import type { ProjectMemoryItem } from "../../../services/tauri/projectMemory";
+import type { ProjectMapRunMetadata } from "../types";
 import { mockProjectMapData } from "../mockProjectMapData";
 import {
   createConversationKnowledgeCandidate,
   discoverUnprocessedProjectMemoryMessages,
+  hasActiveProjectMapAutoIngestionRun,
   markProjectMapMessagesProcessed,
+  shouldEvaluateProjectMapAutoIngestion,
   shouldTriggerProjectMapAutoIngestion,
 } from "./autoIngestion";
 
@@ -46,7 +49,7 @@ describe("project map auto ingestion", () => {
     expect(unprocessed[0].sessionId).toBe("session-1");
   });
 
-  it("triggers only when opt-in candidate mode reaches threshold", () => {
+  it("triggers when opt-in ingestion reaches threshold in either write mode", () => {
     expect(
       shouldTriggerProjectMapAutoIngestion({
         settings: {
@@ -63,6 +66,69 @@ describe("project map auto ingestion", () => {
         ],
       }),
     ).toBe(true);
+    expect(
+      shouldTriggerProjectMapAutoIngestion({
+        settings: {
+          enabled: true,
+          engine: "codex",
+          model: "default",
+          newSessionThreshold: 1,
+          checkIntervalMinutes: 30,
+          applyMode: "autoApplyEvidenceBacked",
+        },
+        unprocessedMessages: [{ sessionId: "s1", messageHash: "h1" }],
+      }),
+    ).toBe(true);
+  });
+
+  it("evaluates auto ingestion only after the configured interval and without active auto runs", () => {
+    const settings = {
+      enabled: true,
+      engine: "codex",
+      model: "default",
+      newSessionThreshold: 1,
+      checkIntervalMinutes: 30,
+      applyMode: "createCandidate" as const,
+    };
+    const cursor = {
+      lastCheckedAt: "2026-05-26T00:00:00.000Z",
+      processedMessages: [],
+      pendingMessages: [],
+    };
+
+    expect(
+      shouldEvaluateProjectMapAutoIngestion({
+        settings,
+        cursor,
+        runs: [],
+        now: "2026-05-26T00:20:00.000Z",
+      }),
+    ).toBe(false);
+    expect(
+      shouldEvaluateProjectMapAutoIngestion({
+        settings,
+        cursor,
+        runs: [],
+        now: "2026-05-26T00:31:00.000Z",
+      }),
+    ).toBe(true);
+  });
+
+  it("detects pending or running auto ingestion runs as active", () => {
+    const autoRun = {
+      id: "auto-1",
+      kind: "auto",
+      status: "pending",
+      engine: "codex",
+      model: "default",
+      startedAt: "2026-05-26T00:00:00.000Z",
+      completedAt: null,
+      scope: "auto",
+      requestScope: { kind: "auto", messageHashes: ["h1"] },
+    } satisfies ProjectMapRunMetadata;
+
+    expect(hasActiveProjectMapAutoIngestionRun([autoRun])).toBe(true);
+    expect(hasActiveProjectMapAutoIngestionRun([{ ...autoRun, status: "completed" }])).toBe(false);
   });
 
   it("does not mark messages processed on failed runs", () => {
