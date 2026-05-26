@@ -24,6 +24,7 @@ export const CLIENT_UI_CONTROL_IDS = [
   "topTool.rightPanel",
   "topTool.clientDocumentation",
   "rightToolbar.activity",
+  "rightToolbar.projectMap",
   "rightToolbar.radar",
   "rightToolbar.git",
   "rightToolbar.files",
@@ -55,6 +56,7 @@ export type ClientUiVisibilityIconKey =
   | "focus"
   | "folder"
   | "gitBranch"
+  | "globe"
   | "info"
   | "layoutList"
   | "listChecks"
@@ -155,6 +157,13 @@ export const CLIENT_UI_CONTROL_REGISTRY: readonly ClientUiControlDefinition[] = 
     labelKey: "settings.clientUiVisibility.controls.rightToolbarActivity",
     descriptionKey: "settings.clientUiVisibility.controlDescriptions.rightToolbarActivity",
     iconKey: "activity",
+  },
+  {
+    id: "rightToolbar.projectMap",
+    parentPanelId: "rightActivityToolbar",
+    labelKey: "settings.clientUiVisibility.controls.rightToolbarProjectMap",
+    descriptionKey: "settings.clientUiVisibility.controlDescriptions.rightToolbarProjectMap",
+    iconKey: "globe",
   },
   {
     id: "rightToolbar.radar",
@@ -286,6 +295,7 @@ export const CLIENT_UI_PANEL_REGISTRY: readonly ClientUiPanelDefinition[] = [
     iconKey: "activity",
     controls: [
       "rightToolbar.activity",
+      "rightToolbar.projectMap",
       "rightToolbar.radar",
       "rightToolbar.git",
       "rightToolbar.files",

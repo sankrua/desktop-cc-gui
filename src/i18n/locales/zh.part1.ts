@@ -1152,6 +1152,7 @@ const zhPart1 = {
         topToolRightPanel: "右侧面板开关",
         topToolClientDocumentation: "客户端说明文档入口",
         rightToolbarActivity: "活动入口",
+        rightToolbarProjectMap: "项目知识地图入口",
         rightToolbarRadar: "雷达入口",
         rightToolbarGit: "Git 入口",
         rightToolbarFiles: "文件入口",
@@ -1176,6 +1177,8 @@ const zhPart1 = {
         topToolClientDocumentation:
           "隐藏客户端说明文档入口；说明窗口能力不被移除。",
         rightToolbarActivity: "隐藏活动面板入口，不清空已收集的活动数据。",
+        rightToolbarProjectMap:
+          "隐藏项目知识地图入口，不停止地图生成或持久化。",
         rightToolbarRadar: "隐藏雷达面板入口，不停止会话跟踪。",
         rightToolbarGit: "隐藏 Git 面板入口，不改变 Git 状态。",
         rightToolbarFiles: "隐藏文件树入口，不关闭已打开文件。",

@@ -11,6 +11,7 @@ import FileEdit from "lucide-react/dist/esm/icons/file-edit";
 import Focus from "lucide-react/dist/esm/icons/focus";
 import Folder from "lucide-react/dist/esm/icons/folder";
 import GitBranch from "lucide-react/dist/esm/icons/git-branch";
+import Globe2 from "lucide-react/dist/esm/icons/globe-2";
 import Info from "lucide-react/dist/esm/icons/info";
 import LayoutList from "lucide-react/dist/esm/icons/layout-list";
 import ListChecks from "lucide-react/dist/esm/icons/list-checks";
@@ -107,6 +108,7 @@ const CLIENT_UI_VISIBILITY_ICON_COMPONENTS: Record<ClientUiVisibilityIconKey, Lu
   focus: Focus,
   folder: Folder,
   gitBranch: GitBranch,
+  globe: Globe2,
   info: Info,
   layoutList: LayoutList,
   listChecks: ListChecks,

@@ -912,7 +912,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
     clientUiVisibility.isPanelVisible("rightActivityToolbar");
   const rightToolbarVisibleTabs = {
     activity: clientUiVisibility.isControlVisible("rightToolbar.activity"),
-    projectMap: true,
+    projectMap: clientUiVisibility.isControlVisible("rightToolbar.projectMap"),
     radar: clientUiVisibility.isControlVisible("rightToolbar.radar"),
     git: clientUiVisibility.isControlVisible("rightToolbar.git"),
     files: clientUiVisibility.isControlVisible("rightToolbar.files"),

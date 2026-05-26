@@ -41,6 +41,7 @@ vi.mock("../../client-ui-visibility/hooks/useClientUiVisibility", () => ({
         "topTool.rightPanel": clientUiVisibilityMock.visibleControls.has("topTool.rightPanel"),
         "topTool.clientDocumentation": clientUiVisibilityMock.visibleControls.has("topTool.clientDocumentation"),
         "rightToolbar.activity": clientUiVisibilityMock.visibleControls.has("rightToolbar.activity"),
+        "rightToolbar.projectMap": clientUiVisibilityMock.visibleControls.has("rightToolbar.projectMap"),
         "rightToolbar.radar": clientUiVisibilityMock.visibleControls.has("rightToolbar.radar"),
         "rightToolbar.git": clientUiVisibilityMock.visibleControls.has("rightToolbar.git"),
         "rightToolbar.files": clientUiVisibilityMock.visibleControls.has("rightToolbar.files"),
@@ -216,14 +217,23 @@ vi.mock("../components/PanelTabs", () => ({
   PanelTabs: ({
     active,
     onSelect,
+    visibleTabs,
   }: {
     active: string;
     onSelect: (id: string) => void;
+    visibleTabs?: Partial<Record<string, boolean>>;
   }) => (
     <div data-testid="panel-tabs" data-active={active}>
-      <button type="button" onClick={() => onSelect("projectMap")}>
-        projectMap
-      </button>
+      {visibleTabs?.projectMap !== false ? (
+        <button type="button" onClick={() => onSelect("projectMap")}>
+          projectMap
+        </button>
+      ) : null}
+      {visibleTabs?.files !== false ? (
+        <button type="button" onClick={() => onSelect("files")}>
+          files
+        </button>
+      ) : null}
     </div>
   ),
 }));
@@ -794,6 +804,7 @@ describe("useLayoutNodes client UI visibility", () => {
 
   it("toggles the Project Map toolbar icon off from full Project Map mode", () => {
     clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.projectMap");
     const setCenterMode = vi.fn();
     const { result } = renderHook(() =>
       useLayoutNodes(
@@ -814,6 +825,7 @@ describe("useLayoutNodes client UI visibility", () => {
 
   it("opens the Project Map toolbar icon from chat mode", () => {
     clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.projectMap");
     const onOpenProjectMap = vi.fn();
     const { result } = renderHook(() =>
       useLayoutNodes(
@@ -834,6 +846,7 @@ describe("useLayoutNodes client UI visibility", () => {
 
   it("toggles the Project Map toolbar icon off from editor companion mode", () => {
     clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.projectMap");
     const setEditorSplitCompanion = vi.fn();
     const { result } = renderHook(() =>
       useLayoutNodes(
@@ -855,6 +868,7 @@ describe("useLayoutNodes client UI visibility", () => {
 
   it("opens the Project Map toolbar icon as an editor companion without closing the editor", () => {
     clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.projectMap");
     const onOpenProjectMap = vi.fn();
     const setCenterMode = vi.fn();
     const setEditorSplitCompanion = vi.fn();
@@ -882,6 +896,7 @@ describe("useLayoutNodes client UI visibility", () => {
 
   it("restores a maximized editor when the Project Map toolbar icon opens as companion", () => {
     clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.projectMap");
     const setEditorSplitCompanion = vi.fn();
     const onToggleEditorFileMaximized = vi.fn();
     const { result } = renderHook(() =>
@@ -902,6 +917,25 @@ describe("useLayoutNodes client UI visibility", () => {
 
     expect(setEditorSplitCompanion).toHaveBeenCalledWith("projectMap");
     expect(onToggleEditorFileMaximized).toHaveBeenCalledTimes(1);
+  });
+
+  it("hides the Project Map toolbar icon when its visibility control is disabled", () => {
+    clientUiVisibilityMock.visiblePanels.add("rightActivityToolbar");
+    clientUiVisibilityMock.visibleControls.add("rightToolbar.files");
+    const onOpenProjectMap = vi.fn();
+    const { result } = renderHook(() =>
+      useLayoutNodes(
+        createLayoutOptions({
+          centerMode: "chat",
+          onOpenProjectMap,
+        }),
+      ),
+    );
+
+    render(<>{result.current.rightPanelToolbarNode}</>);
+
+    expect(screen.queryByRole("button", { name: "projectMap" })).toBeNull();
+    expect(screen.getByRole("button", { name: "files" })).toBeTruthy();
   });
 
   it("keeps the bottom status dock mounted when baseline tabs are visible and collapsed", () => {

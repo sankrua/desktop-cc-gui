@@ -48,6 +48,7 @@ describe("clientUiVisibility", () => {
       controls: {
         "topTool.terminal": false,
         "topTool.clientDocumentation": true,
+        "rightToolbar.projectMap": false,
         "curtain.stickyUserBubble": false,
         "curtain.contextLedger": false,
         "future.control": false,
@@ -59,6 +60,7 @@ describe("clientUiVisibility", () => {
       controls: {
         "topTool.terminal": false,
         "topTool.clientDocumentation": true,
+        "rightToolbar.projectMap": false,
         "curtain.stickyUserBubble": false,
         "curtain.contextLedger": false,
       },
@@ -66,8 +68,22 @@ describe("clientUiVisibility", () => {
     expect(isClientUiPanelVisible(preference, "topSessionTabs")).toBe(false);
     expect(isClientUiPanelVisible(preference, "globalRuntimeNoticeDock")).toBe(false);
     expect(isClientUiControlVisible(preference, "topTool.terminal")).toBe(false);
+    expect(isClientUiControlVisible(preference, "rightToolbar.projectMap")).toBe(false);
     expect(isClientUiControlVisible(preference, "curtain.stickyUserBubble")).toBe(false);
     expect(isClientUiControlVisible(preference, "curtain.contextLedger")).toBe(false);
+  });
+
+  it("registers Project Map as a default-visible right toolbar control", () => {
+    expect(isClientUiControlVisible(DEFAULT_CLIENT_UI_VISIBILITY_PREFERENCE, "rightToolbar.projectMap")).toBe(true);
+
+    const hiddenPreference = setClientUiControlVisibility(
+      DEFAULT_CLIENT_UI_VISIBILITY_PREFERENCE,
+      "rightToolbar.projectMap",
+      false,
+    );
+
+    expect(hiddenPreference.controls["rightToolbar.projectMap"]).toBe(false);
+    expect(isClientUiControlVisible(hiddenPreference, "rightToolbar.projectMap")).toBe(false);
   });
 
   it("applies default hidden controls to legacy preferences that do not mention them", () => {

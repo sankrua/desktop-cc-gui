@@ -1100,6 +1100,7 @@ const enPart1 = {
         topToolRightPanel: "Right panel toggle",
         topToolClientDocumentation: "Client documentation entry",
         rightToolbarActivity: "Activity entry",
+        rightToolbarProjectMap: "Project Map entry",
         rightToolbarRadar: "Radar entry",
         rightToolbarGit: "Git entry",
         rightToolbarFiles: "Files entry",
@@ -1128,6 +1129,8 @@ const enPart1 = {
           "Hides the client documentation entry without removing the documentation window.",
         rightToolbarActivity:
           "Hides the activity panel entry without clearing collected activity.",
+        rightToolbarProjectMap:
+          "Hides the Project Map entry without stopping map generation or persistence.",
         rightToolbarRadar:
           "Hides the radar panel entry without stopping session tracking.",
         rightToolbarGit:
