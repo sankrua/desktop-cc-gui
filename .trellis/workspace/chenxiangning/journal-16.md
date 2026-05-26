@@ -960,3 +960,42 @@ CI 中 SettingsView 删除会话测试仍断言旧刷新签名；更新为包含
 ### Next Steps
 
 - None - task complete
+
+
+## Session 585: Project Map 知识地图生成与交互批量收口
+
+**Date**: 2026-05-26
+**Task**: Project Map 知识地图生成与交互批量收口
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+批量提交 Project Map UI/UX、候选审核、节点级生成 prompt 与 JSON 稳定性优化，并回写 OpenSpec artifacts。
+
+### Main Changes
+
+完成 Project Map 批量收口：
+- OpenSpec 回写 3 个 completed change：add-project-map-candidate-review-actions、improve-project-map-inspector-evidence-ux、sharpen-project-map-generation-prompts。
+- UI/UX：移除低价值 refresh，候选入口可定位/确认/拒绝，证据链 trace chip，详情面板加宽，画布/详情按钮组，返回上次与返回上层 fallback，紧凑且不重叠布局。
+- 生成链路：按 global / completeNode / calibrateNode 区分节点范围提示词，缩短 prompt，节点级补全/校准不再重复全量上下文。
+- JSON 稳定性：增强 strict JSON 规则，并增加 bounded lenient repair，覆盖 unquoted keys、bare string values、trailing commas，不使用 eval。
+- 验证：Project Map focused suite 51 tests passed；typecheck passed；lint 0 errors with existing threads hook warning；large-file found=0；git diff --cached --check passed；3 个 OpenSpec strict validate passed。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `869520f8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
