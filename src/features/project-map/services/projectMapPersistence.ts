@@ -13,6 +13,7 @@ import type {
   ProjectMapRunMetadata,
   ProjectMapSource,
   ProjectMapStorageLocation,
+  ProjectMapViewState,
 } from "../types";
 import { deriveProjectMapStorageKey } from "../utils/storageKey";
 
@@ -28,6 +29,7 @@ export type ProjectMapReadResponse = {
   profile?: unknown;
   lenses?: unknown;
   lensNodes: Record<string, unknown>;
+  viewState?: unknown;
   settings?: unknown;
   cursor?: unknown;
   processed?: unknown;
@@ -170,6 +172,11 @@ export function createEmptyProjectMapDataset(input: {
     },
     lenses: [],
     nodes: [],
+    viewState: {
+      layoutPreset: "radial",
+      nodeLayouts: {},
+      updatedAt: now,
+    },
     runs: [],
     candidates: [],
     evidenceRecords: [],
@@ -357,6 +364,42 @@ function sanitizeCursor(value: unknown): ProjectMapMemoryIngestionCursor {
   };
 }
 
+function sanitizeViewState(value: unknown): ProjectMapViewState | undefined {
+  if (!isRecord(value)) {
+    return undefined;
+  }
+
+  const layoutPreset =
+    value.layoutPreset === "tree" || value.layoutPreset === "force"
+      ? value.layoutPreset
+      : "radial";
+  const rawNodeLayouts = isRecord(value.nodeLayouts) ? value.nodeLayouts : {};
+  const nodeLayouts: ProjectMapViewState["nodeLayouts"] = {};
+
+  for (const [nodeId, rawLayout] of Object.entries(rawNodeLayouts)) {
+    if (!isRecord(rawLayout)) {
+      continue;
+    }
+    const x = typeof rawLayout.x === "number" ? rawLayout.x : Number(rawLayout.x);
+    const y = typeof rawLayout.y === "number" ? rawLayout.y : Number(rawLayout.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      continue;
+    }
+    nodeLayouts[nodeId] = {
+      x,
+      y,
+      pinned: rawLayout.pinned === true,
+      updatedAt: typeof rawLayout.updatedAt === "string" ? rawLayout.updatedAt : undefined,
+    };
+  }
+
+  return {
+    layoutPreset,
+    nodeLayouts,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : undefined,
+  };
+}
+
 export function buildDatasetFromProjectMapRead(
   response: ProjectMapReadResponse,
   identity: ProjectMapStorageIdentity,
@@ -380,6 +423,7 @@ export function buildDatasetFromProjectMapRead(
     profile,
     lenses,
     nodes,
+    viewState: sanitizeViewState(response.viewState),
     runs: Object.values(response.runs).flatMap((value) =>
       safeArray(isRecord(value) ? value.items : [value], isProjectMapRun),
     ),
@@ -407,6 +451,7 @@ export function serializeProjectMapDataset(dataset: ProjectMapDataset): ProjectM
     { relativePath: "manifest.json", content: JSON.stringify(dataset.manifest, null, 2) },
     { relativePath: "profile.json", content: JSON.stringify(dataset.profile, null, 2) },
     { relativePath: "lenses/manifest.json", content: JSON.stringify({ items: dataset.lenses }, null, 2) },
+    { relativePath: "view-state.json", content: JSON.stringify(dataset.viewState ?? null, null, 2) },
     { relativePath: "settings.json", content: JSON.stringify(dataset.autoIngestionSettings, null, 2) },
     { relativePath: "memory-ingestion/cursor.json", content: JSON.stringify(dataset.memoryCursor, null, 2) },
     {

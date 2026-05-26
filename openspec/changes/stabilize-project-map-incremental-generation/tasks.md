@@ -67,3 +67,16 @@
 - [x] 12.2 [P0][依赖: 12.1][输入: noisy/fenced/multi-object Claude output][输出: balanced JSON candidate scanner + Project Map payload shape gate][验证: worker test selects fenced Project Map payload while skipping unrelated JSON] 增强 AI 输出 JSON 候选提取。
 - [x] 12.3 [P0][依赖: 12.2][输入: copied placeholder `"profile": {...}`][输出: targeted lenient repair before payload normalization][验证: worker test repairs placeholder ellipsis output] 兼容 Claude 复制 schema 占位符造成的 JSON parse error。
 - [x] 12.4 [P0][依赖: 12.1-12.3][输入: implementation diff][输出: validation evidence][验证: `npm exec vitest -- run src/features/project-map/services/projectMapGenerationWorker.test.ts src/features/project-map/services/projectMapPersistence.test.ts src/features/project-map/utils/incrementalGeneration.test.ts src/features/project-map/components/ProjectMapPanel.test.tsx src/features/project-map/hooks/useProjectMapDataset.test.tsx --maxWorkers 1 --minWorkers 1` + `npm run typecheck` + `npm run lint` + `npm run build`] 验证 Claude JSON hardening 不破坏 Project Map 生成链路。
+
+## 13. Generic Calibration Evidence And Codex Output Hardening
+
+- [x] 13.1 [P0][依赖: 4.3][输入: source/related artifact label/ref/path][输出: project-agnostic workspace path inference][验证: hook test source label `src/types.ts` normalizes into `readSources.path` while preserving source metadata] 让生成请求从通用 path-like label/ref 推断可读证据路径。
+- [x] 13.2 [P0][依赖: 13.1][输入: persisted calibration run with legacy path-like source label][输出: worker reads inferred workspace evidence file][验证: worker test prompt includes `--- FILE src/types.ts`] 修复校准只看 `source.path` 导致候选节点证据读错的问题。
+- [x] 13.3 [P0][依赖: 12.2][输入: Codex terminal event envelopes][输出: final assistant JSON extraction from `last_agent_message` and nested turn/result fields][验证: worker test parses `turn/completed.result.last_agent_message`] 修复有效 Codex 终态 JSON 被误判为 missing JSON 的问题。
+- [x] 13.4 [P0][依赖: 13.1-13.3][输入: implementation diff][输出: validation evidence][验证: `npm exec vitest -- run src/features/project-map/components/ProjectMapPanel.test.tsx src/features/project-map/hooks/useProjectMapDataset.test.tsx src/features/project-map/services/projectMapGenerationWorker.test.ts src/features/project-map/services/projectMapPersistence.test.ts src/features/project-map/utils/incrementalGeneration.test.ts src/features/project-map/utils/candidates.test.ts --maxWorkers 1 --minWorkers 1` + `npm run typecheck` + `git diff --check` + `openspec validate stabilize-project-map-incremental-generation --strict`] 验证通用校准证据链与 Codex JSON 提取不破坏 Project Map 回归。
+
+## 14. Calibrated Candidate Resolution UX
+
+- [x] 14.1 [P0][依赖: 4.3][输入: completed calibrateNode run whose output keeps `candidate=true`][输出: calibrated-but-unresolved candidate notice][验证: ProjectMapPanel test asserts calibrated title/body and actions] 区分“校准任务完成”和“候选已确认”的产品语义。
+- [x] 14.2 [P0][依赖: 14.1][输入: node candidate without pending candidate review record][输出: node-level confirm/reject candidate actions][验证: candidates util tests clear node `candidate` without deleting the node] 给无 review record 的节点候选提供人工出口。
+- [x] 14.3 [P0][依赖: 14.1-14.2][输入: implementation diff][输出: validation evidence][验证: focused Project Map tests + `npm run typecheck` + `openspec validate stabilize-project-map-incremental-generation --strict`] 验证校准候选 UX 不破坏候选 review 与增量合并链路。

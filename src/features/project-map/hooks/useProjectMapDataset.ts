@@ -24,7 +24,9 @@ import {
 } from "../utils/generationRequests";
 import {
   confirmProjectMapCandidate,
+  confirmProjectMapNodeCandidate,
   rejectProjectMapCandidate,
+  rejectProjectMapNodeCandidate,
 } from "../utils/candidates";
 import { pruneProjectMapNode } from "../utils/incrementalGeneration";
 import {
@@ -63,6 +65,8 @@ export type ProjectMapDatasetController = {
   clearFinishedRuns: () => Promise<void>;
   confirmCandidate: (candidateId: string) => Promise<boolean>;
   rejectCandidate: (candidateId: string) => Promise<boolean>;
+  confirmNodeCandidate: (nodeId: string) => Promise<boolean>;
+  rejectNodeCandidate: (nodeId: string) => Promise<boolean>;
   deleteNode: (nodeId: string) => Promise<boolean>;
   updateDataset: (updater: (dataset: ProjectMapDataset) => ProjectMapDataset) => Promise<void>;
 };
@@ -861,6 +865,58 @@ export function useProjectMapDataset(
     [persistDataset],
   );
 
+  const confirmNodeCandidate = useCallback(
+    async (nodeId: string): Promise<boolean> => {
+      const confirmedAt = new Date().toISOString();
+      const result = confirmProjectMapNodeCandidate({
+        dataset: datasetRef.current,
+        nodeId,
+        confirmedAt,
+      });
+      if (!result.ok) {
+        setError(result.errors.join("\n"));
+        return false;
+      }
+
+      setError(null);
+      try {
+        await persistDataset(result.dataset);
+        datasetRef.current = result.dataset;
+        return true;
+      } catch (writeError) {
+        setError(errorMessage(writeError));
+        return false;
+      }
+    },
+    [persistDataset],
+  );
+
+  const rejectNodeCandidate = useCallback(
+    async (nodeId: string): Promise<boolean> => {
+      const rejectedAt = new Date().toISOString();
+      const result = rejectProjectMapNodeCandidate({
+        dataset: datasetRef.current,
+        nodeId,
+        rejectedAt,
+      });
+      if (!result.ok) {
+        setError(result.errors.join("\n"));
+        return false;
+      }
+
+      setError(null);
+      try {
+        await persistDataset(result.dataset);
+        datasetRef.current = result.dataset;
+        return true;
+      } catch (writeError) {
+        setError(errorMessage(writeError));
+        return false;
+      }
+    },
+    [persistDataset],
+  );
+
   const deleteNode = useCallback(
     async (nodeId: string): Promise<boolean> => {
       const prunedAt = new Date().toISOString();
@@ -889,9 +945,11 @@ export function useProjectMapDataset(
 
   const updateDataset = useCallback(
     async (updater: (dataset: ProjectMapDataset) => ProjectMapDataset) => {
-      await persistDataset(updater(dataset));
+      const nextDataset = updater(datasetRef.current);
+      await persistDataset(nextDataset);
+      datasetRef.current = nextDataset;
     },
-    [dataset, persistDataset],
+    [persistDataset],
   );
 
   return {
@@ -912,6 +970,8 @@ export function useProjectMapDataset(
     clearFinishedRuns,
     confirmCandidate,
     rejectCandidate,
+    confirmNodeCandidate,
+    rejectNodeCandidate,
     deleteNode,
     updateDataset,
   };

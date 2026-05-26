@@ -765,6 +765,7 @@ export function useAppShellLayoutNodesSection(ctx: any) {
     },
     onOpenProjectMap: () => {
       closeSettings();
+      collapseSidebar();
       setAppMode("chat");
       setCenterMode("projectMap");
       expandRightPanel();

@@ -456,6 +456,13 @@ export function pruneProjectMapNode(input: PruneInput): { ok: true; dataset: Pro
         }
       : candidate,
   );
+  const nodeLayouts = input.dataset.viewState
+    ? Object.fromEntries(
+        Object.entries(input.dataset.viewState.nodeLayouts).filter(
+          ([nodeId]) => !deletedIds.has(nodeId),
+        ),
+      )
+    : {};
   const lensStats = recalculateProjectMapLensStats(input.dataset.lenses, nodes);
 
   return {
@@ -464,6 +471,13 @@ export function pruneProjectMapNode(input: PruneInput): { ok: true; dataset: Pro
       ...input.dataset,
       nodes,
       candidates,
+      viewState: input.dataset.viewState
+        ? {
+            ...input.dataset.viewState,
+            nodeLayouts,
+            updatedAt: input.prunedAt,
+          }
+        : undefined,
       manifest: {
         ...input.dataset.manifest,
         updatedAt: input.prunedAt,

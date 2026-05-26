@@ -4,7 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { describe, expect, it, vi } from "vitest";
 
 import { mockProjectMapData } from "../mockProjectMapData";
-import type { ProjectMapDataset, ProjectMapNode } from "../types";
+import type { ProjectMapDataset, ProjectMapNode, ProjectMapRunMetadata } from "../types";
 import { ProjectMapPanel } from "./ProjectMapPanel";
 
 function renderMockProjectMapPanel(
@@ -248,6 +248,113 @@ describe("ProjectMapPanel", () => {
     expect(within(detailPanel).queryByText("项目画像 Project Profile")).toBeNull();
   });
 
+  it("moves selected graph nodes together during a drag preview", async () => {
+    const view = renderMockProjectMapPanel();
+    const canvas = view.container.querySelector(".project-map-graph-canvas") as HTMLElement;
+    const apiNode = screen.getByRole("button", { name: /接口表面 API Surface/i });
+    const riskNode = screen.getByRole("button", { name: /风险 Risk/i });
+    const initialApiCenter = getGraphNodeCenter(apiNode);
+    const initialRiskCenter = getGraphNodeCenter(riskNode);
+
+    fireEvent.click(apiNode, { shiftKey: true });
+    fireEvent.click(riskNode, { shiftKey: true });
+    expect(apiNode.classList.contains("is-group-selected")).toBe(true);
+    expect(riskNode.classList.contains("is-group-selected")).toBe(true);
+
+    fireEvent.pointerDown(riskNode, { pointerId: 7, clientX: 120, clientY: 160 });
+    fireEvent.pointerMove(canvas, { pointerId: 7, clientX: 180, clientY: 200 });
+
+    const movedApiCenter = getGraphNodeCenter(apiNode);
+    const movedRiskCenter = getGraphNodeCenter(riskNode);
+    expect(movedApiCenter.x).toBeGreaterThan(initialApiCenter.x);
+    expect(movedRiskCenter.x).toBeGreaterThan(initialRiskCenter.x);
+
+    fireEvent.pointerUp(canvas, { pointerId: 7, clientX: 180, clientY: 200 });
+    fireEvent.click(riskNode);
+
+    await waitFor(() => {
+      expect(apiNode.classList.contains("is-group-selected")).toBe(true);
+      expect(riskNode.classList.contains("is-group-selected")).toBe(true);
+    });
+  });
+
+  it("clears drag preview state when switching the layout preset", () => {
+    const view = renderMockProjectMapPanel();
+    const canvas = view.container.querySelector(".project-map-graph-canvas") as HTMLElement;
+    const apiNode = screen.getByRole("button", { name: /接口表面 API Surface/i });
+    const initialApiCenter = getGraphNodeCenter(apiNode);
+
+    fireEvent.pointerDown(apiNode, { pointerId: 8, clientX: 120, clientY: 160 });
+    fireEvent.pointerMove(canvas, { pointerId: 8, clientX: 220, clientY: 160 });
+    expect(getGraphNodeCenter(apiNode).x).toBeGreaterThan(initialApiCenter.x);
+
+    fireEvent.change(screen.getByLabelText("projectMap.layoutPreset"), {
+      target: { value: "tree" },
+    });
+
+    expect(getGraphNodeCenter(apiNode)).toMatchObject(initialApiCenter);
+  });
+
+  it("renders layout controls and recenters the viewport from the mini map", () => {
+    const view = renderMockProjectMapPanel();
+    const viewport = view.container.querySelector(".project-map-graph-viewport") as HTMLElement;
+    const beforeTransform = viewport.style.transform;
+
+    expect(screen.getByRole("button", { name: "projectMap.autoLayout" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "projectMap.resetLayout" })).toBeTruthy();
+    expect(screen.getByLabelText("projectMap.layoutPreset")).toBeTruthy();
+
+    const miniMap = screen.getByRole("button", { name: "projectMap.miniMap" });
+    miniMap.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 180,
+      bottom: 118,
+      width: 180,
+      height: 118,
+      toJSON: () => ({}),
+    });
+    fireEvent.click(miniMap, { clientX: 40, clientY: 24 });
+
+    expect(viewport.style.transform).not.toBe(beforeTransform);
+  });
+
+  it("fits the initial graph left of the open detail panel", () => {
+    const view = renderMockProjectMapPanel();
+    const canvas = view.container.querySelector(".project-map-graph-canvas") as HTMLElement;
+    const detailPanel = screen.getByLabelText("projectMap.detailPanel") as HTMLElement;
+
+    canvas.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1200,
+      bottom: 720,
+      width: 1200,
+      height: 720,
+      toJSON: () => ({}),
+    });
+    detailPanel.getBoundingClientRect = () => ({
+      x: 704,
+      y: 16,
+      left: 704,
+      top: 16,
+      right: 1182,
+      bottom: 704,
+      width: 478,
+      height: 688,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "projectMap.resetView" }));
+
+    const viewport = view.container.querySelector(".project-map-graph-viewport") as HTMLElement;
+    expect(viewport.style.transform).toContain("translate(-239px");
+  });
+
   it("zooms the graph canvas around the mouse wheel anchor", () => {
     const view = renderMockProjectMapPanel();
     const canvas = view.container.querySelector(".project-map-graph-canvas") as HTMLElement;
@@ -405,6 +512,55 @@ describe("ProjectMapPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: /分类漂移 Taxonomy Drift/i }));
 
     const detailPanel = screen.getByLabelText("projectMap.detailPanel");
+    expect(within(detailPanel).getByRole("button", { name: "projectMap.candidateNotice.confirm" })).toBeTruthy();
+    expect(within(detailPanel).getByRole("button", { name: "projectMap.candidateNotice.reject" })).toBeTruthy();
+  });
+
+  it("explains calibrated candidates that still need manual resolution", () => {
+    const calibrationRun: ProjectMapRunMetadata = {
+      id: "calibrate-risk-taxonomy-drift",
+      kind: "node",
+      status: "completed",
+      engine: "codex",
+      model: "gpt-5.3-codex-spark",
+      startedAt: "2026-05-26T01:00:00.000Z",
+      completedAt: "2026-05-26T01:01:00.000Z",
+      scope: "node",
+      requestScope: {
+        kind: "node",
+        nodeId: "risk-taxonomy-drift",
+        includeDescendants: false,
+      },
+      generationIntent: "calibrateNode",
+    };
+    const calibratedDataset: ProjectMapDataset = {
+      ...mockProjectMapData,
+      runs: [calibrationRun],
+      candidates: [],
+      nodes: mockProjectMapData.nodes.map((node) =>
+        node.id === "risk-taxonomy-drift"
+          ? {
+              ...node,
+              candidate: true,
+              stale: true,
+              confidence: "low",
+              generatedBy: {
+                ...node.generatedBy,
+                runId: calibrationRun.id,
+              },
+            }
+          : node,
+      ),
+    };
+    render(<ProjectMapPanel workspaceName="mossx" dataset={calibratedDataset} />);
+
+    fireEvent.click(screen.getByRole("button", { name: /projectMap\.expandLenses|展开 Lens|Expand lenses/ }));
+    fireEvent.click(within(screen.getByLabelText("projectMap.domainStrip")).getByRole("button", { name: /风险 Risk/i }));
+    fireEvent.click(screen.getByRole("button", { name: /分类漂移 Taxonomy Drift/i }));
+
+    const detailPanel = screen.getByLabelText("projectMap.detailPanel");
+    expect(within(detailPanel).getByText("projectMap.candidateNotice.calibratedTitle")).toBeTruthy();
+    expect(within(detailPanel).getByText("projectMap.candidateNotice.calibratedBody")).toBeTruthy();
     expect(within(detailPanel).getByRole("button", { name: "projectMap.candidateNotice.confirm" })).toBeTruthy();
     expect(within(detailPanel).getByRole("button", { name: "projectMap.candidateNotice.reject" })).toBeTruthy();
   });

@@ -357,7 +357,11 @@ describe("useProjectMapDataset", () => {
               ...node,
               detail: {
                 ...node.detail,
-                relatedArtifacts: [artifactWithoutLabel, legacyStringArtifact],
+                relatedArtifacts: [
+                  artifactWithoutLabel,
+                  legacyStringArtifact,
+                  { type: "symbol", label: "src/types.ts" },
+                ],
               },
             }
           : node,
@@ -391,6 +395,7 @@ describe("useProjectMapDataset", () => {
       "package.json",
       "vite.config.ts",
       undefined,
+      "src/types.ts",
     ]);
     expect(
       result.current.pendingRequest?.readSources.find((source) => source.path === "vite.config.ts"),
@@ -405,6 +410,12 @@ describe("useProjectMapDataset", () => {
     ).toMatchObject({
       type: "symbol",
       label: "org.springframework.cloud:spring-cloud-starter-gateway",
+    });
+    expect(
+      result.current.pendingRequest?.readSources.find((source) => source.path === "src/types.ts"),
+    ).toMatchObject({
+      type: "symbol",
+      label: "src/types.ts",
     });
 
     act(() => {
@@ -534,6 +545,14 @@ describe("useProjectMapDataset", () => {
     const dataset = {
       ...datasetWithPromptNodes({ workspace: spring, storageKey: springKey }),
       candidates: [reviewCandidate()],
+      viewState: {
+        layoutPreset: "radial" as const,
+        nodeLayouts: {
+          "project-core": { x: 1200, y: 800, pinned: true },
+          "runtime-node": { x: 900, y: 500, pinned: true },
+        },
+        updatedAt: "2026-05-26T01:00:00.000Z",
+      },
     };
     vi.mocked(readProjectMapDataset).mockResolvedValue({
       dataset,
@@ -572,6 +591,14 @@ describe("useProjectMapDataset", () => {
     const dataset = {
       ...datasetWithPromptNodes({ workspace: spring, storageKey: springKey }),
       candidates: [reviewCandidate()],
+      viewState: {
+        layoutPreset: "radial" as const,
+        nodeLayouts: {
+          "project-core": { x: 1200, y: 800, pinned: true },
+          "runtime-node": { x: 900, y: 500, pinned: true },
+        },
+        updatedAt: "2026-05-26T01:00:00.000Z",
+      },
     };
     vi.mocked(readProjectMapDataset).mockResolvedValue({
       dataset,
@@ -594,11 +621,19 @@ describe("useProjectMapDataset", () => {
     expect(result.current.dataset.nodes.find((node) => node.id === "project-core")?.children).not.toContain(
       "runtime-node",
     );
+    expect(result.current.dataset.viewState?.nodeLayouts).toEqual({
+      "project-core": { x: 1200, y: 800, pinned: true },
+    });
     expect(result.current.dataset.candidates?.[0]).toMatchObject({ status: "rejected" });
     expect(writeProjectMapDataset).toHaveBeenCalledWith(
       expect.objectContaining({
         dataset: expect.objectContaining({
           nodes: expect.not.arrayContaining([expect.objectContaining({ id: "runtime-node" })]),
+          viewState: expect.objectContaining({
+            nodeLayouts: {
+              "project-core": { x: 1200, y: 800, pinned: true },
+            },
+          }),
         }),
       }),
     );

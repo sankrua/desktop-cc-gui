@@ -287,6 +287,70 @@ describe("runProjectMapGenerationWorker", () => {
     ).rejects.toThrow("AI output did not contain a JSON object.");
   });
 
+  it("reads path-like source labels as generic workspace evidence for node calibration", async () => {
+    const dataset = datasetWithRuntimeNode();
+    const prompts: string[] = [];
+    vi.mocked(getWorkspaceFiles).mockResolvedValue({
+      files: ["package.json", "src/types.ts"],
+      directories: [],
+      gitignored_files: [],
+      gitignored_directories: [],
+    });
+    vi.mocked(readWorkspaceFile).mockImplementation(async (_workspaceId, path) => ({
+      content: path === "src/types.ts" ? "export type AppMode = 'chat' | 'project-map';" : "{}",
+      truncated: false,
+    }));
+    vi.mocked(engineSendMessageSync).mockImplementation(async (_workspaceId, request) => {
+      prompts.push(String(request.text ?? ""));
+      return {
+        engine: "claude",
+        text: JSON.stringify({
+          nodes: [
+            {
+              id: "runtime-node",
+              lensId: "runtime",
+              nodeKind: "runtime",
+              title: "Runtime Node",
+              summary: "Calibrated with source-backed type evidence.",
+              detail: {
+                coreDescription: "Calibrated with source-backed type evidence.",
+                keyFacts: ["src/types.ts exports AppMode."],
+                keyLogic: [],
+                riskSignals: [],
+                relatedArtifacts: [{ type: "file", label: "src/types.ts", path: "src/types.ts" }],
+              },
+              parentId: "project-core",
+              children: [],
+              sources: [{ type: "file", label: "src/types.ts", path: "src/types.ts" }],
+              confidence: "medium",
+              stale: false,
+              candidate: false,
+            },
+          ],
+        }),
+      };
+    });
+
+    const result = await runProjectMapGenerationWorker({
+      workspaceId: "ws-1",
+      dataset,
+      run: nodeRun({
+        generationIntent: "calibrateNode",
+        includeDescendants: false,
+        readSources: [{ type: "symbol", label: "src/types.ts" }],
+      }),
+      onRunUpdate: async () => {},
+    });
+
+    expect(readWorkspaceFile).toHaveBeenCalledWith("ws-1", "src/types.ts");
+    expect(prompts[0]).toContain("--- FILE src/types.ts");
+    expect(result.nodes.find((node) => node.id === "runtime-node")).toMatchObject({
+      summary: "Calibrated with source-backed type evidence.",
+      candidate: false,
+      confidence: "medium",
+    });
+  });
+
   it("selects the Project Map JSON payload from noisy Claude output", async () => {
     const dataset = createEmptyProjectMapDataset({
       identity: {
@@ -1029,6 +1093,16 @@ describe("runProjectMapGenerationWorker", () => {
       eventListener?.({
         workspace_id: "ws-1",
         message: {
+          method: "item/agentMessage/delta",
+          params: {
+            threadId: "codex-thread-1",
+            delta: '{"nodes":[',
+          },
+        },
+      } as never);
+      eventListener?.({
+        workspace_id: "ws-1",
+        message: {
           method: "turn/error",
           params: {
             threadId: "codex-thread-1",
@@ -1102,6 +1176,79 @@ describe("runProjectMapGenerationWorker", () => {
         engine: "codex",
         model: "gpt-5.3-codex-spark",
       },
+    });
+  });
+
+  it("uses Codex turn-completed last agent message as structured output", async () => {
+    const dataset = createEmptyProjectMapDataset({
+      identity: {
+        projectName: "demo",
+        workspacePath: "/repo/demo",
+        workspaceId: "ws-1",
+      },
+    });
+    const payload = JSON.stringify({
+      nodes: [
+        {
+          id: "project-core",
+          lensId: "overview",
+          nodeKind: "concept",
+          title: "codex final message map",
+          summary: "Recovered from task_complete final text.",
+          detail: {
+            coreDescription: "Recovered from task_complete final text.",
+            keyFacts: [],
+            keyLogic: [],
+            riskSignals: [],
+            relatedArtifacts: [],
+          },
+          children: [],
+          sources: [],
+          confidence: "medium",
+          stale: false,
+          candidate: false,
+        },
+      ],
+    });
+    let eventListener: Parameters<typeof subscribeAppServerEvents>[0] | null = null;
+    vi.mocked(subscribeAppServerEvents).mockImplementation((listener) => {
+      eventListener = listener;
+      return () => {};
+    });
+    vi.mocked(startThread).mockResolvedValue({ result: { threadId: "codex-thread-1" } });
+    vi.mocked(sendUserMessage).mockImplementation(async () => {
+      eventListener?.({
+        workspace_id: "ws-1",
+        message: {
+          method: "turn/completed",
+          params: {
+            threadId: "codex-thread-1",
+            result: {
+              last_agent_message: payload,
+            },
+          },
+        },
+      } as never);
+      return {};
+    });
+    vi.mocked(getWorkspaceFiles).mockResolvedValue({
+      files: ["package.json"],
+      directories: [],
+      gitignored_files: [],
+      gitignored_directories: [],
+    });
+    vi.mocked(readWorkspaceFile).mockResolvedValue({ content: "{}", truncated: false });
+
+    const result = await runProjectMapGenerationWorker({
+      workspaceId: "ws-1",
+      dataset,
+      run: baseRun({ engine: "codex", model: "gpt-5.3-codex-spark" }),
+      onRunUpdate: async () => {},
+    });
+
+    expect(result.nodes[0]).toMatchObject({
+      title: "codex final message map",
+      summary: "Recovered from task_complete final text.",
     });
   });
 

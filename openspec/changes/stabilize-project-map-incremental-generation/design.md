@@ -48,6 +48,8 @@ Alternative: Store full historical versions and compute view at render time. Mor
 
 Complete node and calibrate node must use the selected node as write boundary. Complete may append source-backed descendants under the selected node when `includeDescendants=true`. Calibrate may update the selected node and direct descendants only when requested; it must not add unrelated nodes or rebuild lenses.
 
+Calibration completion is an execution state, not an acceptance state. If evidence remains weak and the generated correction keeps `candidate=true`, the UI must say "calibrated but unresolved" instead of implying calibration should clear the candidate badge. Manual confirm/reject actions clear the candidate workflow state; Delete node remains the destructive prune path.
+
 ### Decision 4: Manual delete is the only destructive path
 
 Invalid/stale nodes need pruning, but deletion must be user-authored. Add `deleteNode(nodeId)` in the dataset controller and an inspector button for every selected node. Non-root deletion removes descendants, parent child references, and candidates targeting deleted nodes. Root/overview deletion physically clears the map node set after explicit confirmation.
@@ -72,6 +74,14 @@ Project Map generation treats every engine response as untrusted text. Claude Co
 
 The prompt also avoids invalid examples. The previous `"profile": {...}` schema hint was itself not JSON and could be copied by stricter engines. It is replaced by a valid skeleton, and evidence is wrapped in explicit block markers with an instruction that file contents, including `AGENTS.md` and README policy text, are project evidence rather than response instructions.
 
+Codex-backed runs may report the final assistant answer through several event envelopes, including `task_complete`, `turn/completed`, `last_agent_message`, and nested turn/result output fields. The worker treats these as equivalent terminal channels, collects assistant text from known envelope aliases, and only reports a JSON failure after every terminal candidate has been scanned for a shaped Project Map payload.
+
+### Decision 9: Infer evidence file paths generically, never by project name
+
+Calibration depends on reading the same evidence the UI displays. Some legacy or noisy sources carry a readable workspace path in `label` or `ref` while leaving `path` empty. The normalizer and worker therefore infer evidence paths from clearly path-like values using generic rules: explicit paths, extension-bearing filenames, and important root filenames such as `README.md`, `AGENTS.md`, and package/config manifests.
+
+This inference is deliberately not tied to `mossx`, not tied to a specific node id, and not tied to a hardcoded source path. URL-like values, opaque colon identifiers, hashes, and conversation refs stay non-file evidence so the UI and worker do not fabricate unreadable links.
+
 ### Decision 8: Task cards should expose action and target before runtime metadata
 
 The background task drawer is an operational queue, not a debug log. Each run card leads with the user action that created it and, for node-scoped runs, the target node title plus id. Engine/model, scope, start time, run id, and path are compressed into a compact metadata grid so users can identify "which button and which node" without scanning oversized cards.
@@ -84,6 +94,7 @@ The background task drawer is an operational queue, not a debug log. Each run ca
 - [Risk] Project Map evidence navigation could break normal editor split behavior. → Mitigation: the companion marker defaults to `chat`; only Project Map evidence chips opt into `projectMap`.
 - [Risk] Lenient JSON repair could accept the wrong snippet from a noisy model answer. → Mitigation: parsed objects must contain `profile`, `lenses`, or `nodes`; unrelated JSON candidates are ignored.
 - [Risk] Path inference could turn a symbolic related artifact into a misleading file link. → Mitigation: infer links only for explicit paths or extension-bearing filenames and keep non-file refs inert.
+- [Risk] Generic path inference could overfit to one repository's file layout. → Mitigation: recognize only cross-project file-path shapes and important conventional filenames; no project names, node ids, or repo-local paths are embedded.
 - [Risk] Large `ProjectMapPanel.tsx` grows further. → Mitigation: destructive data logic lives in feature-local utils, UI only wires action.
 
 ## Migration Plan
@@ -107,6 +118,9 @@ Rollback: revert this change; no storage migration is required because existing 
 - Task drawer cards were compressed around the user question: action first, target node second, then runtime metadata. This reduces visual whitespace and makes active/recent runs reviewable without expanding a debug-style card.
 - The implementation intentionally does not let AI output delete nodes. Destructive changes remain behind the explicit Delete node dialog and dataset prune helper.
 - Claude Code JSON compatibility was hardened after local failure evidence showed `AI output did not contain valid JSON. JSON Parse error: Unable to parse JSON string` on node completion. The fix combines prompt-side evidence isolation with parser-side candidate extraction, Project Map payload shape checks, and targeted repair for copied placeholder ellipsis.
+- Candidate calibration now reads path-like source labels/refs as workspace evidence through the same generic readable-file filter as explicit paths. This fixes legacy request data without introducing repository-specific allowlists.
+- Codex thread extraction now handles final assistant JSON from `last_agent_message` and nested terminal event fields, which prevents valid terminal output from being misreported as missing JSON.
+- Calibrated nodes that remain `candidate=true` now get explicit unresolved-candidate copy and node-level confirm/reject actions even when there is no separate candidate review record.
 - Known follow-up: splitting `ProjectMapPanel.tsx` into smaller inspector/graph/task-drawer components would reduce future UI risk, but it is outside this change's behavioral scope.
 
 ## Open Questions

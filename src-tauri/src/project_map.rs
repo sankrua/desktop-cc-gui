@@ -21,6 +21,7 @@ pub(crate) struct ProjectMapReadResponse {
     profile: Option<Value>,
     lenses: Option<Value>,
     lens_nodes: HashMap<String, Value>,
+    view_state: Option<Value>,
     settings: Option<Value>,
     cursor: Option<Value>,
     processed: Option<Value>,
@@ -180,7 +181,7 @@ fn validate_relative_project_map_path(path: &str) -> Result<PathBuf, String> {
     let allowed = match segments.as_slice() {
         [file] => matches!(
             file.as_str(),
-            "manifest.json" | "profile.json" | "settings.json"
+            "manifest.json" | "profile.json" | "view-state.json" | "settings.json"
         ),
         [dir, file] if dir == "lenses" => file == "manifest.json",
         [dir, file] if dir == "memory-ingestion" => {
@@ -278,6 +279,7 @@ fn create_backup(root: &Path) -> Result<(), String> {
     for relative in [
         "manifest.json",
         "profile.json",
+        "view-state.json",
         "lenses/manifest.json",
         "settings.json",
         "memory-ingestion/cursor.json",
@@ -315,6 +317,7 @@ pub(crate) async fn project_map_read(
         profile: read_json(&root.join("profile.json")),
         lenses: read_json(&root.join("lenses").join("manifest.json")),
         lens_nodes: read_lens_nodes(&root),
+        view_state: read_json(&root.join("view-state.json")),
         settings: read_json(&root.join("settings.json")),
         cursor: read_json(&root.join("memory-ingestion").join("cursor.json")),
         processed: read_json(&root.join("memory-ingestion").join("processed.json")),
@@ -396,6 +399,7 @@ mod tests {
     #[test]
     fn project_map_write_paths_are_constrained() {
         assert!(validate_relative_project_map_path("manifest.json").is_ok());
+        assert!(validate_relative_project_map_path("view-state.json").is_ok());
         assert!(validate_relative_project_map_path("lenses/api/nodes.json").is_ok());
         assert!(validate_relative_project_map_path("lenses/api-domain/nodes.json").is_ok());
         assert!(validate_relative_project_map_path("runs/latest.json").is_ok());

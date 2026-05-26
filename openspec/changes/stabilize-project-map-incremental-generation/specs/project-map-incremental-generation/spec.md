@@ -29,6 +29,13 @@ The system SHALL constrain Complete node and Calibrate node generation to the se
 - **THEN** the system SHALL apply those scoped corrections
 - **AND** the system SHALL NOT rebuild global lenses, sibling nodes, or unrelated children
 
+#### Scenario: Calibration completion does not imply candidate confirmation
+- **WHEN** a user calibrates node N
+- **AND** the completed calibration output still marks N as `candidate=true`
+- **THEN** the system SHALL keep N as a candidate
+- **AND** the detail panel SHALL explain that calibration completed but manual confirmation, rejection, or pruning is still required
+- **AND** the user SHALL be able to resolve the node-level candidate state even when no separate candidate review record exists
+
 ### Requirement: Evidence-aware merge semantics
 The system SHALL merge generated content with existing content using deterministic evidence-aware rules instead of blind replacement.
 
@@ -129,3 +136,22 @@ The system SHALL use concise, action-specific prompts for Collect profile, Compl
 - **WHEN** a user starts Calibrate node
 - **THEN** the prompt SHALL ask for correction, confidence adjustment, stale/candidate marking, and unsupported-claim removal
 - **AND** the prompt SHALL NOT ask for broad map expansion
+
+### Requirement: Robust model output and generic evidence path normalization
+The system SHALL treat model output envelopes and evidence references as untrusted, project-agnostic inputs and SHALL normalize them without relying on repository-specific paths, node ids, or project names.
+
+#### Scenario: Path-like source labels are preserved as readable workspace evidence
+- **WHEN** a generation request contains a source or related artifact whose explicit `path` is missing
+- **AND** its `label` or `ref` is clearly a workspace file path, such as an extension-bearing path or an important root filename
+- **THEN** the normalized request SHALL set that value as the source `path`
+- **AND** the original source type and label SHALL remain available for traceability
+
+#### Scenario: Calibration reads legacy path-like source labels
+- **WHEN** a persisted calibration run has `readSources` with a path-like `label` or legacy `ref` but no `path`
+- **THEN** the worker SHALL read that workspace file as evidence before prompting the model
+- **AND** the worker SHALL apply the same generic readable-file checks used for explicit paths
+
+#### Scenario: Codex thread output is extracted from final assistant channels
+- **WHEN** a Codex-backed Project Map run completes with valid JSON in a final assistant field such as `last_agent_message`, `agent_message`, or nested turn/result output
+- **THEN** the worker SHALL extract and parse that Project Map payload before declaring JSON failure
+- **AND** unrelated or non-Project Map JSON snippets SHALL still be ignored

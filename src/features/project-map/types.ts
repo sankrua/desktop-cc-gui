@@ -120,6 +120,21 @@ export type ProjectMapLensStats = {
   candidateCount: number;
 };
 
+export type ProjectMapLayoutPreset = "radial" | "tree" | "force";
+
+export type ProjectMapNodeLayout = {
+  x: number;
+  y: number;
+  pinned?: boolean;
+  updatedAt?: string;
+};
+
+export type ProjectMapViewState = {
+  layoutPreset: ProjectMapLayoutPreset;
+  nodeLayouts: Record<string, ProjectMapNodeLayout>;
+  updatedAt?: string;
+};
+
 export type ProjectMapDetectedFramework = {
   name: string;
   confidence: ProjectMapConfidence;
@@ -265,6 +280,7 @@ export type ProjectMapDataset = {
   profile: ProjectMapProfile;
   lenses: ProjectMapLens[];
   nodes: ProjectMapNode[];
+  viewState?: ProjectMapViewState;
   runs: ProjectMapRunMetadata[];
   candidates?: ProjectMapCandidate[];
   evidenceRecords?: ProjectMapEvidenceRecord[];

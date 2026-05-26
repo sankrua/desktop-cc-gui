@@ -99,6 +99,9 @@ This is unacceptable for a knowledge map: generation must behave like incrementa
 - The Project Map task drawer now exposes action and target context on every run card: Collect profile / Complete node / Calibrate node, target node title/id for scoped runs, compact status/progress metadata, and reduced card spacing.
 - Claude Code node completion output is now hardened against malformed JSON. The generation prompt uses a valid JSON schema example, treats `AGENTS.md`/README/policy text inside evidence as data rather than instructions, wraps evidence in explicit block markers, and the parser scans balanced JSON payload candidates instead of trusting the first `{...}` span.
 - The parser now skips non-Project Map JSON snippets, accepts fenced/noisy Claude output, repairs copied placeholder ellipsis such as `"profile": {...}`, and still fails closed when no Project Map payload is present.
+- Candidate calibration now infers readable workspace evidence from path-like source `label`/legacy `ref` values using generic file-path rules. This is intentionally project-agnostic: no repository name, node id, or mossx-specific file path is hardcoded.
+- Codex terminal output extraction now accepts valid Project Map JSON from final assistant envelopes such as `last_agent_message` and nested turn/result fields before reporting `AI output did not contain a JSON object`.
+- Calibrated nodes that still return `candidate=true` now stay candidates by design, but the UI explains that calibration completed and exposes manual confirm/reject actions even without a separate candidate review record.
 - Validation completed after implementation:
   - Project Map focused tests passed.
   - Claude JSON hardening regression tests passed.

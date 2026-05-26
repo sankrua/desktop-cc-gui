@@ -228,6 +228,8 @@ function extractTextFromCodexContent(value: unknown): string {
   }
   return (
     asTrimmedString(value.text) ||
+    asTrimmedString(value.last_agent_message) ||
+    asTrimmedString(value.lastAgentMessage) ||
     asTrimmedString(value.output_text) ||
     asTrimmedString(value.outputText) ||
     asTrimmedString(value.summary) ||
@@ -237,21 +239,68 @@ function extractTextFromCodexContent(value: unknown): string {
   );
 }
 
+function isCodexAssistantMessageItem(value: Record<string, unknown>): boolean {
+  const itemType = asTrimmedString(value.type).toLowerCase();
+  if (
+    itemType === "agentmessage" ||
+    itemType === "agent_message" ||
+    itemType === "assistantmessage" ||
+    itemType === "assistant_message"
+  ) {
+    return true;
+  }
+
+  const role = asTrimmedString(value.role).toLowerCase();
+  return role === "assistant" && (!itemType || itemType === "message");
+}
+
 function extractCodexSnapshotText(item: unknown): string {
   if (!isRecord(item)) {
     return "";
   }
-  const itemType = asTrimmedString(item.type);
-  const role = asTrimmedString(item.role);
-  const isAssistantMessage =
-    itemType === "agentMessage" ||
-    (role === "assistant" && (itemType === "message" || itemType === "assistant_message"));
-  return isAssistantMessage ? extractTextFromCodexContent(item) : "";
+  return isCodexAssistantMessageItem(item) ? extractTextFromCodexContent(item) : "";
+}
+
+function collectCodexAssistantMessageTexts(value: unknown, output: string[], depth = 0): void {
+  if (depth > 8) {
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      collectCodexAssistantMessageTexts(item, output, depth + 1);
+    }
+    return;
+  }
+  if (!isRecord(value)) {
+    return;
+  }
+
+  if (isCodexAssistantMessageItem(value)) {
+    const text = extractTextFromCodexContent(value).trim();
+    if (text) {
+      output.push(text);
+    }
+    return;
+  }
+
+  for (const key of ["item", "message", "turn", "result", "output", "items", "messages", "content", "parts"]) {
+    if (key in value) {
+      collectCodexAssistantMessageTexts(value[key], output, depth + 1);
+    }
+  }
+}
+
+function extractCodexAssistantMessageCollectionText(value: unknown): string {
+  const chunks: string[] = [];
+  collectCodexAssistantMessageTexts(value, chunks);
+  return chunks.map((chunk) => chunk.trim()).filter(Boolean).join("\n");
 }
 
 function extractCodexTurnCompletedText(params: Record<string, unknown>): string {
   const directText =
     asTrimmedString(params.text) ||
+    asTrimmedString(params.last_agent_message) ||
+    asTrimmedString(params.lastAgentMessage) ||
     asTrimmedString(params.output_text) ||
     asTrimmedString(params.outputText) ||
     asTrimmedString(params.content) ||
@@ -260,8 +309,12 @@ function extractCodexTurnCompletedText(params: Record<string, unknown>): string 
     return directText;
   }
   return (
+    extractCodexAssistantMessageCollectionText(params) ||
     extractTextFromCodexContent(params.result) ||
+    extractCodexAssistantMessageCollectionText(params.result) ||
     extractTextFromCodexContent(params.output) ||
+    extractCodexAssistantMessageCollectionText(params.output) ||
+    extractCodexAssistantMessageCollectionText(params.items) ||
     extractTextFromCodexContent(params.turn)
   ).trim();
 }
@@ -305,6 +358,7 @@ function createCodexTurnWaiter(input: {
       const message = isRecord(payload.message) ? payload.message : {};
       const method = asTrimmedString(message.method);
       const params = isRecord(message.params) ? message.params : {};
+      const eventKind = method || asTrimmedString(message.type) || asTrimmedString(params.type);
       const threadId = extractThreadIdFromAppServerMessage(message);
       if (threadId !== input.threadId) {
         return;
@@ -334,8 +388,11 @@ function createCodexTurnWaiter(input: {
         return;
       }
 
-      if (method === "turn/completed") {
-        const finalText = responseText.trim() || extractCodexTurnCompletedText(params);
+      if (method === "turn/completed" || eventKind === "task_complete") {
+        const terminalText =
+          extractCodexTurnCompletedText(params) ||
+          extractTextFromCodexContent(message);
+        const finalText = terminalText.trim() || responseText.trim();
         finish(() => {
           if (finalText.trim()) {
             resolve(finalText);
@@ -401,6 +458,38 @@ function getPathExtension(path: string): string {
   const fileName = path.split("/").pop() ?? path;
   const dotIndex = fileName.lastIndexOf(".");
   return dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : "";
+}
+
+function getPathBasename(path: string): string {
+  return path.split(/[\\/]/).filter(Boolean).pop() ?? path;
+}
+
+function looksLikeWorkspaceFilePath(value: string): boolean {
+  const candidate = value.trim();
+  if (!candidate || /^[a-z][a-z0-9+.-]*:\/\//i.test(candidate)) {
+    return false;
+  }
+  if (candidate.includes(":") && !/^[a-zA-Z]:[\\/]/.test(candidate)) {
+    return false;
+  }
+  const fileName = getPathBasename(candidate);
+  if (IMPORTANT_FILE_NAMES.has(fileName)) {
+    return true;
+  }
+  return TEXT_EXTENSIONS.has(getPathExtension(candidate));
+}
+
+function inferSourceEvidencePath(source: ProjectMapSource): string {
+  const legacyRef =
+    "ref" in source && typeof source.ref === "string" ? source.ref : "";
+  const candidates = [source.path, source.label, legacyRef];
+  for (const candidate of candidates) {
+    const path = candidate?.trim() ?? "";
+    if (path && looksLikeWorkspaceFilePath(path) && isReadableProjectFile(path)) {
+      return path;
+    }
+  }
+  return "";
 }
 
 function clampNumber(value: number, min: number, max: number): number {
@@ -526,7 +615,7 @@ function pickEvidencePaths(
   requestScope: ProjectMapGenerationScope,
 ): string[] {
   const requestedPaths = requestSources
-    .map((source) => source.path?.trim())
+    .map(inferSourceEvidencePath)
     .filter((path): path is string => Boolean(path && isReadableProjectFile(path)));
   const discoveredPaths = files
     .filter(isReadableProjectFile)

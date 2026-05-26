@@ -20,6 +20,7 @@ describe("project map persistence mapper", () => {
         "manifest.json",
         "profile.json",
         "lenses/manifest.json",
+        "view-state.json",
         "lenses/overview/nodes.json",
         "settings.json",
         "memory-ingestion/cursor.json",
@@ -74,6 +75,15 @@ describe("project map persistence mapper", () => {
       lensNodes: {
         overview: { items: mockProjectMapData.nodes.filter((node) => node.lensId === "overview") },
       },
+      viewState: {
+        layoutPreset: "force",
+        nodeLayouts: {
+          "project-core": { x: "1200", y: 800, pinned: true, updatedAt: "2026-05-26T00:01:00Z" },
+          malformed: { x: "left", y: null, pinned: true },
+          "api-surface": { x: 840, y: 520 },
+        },
+        updatedAt: "2026-05-26T00:02:00Z",
+      },
       settings: {
         enabled: true,
         engine: "codex",
@@ -102,6 +112,24 @@ describe("project map persistence mapper", () => {
     expect(dataset?.autoIngestionSettings.newSessionThreshold).toBe(1);
     expect(dataset?.autoIngestionSettings.checkIntervalMinutes).toBe(5);
     expect(dataset?.memoryCursor.processedMessages).toHaveLength(1);
+    expect(dataset?.viewState).toEqual({
+      layoutPreset: "force",
+      nodeLayouts: {
+        "project-core": {
+          x: 1200,
+          y: 800,
+          pinned: true,
+          updatedAt: "2026-05-26T00:01:00Z",
+        },
+        "api-surface": {
+          x: 840,
+          y: 520,
+          pinned: false,
+          updatedAt: undefined,
+        },
+      },
+      updatedAt: "2026-05-26T00:02:00Z",
+    });
     expect(dataset?.profile.frameworks).toEqual([
       { name: "Spring Cloud Gateway", confidence: "unknown", evidence: [] },
       {
@@ -111,6 +139,64 @@ describe("project map persistence mapper", () => {
       },
     ]);
     expect(dataset?.nodes.length).toBeGreaterThan(0);
+  });
+
+  it("loads old snapshots without view-state and ignores malformed layout payloads", () => {
+    const oldSnapshot = buildDatasetFromProjectMapRead(
+      {
+        storageKey: "mossx-abcd",
+        storageDir: "/repo/.ccgui/project-map/mossx-abcd",
+        exists: true,
+        manifest: mockProjectMapData.manifest,
+        profile: mockProjectMapData.profile,
+        lenses: { items: mockProjectMapData.lenses },
+        lensNodes: {
+          overview: { items: mockProjectMapData.nodes.filter((node) => node.lensId === "overview") },
+        },
+        candidates: {},
+        evidence: {},
+        runs: {},
+      },
+      { projectName: "mossx", workspacePath: "/repo", workspaceId: "ws-1" },
+    );
+    const malformedSnapshot = buildDatasetFromProjectMapRead(
+      {
+        storageKey: "mossx-abcd",
+        storageDir: "/repo/.ccgui/project-map/mossx-abcd",
+        exists: true,
+        manifest: mockProjectMapData.manifest,
+        profile: mockProjectMapData.profile,
+        lenses: { items: mockProjectMapData.lenses },
+        lensNodes: {
+          overview: { items: mockProjectMapData.nodes.filter((node) => node.lensId === "overview") },
+        },
+        viewState: {
+          layoutPreset: "diagonal",
+          nodeLayouts: {
+            invalid: { x: Number.NaN, y: 10 },
+            valid: { x: 24, y: "48", pinned: "yes" },
+          },
+        },
+        candidates: {},
+        evidence: {},
+        runs: {},
+      },
+      { projectName: "mossx", workspacePath: "/repo", workspaceId: "ws-1" },
+    );
+
+    expect(oldSnapshot?.viewState).toBeUndefined();
+    expect(malformedSnapshot?.viewState).toEqual({
+      layoutPreset: "radial",
+      nodeLayouts: {
+        valid: {
+          x: 24,
+          y: 48,
+          pinned: false,
+          updatedAt: undefined,
+        },
+      },
+      updatedAt: undefined,
+    });
   });
 
   it("restores queued runs even before generated lenses exist", () => {

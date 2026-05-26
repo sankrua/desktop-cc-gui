@@ -37,11 +37,32 @@ import {
   normalizeEngineType,
   useProjectMapGenerationOptions,
 } from "../hooks/useProjectMapGenerationOptions";
+import {
+  PROJECT_MAP_DEFAULT_FOCUS_ZOOM,
+  PROJECT_MAP_DEFAULT_OVERVIEW_ZOOM,
+  PROJECT_MAP_GRAPH_HEIGHT,
+  PROJECT_MAP_GRAPH_WIDTH,
+  clampProjectMapGraphZoom,
+  buildInteractiveProjectMapLayout,
+  buildProjectMapMiniMapProjection,
+  buildProjectMapNodeIndex,
+  buildProjectMapViewState,
+  calculateProjectMapFitViewport,
+  getProjectMapCoreNode,
+  getSortedProjectMapChildren,
+  getVisibleProjectMapLenses,
+  resetProjectMapViewState,
+  resolveVisibleProjectMapNodes,
+  settleProjectMapLayout,
+  type ProjectMapGraphNodePosition,
+  type ProjectMapGraphViewport,
+} from "../utils/interactiveLayout";
 import type {
   ProjectMapDataset,
   ProjectMapGenerationRequest,
   ProjectMapCandidate,
   ProjectMapLens,
+  ProjectMapLayoutPreset,
   ProjectMapNode,
   ProjectMapNodeKind,
   ProjectMapProfile,
@@ -61,36 +82,21 @@ type ProjectMapPanelProps = {
   onOpenEvidenceFile?: (path: string, location?: { line: number; column: number }) => void;
 };
 
-type GraphNodePosition = {
-  id: string;
-  x: number;
-  y: number;
-};
-
-type GraphEdge = {
-  id: string;
-  source: GraphNodePosition;
-  target: GraphNodePosition;
-};
-
-type GraphViewport = {
-  zoom: number;
-  pan: {
-    x: number;
-    y: number;
-  };
-};
-
-type GraphBounds = {
-  left: number;
-  right: number;
-  top: number;
-  bottom: number;
-};
+type GraphViewport = ProjectMapGraphViewport;
 
 type GraphViewSnapshot = {
   focusNodeId: string | null;
   selectedNodeId: string | null;
+};
+
+type GraphNodeDragState = {
+  pointerId: number;
+  startClientX: number;
+  startClientY: number;
+  nodeIds: string[];
+  originPositions: Map<string, ProjectMapGraphNodePosition>;
+  previewPositions: Map<string, ProjectMapGraphNodePosition>;
+  didMove: boolean;
 };
 
 type ProjectMapTraceTarget = {
@@ -98,22 +104,10 @@ type ProjectMapTraceTarget = {
   line?: number;
 };
 
-const GRAPH_WIDTH = 2400;
-const GRAPH_HEIGHT = 1600;
-const DEFAULT_OVERVIEW_ZOOM = 0.52;
-const DEFAULT_FOCUS_ZOOM = 0.56;
-const GRAPH_NODE_GAP = 26;
-const GRAPH_NODE_CANVAS_PADDING = 110;
-const GRAPH_FIT_PADDING = 56;
-const GRAPH_NODE_FOOTPRINT = {
-  default: { width: 176, height: 106 },
-  hub: { width: 188, height: 112 },
-  core: { width: 208, height: 126 },
-};
-const PROJECT_CORE_NODE_ID = "project-core";
 const ZOOM_STEP = 0.1;
-const MIN_ZOOM = 0.36;
-const MAX_ZOOM = 1.08;
+const MINI_MAP_SIZE = { width: 180, height: 118 };
+const DETAIL_PANEL_FOCUS_OFFSET_MIN = 160;
+const DETAIL_PANEL_FOCUS_OFFSET_MAX = 240;
 const ACTIVE_RUN_STATUSES = new Set<ProjectMapRunMetadata["status"]>(["pending", "running"]);
 
 function normalizePathForComparing(value: string): string {
@@ -160,477 +154,26 @@ function resolveSelectedGenerationModel(
   return matchedModel?.model ?? trimmedSelection;
 }
 
-const CONFIDENCE_ORDER: Record<ProjectMapNode["confidence"], number> = {
-  high: 4,
-  medium: 3,
-  low: 2,
-  unknown: 1,
-};
+function getDetailPanelFocusOffset(input: {
+  canvasElement: HTMLDivElement | null;
+  isDetailCollapsed: boolean;
+}): number {
+  if (input.isDetailCollapsed) {
+    return 0;
+  }
 
-function buildNodeIndex(nodes: ProjectMapNode[]): Map<string, ProjectMapNode> {
-  return new Map(nodes.map((node) => [node.id, node]));
-}
-
-function getProjectCoreNode(dataset: ProjectMapDataset): ProjectMapNode | null {
-  return (
-    dataset.nodes.find((node) => node.id === PROJECT_CORE_NODE_ID) ??
-    dataset.nodes.find((node) => !node.parentId) ??
-    dataset.nodes[0] ??
-    null
+  const detailPanel = input.canvasElement?.querySelector<HTMLElement>(".project-map-detail-panel");
+  const detailWidth = detailPanel?.getBoundingClientRect().width ?? 0;
+  const fallbackWidth = 478;
+  const offset = Math.max(
+    DETAIL_PANEL_FOCUS_OFFSET_MIN,
+    (detailWidth > 0 ? detailWidth : fallbackWidth) / 2,
   );
-}
-
-function getSortedChildren(
-  node: ProjectMapNode,
-  nodeIndex: Map<string, ProjectMapNode>,
-): ProjectMapNode[] {
-  return node.children
-    .map((childId) => nodeIndex.get(childId))
-    .filter((child): child is ProjectMapNode => Boolean(child))
-    .sort(compareNodesForMap);
-}
-
-function compareNodesForMap(left: ProjectMapNode, right: ProjectMapNode): number {
-  const leftSignal =
-    Number(left.stale) * 8 +
-    Number(left.candidate) * 4 +
-    (5 - CONFIDENCE_ORDER[left.confidence]);
-  const rightSignal =
-    Number(right.stale) * 8 +
-    Number(right.candidate) * 4 +
-    (5 - CONFIDENCE_ORDER[right.confidence]);
-
-  return rightSignal - leftSignal || left.title.localeCompare(right.title);
-}
-
-function getVisibleLenses(dataset: ProjectMapDataset): ProjectMapLens[] {
-  return dataset.lenses.filter((lens) => lens.status !== "notApplicable");
+  return -Math.min(DETAIL_PANEL_FOCUS_OFFSET_MAX, offset);
 }
 
 function buildLensIndex(lenses: ProjectMapLens[]): Map<string, ProjectMapLens> {
   return new Map(lenses.map((lens) => [lens.id, lens]));
-}
-
-function getLensAngle(lensId: string, visibleLenses: ProjectMapLens[]): number {
-  const lensIndex = Math.max(
-    0,
-    visibleLenses.findIndex((lens) => lens.id === lensId),
-  );
-  const lensCount = Math.max(visibleLenses.length, 1);
-  return -90 + lensIndex * (360 / lensCount);
-}
-
-function getGraphNodeFootprint(
-  node: ProjectMapNode,
-  rootNodeId: string,
-): {
-  width: number;
-  height: number;
-} {
-  if (node.id === rootNodeId) {
-    return GRAPH_NODE_FOOTPRINT.core;
-  }
-
-  if (node.parentId === rootNodeId) {
-    return GRAPH_NODE_FOOTPRINT.hub;
-  }
-
-  return GRAPH_NODE_FOOTPRINT.default;
-}
-
-function clampGraphPosition(
-  position: GraphNodePosition,
-  footprint: {
-    width: number;
-    height: number;
-  },
-): GraphNodePosition {
-  const halfWidth = footprint.width / 2;
-  const halfHeight = footprint.height / 2;
-  return {
-    ...position,
-    x: Math.min(
-      GRAPH_WIDTH - GRAPH_NODE_CANVAS_PADDING - halfWidth,
-      Math.max(GRAPH_NODE_CANVAS_PADDING + halfWidth, position.x),
-    ),
-    y: Math.min(
-      GRAPH_HEIGHT - GRAPH_NODE_CANVAS_PADDING - halfHeight,
-      Math.max(GRAPH_NODE_CANVAS_PADDING + halfHeight, position.y),
-    ),
-  };
-}
-
-function clampGraphZoom(value: number): number {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, Number(value.toFixed(2))));
-}
-
-function getGraphPositionBounds(
-  position: GraphNodePosition,
-  node: ProjectMapNode,
-  rootNodeId: string,
-): GraphBounds {
-  const footprint = getGraphNodeFootprint(node, rootNodeId);
-  return {
-    left: position.x - footprint.width / 2,
-    right: position.x + footprint.width / 2,
-    top: position.y - footprint.height / 2,
-    bottom: position.y + footprint.height / 2,
-  };
-}
-
-function buildGraphLayoutBounds(
-  positions: GraphNodePosition[],
-  nodes: ProjectMapNode[],
-  rootNodeId: string,
-): GraphBounds | null {
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  let bounds: GraphBounds | null = null;
-
-  for (const position of positions) {
-    const node = nodeById.get(position.id);
-    if (!node) {
-      continue;
-    }
-
-    const nodeBounds = getGraphPositionBounds(position, node, rootNodeId);
-    bounds = bounds
-      ? {
-          left: Math.min(bounds.left, nodeBounds.left),
-          right: Math.max(bounds.right, nodeBounds.right),
-          top: Math.min(bounds.top, nodeBounds.top),
-          bottom: Math.max(bounds.bottom, nodeBounds.bottom),
-        }
-      : nodeBounds;
-  }
-
-  return bounds;
-}
-
-function calculateFitGraphViewport(
-  bounds: GraphBounds,
-  canvasSize: {
-    width: number;
-    height: number;
-  },
-  fallbackZoom: number,
-): GraphViewport {
-  const boundsWidth = Math.max(1, bounds.right - bounds.left);
-  const boundsHeight = Math.max(1, bounds.bottom - bounds.top);
-  const availableWidth = Math.max(1, canvasSize.width - GRAPH_FIT_PADDING * 2);
-  const availableHeight = Math.max(1, canvasSize.height - GRAPH_FIT_PADDING * 2);
-  const fitZoom = clampGraphZoom(Math.min(
-    fallbackZoom,
-    availableWidth / boundsWidth,
-    availableHeight / boundsHeight,
-  ));
-  const boundsCenter = {
-    x: (bounds.left + bounds.right) / 2,
-    y: (bounds.top + bounds.bottom) / 2,
-  };
-  const graphCenter = {
-    x: GRAPH_WIDTH / 2,
-    y: GRAPH_HEIGHT / 2,
-  };
-
-  return {
-    zoom: fitZoom,
-    pan: {
-      x: Number((-(boundsCenter.x - graphCenter.x) * fitZoom).toFixed(2)),
-      y: Number((-(boundsCenter.y - graphCenter.y) * fitZoom).toFixed(2)),
-    },
-  };
-}
-
-function resolveGraphNodeCollisions(
-  initialPositions: GraphNodePosition[],
-  nodes: ProjectMapNode[],
-  rootNodeId: string,
-): GraphNodePosition[] {
-  const center = { x: GRAPH_WIDTH / 2, y: GRAPH_HEIGHT / 2 };
-  const nodeById = new Map(nodes.map((node) => [node.id, node]));
-  const positions = initialPositions.map((position) => {
-    const node = nodeById.get(position.id);
-    return node
-      ? clampGraphPosition(position, getGraphNodeFootprint(node, rootNodeId))
-      : position;
-  });
-
-  for (let passIndex = 0; passIndex < 90; passIndex += 1) {
-    let didMoveNode = false;
-
-    for (let leftIndex = 0; leftIndex < positions.length; leftIndex += 1) {
-      for (let rightIndex = leftIndex + 1; rightIndex < positions.length; rightIndex += 1) {
-        const leftNode = nodeById.get(positions[leftIndex]?.id ?? "");
-        const rightNode = nodeById.get(positions[rightIndex]?.id ?? "");
-        const leftPosition = positions[leftIndex];
-        const rightPosition = positions[rightIndex];
-
-        if (!leftNode || !rightNode || !leftPosition || !rightPosition) {
-          continue;
-        }
-
-        const leftFootprint = getGraphNodeFootprint(leftNode, rootNodeId);
-        const rightFootprint = getGraphNodeFootprint(rightNode, rootNodeId);
-        const minimumDeltaX = (leftFootprint.width + rightFootprint.width) / 2 + GRAPH_NODE_GAP;
-        const minimumDeltaY = (leftFootprint.height + rightFootprint.height) / 2 + GRAPH_NODE_GAP;
-        const deltaX = rightPosition.x - leftPosition.x;
-        const deltaY = rightPosition.y - leftPosition.y;
-        const overlapX = minimumDeltaX - Math.abs(deltaX);
-        const overlapY = minimumDeltaY - Math.abs(deltaY);
-
-        if (overlapX <= 0 || overlapY <= 0) {
-          continue;
-        }
-
-        const leftIsRoot = leftNode.id === rootNodeId;
-        const rightIsRoot = rightNode.id === rootNodeId;
-        const shouldMoveOnX = overlapX <= overlapY;
-        const leftRadialSign = shouldMoveOnX
-          ? Math.sign(leftPosition.x - center.x) || -1
-          : Math.sign(leftPosition.y - center.y) || -1;
-        const rightRadialSign = shouldMoveOnX
-          ? Math.sign(rightPosition.x - center.x) || 1
-          : Math.sign(rightPosition.y - center.y) || 1;
-        const pairSign = shouldMoveOnX
-          ? Math.sign(deltaX) || rightRadialSign
-          : Math.sign(deltaY) || rightRadialSign;
-        const pushDistance = (shouldMoveOnX ? overlapX : overlapY) + 2;
-        const leftShare = leftIsRoot ? 0 : rightIsRoot ? 1 : 0.5;
-        const rightShare = rightIsRoot ? 0 : leftIsRoot ? 1 : 0.5;
-
-        if (shouldMoveOnX) {
-          const nextLeftX = leftPosition.x - pairSign * pushDistance * leftShare;
-          positions[leftIndex] = clampGraphPosition(
-            {
-              ...leftPosition,
-              x: Number.isFinite(nextLeftX) ? nextLeftX : leftPosition.x + leftRadialSign,
-            },
-            leftFootprint,
-          );
-          positions[rightIndex] = clampGraphPosition(
-            {
-              ...rightPosition,
-              x: rightPosition.x + pairSign * pushDistance * rightShare,
-            },
-            rightFootprint,
-          );
-        } else {
-          const nextLeftY = leftPosition.y - pairSign * pushDistance * leftShare;
-          positions[leftIndex] = clampGraphPosition(
-            {
-              ...leftPosition,
-              y: Number.isFinite(nextLeftY) ? nextLeftY : leftPosition.y + leftRadialSign,
-            },
-            leftFootprint,
-          );
-          positions[rightIndex] = clampGraphPosition(
-            {
-              ...rightPosition,
-              y: rightPosition.y + pairSign * pushDistance * rightShare,
-            },
-            rightFootprint,
-          );
-        }
-
-        didMoveNode = true;
-      }
-    }
-
-    if (!didMoveNode) {
-      break;
-    }
-  }
-
-  return positions;
-}
-
-function buildExpandedGraphSlots(count: number): Array<{ x: number; y: number }> {
-  const centerX = GRAPH_WIDTH / 2;
-  const columnOffsets = [540, 330, 760];
-  const rowY = [220, 380, 540, 700, 860, 1020, 1180, 1340];
-  const slots: Array<{ x: number; y: number }> = [];
-
-  for (const offset of columnOffsets) {
-    for (const y of rowY) {
-      slots.push({ x: centerX - offset, y });
-      slots.push({ x: centerX + offset, y });
-    }
-  }
-
-  return slots.slice(0, count);
-}
-
-function resolveVisibleNodes(
-  dataset: ProjectMapDataset,
-  focusNodeId: string | null,
-): ProjectMapNode[] {
-  const rootNode = getProjectCoreNode(dataset);
-  if (!focusNodeId && rootNode) {
-    const nodeIndex = buildNodeIndex(dataset.nodes);
-    return [rootNode, ...getSortedChildren(rootNode, nodeIndex)];
-  }
-
-  if (!focusNodeId) {
-    return dataset.nodes;
-  }
-
-  const nodeIndex = buildNodeIndex(dataset.nodes);
-  const focusNode = nodeIndex.get(focusNodeId);
-  if (!focusNode) {
-    return dataset.nodes;
-  }
-
-  const visibleIds = new Set<string>([
-    focusNode.id,
-    focusNode.parentId ?? "",
-    ...focusNode.children,
-    ...dataset.nodes
-      .filter((node) => node.children.includes(focusNode.id))
-      .map((node) => node.id),
-  ].filter(Boolean));
-
-  return dataset.nodes
-    .filter((node) => visibleIds.has(node.id))
-    .sort((left, right) => {
-      if (left.id === focusNode.id) {
-        return -1;
-      }
-      if (right.id === focusNode.id) {
-        return 1;
-      }
-      return compareNodesForMap(left, right);
-    });
-}
-
-function buildOverviewPositions(
-  nodes: ProjectMapNode[],
-  rootNode: ProjectMapNode,
-  nodeIndex: Map<string, ProjectMapNode>,
-  visibleLenses: ProjectMapLens[],
-): GraphNodePosition[] {
-  const center = { x: GRAPH_WIDTH / 2, y: GRAPH_HEIGHT / 2 };
-  const positions: GraphNodePosition[] = [
-    { id: rootNode.id, x: center.x, y: center.y },
-  ];
-  const directChildren = getSortedChildren(rootNode, nodeIndex);
-  if (directChildren.length > 10) {
-    const expandedSlots = buildExpandedGraphSlots(directChildren.length);
-    for (const [index, hub] of directChildren.entries()) {
-      const slot = expandedSlots[index];
-      if (!slot) {
-        continue;
-      }
-      positions.push({ id: hub.id, x: slot.x, y: slot.y });
-    }
-    return resolveGraphNodeCollisions(
-      positions.filter((position) => nodes.some((node) => node.id === position.id)),
-      nodes,
-      rootNode.id,
-    );
-  }
-
-  const hubRadiusX = 560;
-  const hubRadiusY = 360;
-  const shouldUseUniformHubAngles = directChildren.length > visibleLenses.length + 1;
-  const childCountByLensId = new Map<string, number>();
-  const placedCountByLensId = new Map<string, number>();
-
-  for (const hub of directChildren) {
-    childCountByLensId.set(hub.lensId, (childCountByLensId.get(hub.lensId) ?? 0) + 1);
-  }
-
-  for (const [index, hub] of directChildren.entries()) {
-    const lensChildCount = childCountByLensId.get(hub.lensId) ?? 1;
-    const lensChildIndex = placedCountByLensId.get(hub.lensId) ?? 0;
-    placedCountByLensId.set(hub.lensId, lensChildIndex + 1);
-    const lensFanOffset = shouldUseUniformHubAngles
-      ? 0
-      : (lensChildIndex - (lensChildCount - 1) / 2) * 24;
-    const baseAngle = shouldUseUniformHubAngles
-      ? -90 + index * (360 / Math.max(directChildren.length, 1))
-      : visibleLenses.some((lens) => lens.id === hub.lensId)
-        ? getLensAngle(hub.lensId, visibleLenses)
-        : index * 52 - 90;
-    const angle = toRadians(baseAngle + lensFanOffset);
-    const hubX = center.x + Math.cos(angle) * hubRadiusX;
-    const hubY = center.y + Math.sin(angle) * hubRadiusY;
-    positions.push({ id: hub.id, x: hubX, y: hubY });
-  }
-
-  return resolveGraphNodeCollisions(
-    positions.filter((position) => nodes.some((node) => node.id === position.id)),
-    nodes,
-    rootNode.id,
-  );
-}
-
-function buildFocusPositions(
-  nodes: ProjectMapNode[],
-  focusNode: ProjectMapNode,
-): GraphNodePosition[] {
-  const center = { x: GRAPH_WIDTH / 2, y: GRAPH_HEIGHT / 2 };
-  const contextNodes = nodes.filter((node) => node.id !== focusNode.id);
-  const positions: GraphNodePosition[] = [
-    { id: focusNode.id, x: center.x, y: center.y },
-  ];
-  const expandedSlots = contextNodes.length > 9 ? buildExpandedGraphSlots(contextNodes.length) : [];
-
-  contextNodes.forEach((node, index) => {
-    const expandedSlot = expandedSlots[index];
-    if (expandedSlot) {
-      positions.push({ id: node.id, x: expandedSlot.x, y: expandedSlot.y });
-      return;
-    }
-
-    const angle = toRadians(index * (360 / Math.max(contextNodes.length, 1)) - 90);
-    const childRadius = 430;
-    const contextRadius = 305;
-    const radius = node.parentId === focusNode.id ? childRadius : contextRadius;
-    positions.push({
-      id: node.id,
-      x: center.x + Math.cos(angle) * radius,
-      y: center.y + Math.sin(angle) * (radius * 0.72),
-    });
-  });
-
-  return resolveGraphNodeCollisions(positions, nodes, focusNode.id);
-}
-
-function buildGraphLayout(
-  visibleNodes: ProjectMapNode[],
-  dataset: ProjectMapDataset,
-  focusNodeId: string | null,
-): {
-  positions: GraphNodePosition[];
-  edges: GraphEdge[];
-} {
-  const nodeIndex = buildNodeIndex(dataset.nodes);
-  const visibleIds = new Set(visibleNodes.map((node) => node.id));
-  const rootNode = getProjectCoreNode(dataset);
-  const focusNode = focusNodeId ? nodeIndex.get(focusNodeId) ?? null : null;
-  const visibleLenses = getVisibleLenses(dataset);
-  const positions =
-    focusNode && visibleIds.has(focusNode.id)
-      ? buildFocusPositions(visibleNodes, focusNode)
-      : rootNode
-        ? buildOverviewPositions(visibleNodes, rootNode, nodeIndex, visibleLenses)
-        : [];
-  const positionById = new Map(positions.map((position) => [position.id, position]));
-  const edges = visibleNodes.flatMap((node) => {
-    const source = positionById.get(node.id);
-    if (!source) {
-      return [];
-    }
-    return node.children.flatMap((childId) => {
-      const target = positionById.get(childId);
-      if (!target || !visibleIds.has(childId)) {
-        return [];
-      }
-      return [{ id: `${node.id}-${childId}`, source, target }];
-    });
-  });
-
-  return { positions, edges };
 }
 
 function buildNeighborSet(
@@ -665,16 +208,12 @@ function getDescendantStats(
   stale: number;
   candidate: number;
 } {
-  const children = getSortedChildren(node, nodeIndex);
+  const children = getSortedProjectMapChildren(node, nodeIndex);
   return {
     count: children.length,
     stale: children.filter((child) => child.stale).length,
     candidate: children.filter((child) => child.candidate).length,
   };
-}
-
-function toRadians(value: number): number {
-  return (value * Math.PI) / 180;
 }
 
 function formatDateTime(value: string): string {
@@ -875,6 +414,20 @@ function getRecentRuns(runs: ProjectMapRunMetadata[]): ProjectMapRunMetadata[] {
     .sort((left, right) => new Date(right.startedAt).getTime() - new Date(left.startedAt).getTime());
 }
 
+function isCandidateAfterCompletedCalibration(
+  dataset: ProjectMapDataset,
+  node: ProjectMapNode,
+): boolean {
+  const generatedRun = dataset.runs.find((run) => run.id === node.generatedBy.runId);
+  return Boolean(
+    node.candidate &&
+      generatedRun?.status === "completed" &&
+      generatedRun.generationIntent === "calibrateNode" &&
+      generatedRun.requestScope?.kind === "node" &&
+      generatedRun.requestScope.nodeId === node.id,
+  );
+}
+
 function SourceChip({
   source,
   onOpenTrace,
@@ -991,10 +544,10 @@ export function ProjectMapPanel({
     { generationDefaults },
   );
   const dataset = controlledDataset ?? datasetController.dataset;
-  const nodeIndex = useMemo(() => buildNodeIndex(dataset.nodes), [dataset.nodes]);
-  const visibleLenses = useMemo(() => getVisibleLenses(dataset), [dataset]);
+  const nodeIndex = useMemo(() => buildProjectMapNodeIndex(dataset.nodes), [dataset.nodes]);
+  const visibleLenses = useMemo(() => getVisibleProjectMapLenses(dataset), [dataset]);
   const lensIndex = useMemo(() => buildLensIndex(dataset.lenses), [dataset.lenses]);
-  const rootNode = getProjectCoreNode(dataset);
+  const rootNode = getProjectMapCoreNode(dataset);
   const [focusNodeId, setFocusNodeId] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(
     () => rootNode?.id ?? null,
@@ -1005,8 +558,12 @@ export function ProjectMapPanel({
   const [isLensStripCollapsed, setIsLensStripCollapsed] = useState(true);
   const [isDetailCollapsed, setIsDetailCollapsed] = useState(false);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
+  const [selectedGraphNodeIds, setSelectedGraphNodeIds] = useState<Set<string>>(new Set());
+  const [dragPreviewPositions, setDragPreviewPositions] = useState<
+    Record<string, ProjectMapGraphNodePosition>
+  >({});
   const [viewport, setViewport] = useState<GraphViewport>({
-    zoom: DEFAULT_OVERVIEW_ZOOM,
+    zoom: PROJECT_MAP_DEFAULT_OVERVIEW_ZOOM,
     pan: { x: 0, y: 0 },
   });
   const canvasRef = useRef<HTMLDivElement | null>(null);
@@ -1017,8 +574,10 @@ export function ProjectMapPanel({
     originX: number;
     originY: number;
   } | null>(null);
+  const nodeDragRef = useRef<GraphNodeDragState | null>(null);
+  const suppressNextNodeClickRef = useRef(false);
   const visibleNodes = useMemo(
-    () => resolveVisibleNodes(dataset, focusNodeId),
+    () => resolveVisibleProjectMapNodes(dataset, focusNodeId),
     [dataset, focusNodeId],
   );
   const selectedNode =
@@ -1028,9 +587,50 @@ export function ProjectMapPanel({
     null;
   const deleteConfirmNode = deleteConfirmNodeId ? nodeIndex.get(deleteConfirmNodeId) ?? null : null;
   const graphLayout = useMemo(
-    () => buildGraphLayout(visibleNodes, dataset, focusNodeId),
+    () =>
+      buildInteractiveProjectMapLayout({
+        dataset,
+        visibleNodes,
+        focusNodeId,
+      }),
     [dataset, focusNodeId, visibleNodes],
   );
+  const renderGraphLayout = useMemo(() => {
+    const previewById = new Map(Object.entries(dragPreviewPositions));
+    if (previewById.size === 0) {
+      return graphLayout;
+    }
+
+    const positions = graphLayout.positions.map((position) => previewById.get(position.id) ?? position);
+    const positionById = new Map(positions.map((position) => [position.id, position]));
+    const edges = graphLayout.edges.flatMap((edge) => {
+      const source = positionById.get(edge.source.id);
+      const target = positionById.get(edge.target.id);
+      return source && target ? [{ ...edge, source, target }] : [];
+    });
+    return {
+      ...graphLayout,
+      positions,
+      edges,
+    };
+  }, [dragPreviewPositions, graphLayout]);
+  const miniMapProjection = useMemo(() => {
+    if (!renderGraphLayout.rootNodeId) {
+      return null;
+    }
+    const canvasRect = canvasRef.current?.getBoundingClientRect();
+    return buildProjectMapMiniMapProjection({
+      positions: renderGraphLayout.positions,
+      nodes: visibleNodes,
+      rootNodeId: renderGraphLayout.rootNodeId,
+      viewport,
+      canvasSize: {
+        width: canvasRect?.width && canvasRect.width > 0 ? canvasRect.width : 1100,
+        height: canvasRect?.height && canvasRect.height > 0 ? canvasRect.height : 680,
+      },
+      miniMapSize: MINI_MAP_SIZE,
+    });
+  }, [renderGraphLayout, viewport, visibleNodes]);
   const neighborNodeIds = useMemo(
     () => buildNeighborSet(visibleNodes, selectedNode?.id ?? null, hoverNodeId, Boolean(focusNodeId)),
     [focusNodeId, hoverNodeId, selectedNode?.id, visibleNodes],
@@ -1060,7 +660,7 @@ export function ProjectMapPanel({
   const activeGenerationRun = generationQueue[0] ?? null;
   const queuedGenerationRuns = generationQueue.slice(1);
   const previousGenerationQueueCountRef = useRef(generationQueue.length);
-  const hubNodes = rootNode ? getSortedChildren(rootNode, nodeIndex) : [];
+  const hubNodes = rootNode ? getSortedProjectMapChildren(rootNode, nodeIndex) : [];
   const detectedLensCount = visibleLenses.filter((lens) => lens.status === "detected").length;
   const candidateLensCount = visibleLenses.filter((lens) => lens.status === "candidate").length;
   const activeLens = selectedNode ? lensIndex.get(selectedNode.lensId) ?? null : null;
@@ -1072,12 +672,11 @@ export function ProjectMapPanel({
     ? t("projectMap.backToPrevious")
     : t("projectMap.backToParent");
   const fitGraphToViewport = useCallback(() => {
-    const rootNodeId = (focusNodeId ? nodeIndex.get(focusNodeId)?.id : rootNode?.id) ?? rootNode?.id;
-    if (!rootNodeId) {
+    if (!graphLayout.rootNodeId) {
       return;
     }
 
-    const bounds = buildGraphLayoutBounds(graphLayout.positions, visibleNodes, rootNodeId);
+    const bounds = graphLayout.bounds;
     if (!bounds) {
       return;
     }
@@ -1087,9 +686,145 @@ export function ProjectMapPanel({
       width: canvasRect?.width && canvasRect.width > 0 ? canvasRect.width : 1100,
       height: canvasRect?.height && canvasRect.height > 0 ? canvasRect.height : 680,
     };
-    const fallbackZoom = focusNodeId ? DEFAULT_FOCUS_ZOOM : DEFAULT_OVERVIEW_ZOOM;
-    setViewport(calculateFitGraphViewport(bounds, canvasSize, fallbackZoom));
-  }, [focusNodeId, graphLayout.positions, nodeIndex, rootNode?.id, visibleNodes]);
+    const fallbackZoom = focusNodeId
+      ? PROJECT_MAP_DEFAULT_FOCUS_ZOOM
+      : PROJECT_MAP_DEFAULT_OVERVIEW_ZOOM;
+    const fittedViewport = calculateProjectMapFitViewport(bounds, canvasSize, fallbackZoom);
+    const detailFocusOffset = getDetailPanelFocusOffset({
+      canvasElement: canvasRef.current,
+      isDetailCollapsed,
+    });
+    setViewport({
+      ...fittedViewport,
+      pan: {
+        ...fittedViewport.pan,
+        x: Number((fittedViewport.pan.x + detailFocusOffset).toFixed(2)),
+      },
+    });
+  }, [focusNodeId, graphLayout.bounds, graphLayout.rootNodeId, isDetailCollapsed]);
+
+  const persistGraphPositions = useCallback(
+    async (input: {
+      positions: ProjectMapGraphNodePosition[];
+      preset?: ProjectMapLayoutPreset;
+      pinnedNodeIds: Set<string>;
+      updatedAt: string;
+    }) => {
+      const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+      await datasetController.updateDataset((currentDataset) => {
+        const currentLayouts = currentDataset.viewState?.nodeLayouts ?? {};
+        const retainedLayouts = Object.fromEntries(
+          Object.entries(currentLayouts).filter(([nodeId]) => !visibleNodeIds.has(nodeId)),
+        );
+        return {
+          ...currentDataset,
+          manifest: {
+            ...currentDataset.manifest,
+            updatedAt: input.updatedAt,
+          },
+          viewState: {
+            ...buildProjectMapViewState({
+              current: currentDataset.viewState,
+              preset: input.preset,
+              positions: input.positions,
+              pinnedNodeIds: input.pinnedNodeIds,
+              updatedAt: input.updatedAt,
+            }),
+            nodeLayouts: {
+              ...retainedLayouts,
+              ...buildProjectMapViewState({
+                current: currentDataset.viewState,
+                preset: input.preset,
+                positions: input.positions,
+                pinnedNodeIds: input.pinnedNodeIds,
+                updatedAt: input.updatedAt,
+              }).nodeLayouts,
+            },
+          },
+        };
+      });
+    },
+    [datasetController, visibleNodes],
+  );
+
+  const clearGraphInteractionDraft = useCallback(() => {
+    nodeDragRef.current = null;
+    panStartRef.current = null;
+    suppressNextNodeClickRef.current = false;
+    setDragPreviewPositions({});
+  }, []);
+
+  const handleAutoLayout = useCallback(() => {
+    if (!renderGraphLayout.rootNodeId) {
+      return;
+    }
+    clearGraphInteractionDraft();
+    const currentPinnedNodeIds = new Set(
+      Object.entries(dataset.viewState?.nodeLayouts ?? {})
+        .filter(([, layout]) => layout.pinned === true)
+        .map(([nodeId]) => nodeId),
+    );
+    const settledPositions = settleProjectMapLayout({
+      positions: renderGraphLayout.positions,
+      nodes: visibleNodes,
+      rootNodeId: renderGraphLayout.rootNodeId,
+      preservePinned: true,
+    });
+    void persistGraphPositions({
+      positions: settledPositions,
+      pinnedNodeIds: currentPinnedNodeIds,
+      updatedAt: new Date().toISOString(),
+    });
+  }, [clearGraphInteractionDraft, dataset.viewState?.nodeLayouts, persistGraphPositions, renderGraphLayout, visibleNodes]);
+
+  const handleResetLayout = useCallback(() => {
+    const updatedAt = new Date().toISOString();
+    clearGraphInteractionDraft();
+    void datasetController.updateDataset((currentDataset) => ({
+      ...currentDataset,
+      manifest: {
+        ...currentDataset.manifest,
+        updatedAt,
+      },
+      viewState: resetProjectMapViewState(currentDataset.viewState, updatedAt),
+    }));
+    setSelectedGraphNodeIds(new Set());
+  }, [clearGraphInteractionDraft, datasetController]);
+
+  const handleLayoutPresetChange = useCallback(
+    (preset: ProjectMapLayoutPreset) => {
+      clearGraphInteractionDraft();
+      const currentPinnedNodeIds = new Set(
+        Object.entries(dataset.viewState?.nodeLayouts ?? {})
+          .filter(([, layout]) => layout.pinned === true)
+          .map(([nodeId]) => nodeId),
+      );
+      const presetLayout = buildInteractiveProjectMapLayout({
+        dataset: {
+          ...dataset,
+          viewState: {
+            layoutPreset: preset,
+            nodeLayouts: Object.fromEntries(
+              Object.entries(dataset.viewState?.nodeLayouts ?? {}).filter(
+                ([, layout]) => layout.pinned === true,
+              ),
+            ),
+            updatedAt: dataset.viewState?.updatedAt,
+          },
+        },
+        visibleNodes,
+        focusNodeId,
+        preset,
+      });
+      void persistGraphPositions({
+        positions: presetLayout.positions,
+        preset,
+        pinnedNodeIds: currentPinnedNodeIds,
+        updatedAt: new Date().toISOString(),
+      });
+    },
+    [clearGraphInteractionDraft, dataset, focusNodeId, persistGraphPositions, visibleNodes],
+  );
 
   useEffect(() => {
     if (generationQueue.length > previousGenerationQueueCountRef.current) {
@@ -1102,10 +837,21 @@ export function ProjectMapPanel({
     fitGraphToViewport();
   }, [fitGraphToViewport]);
 
+  useEffect(() => {
+    const visibleNodeIds = new Set(visibleNodes.map((node) => node.id));
+    setSelectedGraphNodeIds((current) => {
+      const nextSelection = new Set(
+        [...current].filter((nodeId) => visibleNodeIds.has(nodeId)),
+      );
+      return nextSelection.size === current.size ? current : nextSelection;
+    });
+  }, [visibleNodes]);
+
   const handleNodeSelect = (node: ProjectMapNode) => {
     setHoverNodeId(null);
     setSelectedNodeId(node.id);
     setIsDetailCollapsed(false);
+    setSelectedGraphNodeIds(new Set([node.id]));
   };
 
   const rememberCurrentView = () => {
@@ -1224,7 +970,7 @@ export function ProjectMapPanel({
   const updateZoom = (nextZoom: number) => {
     setViewport((current) => ({
       ...current,
-      zoom: clampGraphZoom(nextZoom),
+      zoom: clampProjectMapGraphZoom(nextZoom),
     }));
   };
 
@@ -1241,12 +987,41 @@ export function ProjectMapPanel({
       originX: viewport.pan.x,
       originY: viewport.pan.y,
     };
-    event.currentTarget.setPointerCapture(event.pointerId);
+    event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
   const handleCanvasPointerMove = (
     event: PointerEvent<HTMLDivElement>,
   ) => {
+    const nodeDrag = nodeDragRef.current;
+    if (nodeDrag?.pointerId === event.pointerId) {
+      const deltaX = (event.clientX - nodeDrag.startClientX) / viewport.zoom;
+      const deltaY = (event.clientY - nodeDrag.startClientY) / viewport.zoom;
+      nodeDrag.didMove = nodeDrag.didMove || Math.hypot(deltaX, deltaY) > 3;
+      const previewEntries = nodeDrag.nodeIds.flatMap((nodeId) => {
+        const originPosition = nodeDrag.originPositions.get(nodeId);
+        if (!originPosition) {
+          return [];
+        }
+        return [
+          [
+            nodeId,
+            {
+              ...originPosition,
+              x: Number((originPosition.x + deltaX).toFixed(2)),
+              y: Number((originPosition.y + deltaY).toFixed(2)),
+              pinned: true,
+            },
+          ] as const,
+        ];
+      });
+      nodeDrag.previewPositions = new Map(previewEntries);
+      setDragPreviewPositions(
+        Object.fromEntries(previewEntries),
+      );
+      return;
+    }
+
     const start = panStartRef.current;
     if (!start || start.pointerId !== event.pointerId) {
       return;
@@ -1261,6 +1036,30 @@ export function ProjectMapPanel({
   };
 
   const handleCanvasPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+    const nodeDrag = nodeDragRef.current;
+    if (nodeDrag?.pointerId === event.pointerId) {
+      nodeDragRef.current = null;
+      const draggedPositions = nodeDrag.nodeIds.flatMap((nodeId) => {
+        const previewPosition = nodeDrag.previewPositions.get(nodeId);
+        const originPosition = nodeDrag.originPositions.get(nodeId);
+        return previewPosition ?? originPosition ?? [];
+      });
+      setSelectedGraphNodeIds(new Set(nodeDrag.nodeIds));
+      suppressNextNodeClickRef.current = nodeDrag.didMove;
+      if (draggedPositions.length > 0) {
+        void persistGraphPositions({
+          positions: draggedPositions,
+          pinnedNodeIds: new Set(nodeDrag.nodeIds),
+          updatedAt: new Date().toISOString(),
+        }).finally(() => {
+          setDragPreviewPositions({});
+        });
+      } else {
+        setDragPreviewPositions({});
+      }
+      return;
+    }
+
     if (panStartRef.current?.pointerId === event.pointerId) {
       panStartRef.current = null;
     }
@@ -1280,7 +1079,7 @@ export function ProjectMapPanel({
     const zoomDelta = event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP;
 
     setViewport((current) => {
-      const nextZoom = clampGraphZoom(current.zoom + zoomDelta);
+      const nextZoom = clampProjectMapGraphZoom(current.zoom + zoomDelta);
       if (nextZoom === current.zoom) {
         return current;
       }
@@ -1309,6 +1108,98 @@ export function ProjectMapPanel({
     }
     event.preventDefault();
     handleNodeSelect(node);
+  };
+
+  const handleNodePointerDown = (
+    event: PointerEvent<HTMLDivElement>,
+    node: ProjectMapNode,
+  ) => {
+    if ((event.target as HTMLElement).closest("button")) {
+      return;
+    }
+    event.stopPropagation();
+    const positionById = new Map(renderGraphLayout.positions.map((position) => [position.id, position]));
+    const nodeIds = selectedGraphNodeIds.has(node.id)
+      ? [...selectedGraphNodeIds].filter((nodeId) => positionById.has(nodeId))
+      : [node.id];
+    const originPositions = new Map(
+      nodeIds.flatMap((nodeId) => {
+        const position = positionById.get(nodeId);
+        return position ? [[nodeId, position]] : [];
+      }),
+    );
+    if (originPositions.size === 0) {
+      return;
+    }
+
+    nodeDragRef.current = {
+      pointerId: event.pointerId,
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      nodeIds,
+      originPositions,
+      previewPositions: new Map(),
+      didMove: false,
+    };
+    setSelectedNodeId(node.id);
+    setIsDetailCollapsed(false);
+    setSelectedGraphNodeIds(new Set(nodeIds));
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+  };
+
+  const handleNodeClick = (
+    event: MouseEvent<HTMLDivElement>,
+    node: ProjectMapNode,
+  ) => {
+    if (suppressNextNodeClickRef.current) {
+      suppressNextNodeClickRef.current = false;
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+
+    if (event.shiftKey || event.metaKey) {
+      setHoverNodeId(null);
+      setSelectedNodeId(node.id);
+      setIsDetailCollapsed(false);
+      setSelectedGraphNodeIds((current) => {
+        const nextSelection = new Set(current);
+        if (nextSelection.has(node.id)) {
+          nextSelection.delete(node.id);
+        } else {
+          nextSelection.add(node.id);
+        }
+        if (nextSelection.size === 0) {
+          nextSelection.add(node.id);
+        }
+        return nextSelection;
+      });
+      return;
+    }
+
+    handleNodeSelect(node);
+  };
+
+  const handleMiniMapClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (!miniMapProjection) {
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const graphPoint = miniMapProjection.unprojectPoint({
+      x: event.clientX - rect.left,
+      y: event.clientY - rect.top,
+    });
+    const graphCenter = {
+      x: PROJECT_MAP_GRAPH_WIDTH / 2,
+      y: PROJECT_MAP_GRAPH_HEIGHT / 2,
+    };
+    setViewport((current) => ({
+      ...current,
+      pan: {
+        x: Number((-(graphPoint.x - graphCenter.x) * current.zoom).toFixed(2)),
+        y: Number((-(graphPoint.y - graphCenter.y) * current.zoom).toFixed(2)),
+      },
+    }));
   };
 
   const handleNodeDrillClick = (
@@ -1531,6 +1422,32 @@ export function ProjectMapPanel({
               </button>
               <button
                 type="button"
+                onClick={handleAutoLayout}
+              >
+                {t("projectMap.autoLayout")}
+              </button>
+              <button
+                type="button"
+                onClick={handleResetLayout}
+              >
+                {t("projectMap.resetLayout")}
+              </button>
+              <label className="project-map-layout-preset">
+                <span>{t("projectMap.layoutPreset")}</span>
+                <select
+                  value={dataset.viewState?.layoutPreset ?? "radial"}
+                  aria-label={t("projectMap.layoutPreset")}
+                  onChange={(event) =>
+                    handleLayoutPresetChange(event.currentTarget.value as ProjectMapLayoutPreset)
+                  }
+                >
+                  <option value="radial">{t("projectMap.layoutPresetRadial")}</option>
+                  <option value="tree">{t("projectMap.layoutPresetTree")}</option>
+                  <option value="force">{t("projectMap.layoutPresetForce")}</option>
+                </select>
+              </label>
+              <button
+                type="button"
                 onClick={() => updateZoom(viewport.zoom + ZOOM_STEP)}
                 aria-label={t("projectMap.zoomIn")}
               >
@@ -1554,10 +1471,10 @@ export function ProjectMapPanel({
             >
               <svg
                 className="project-map-graph-lines"
-                viewBox={`0 0 ${GRAPH_WIDTH} ${GRAPH_HEIGHT}`}
+                viewBox={`0 0 ${PROJECT_MAP_GRAPH_WIDTH} ${PROJECT_MAP_GRAPH_HEIGHT}`}
                 aria-hidden
               >
-                {graphLayout.edges.map((edge) => {
+                {renderGraphLayout.edges.map((edge) => {
                   const isFocused =
                     neighborNodeIds.has(edge.source.id) &&
                     neighborNodeIds.has(edge.target.id);
@@ -1573,12 +1490,13 @@ export function ProjectMapPanel({
                   );
                 })}
               </svg>
-              {graphLayout.positions.map((position) => {
+              {renderGraphLayout.positions.map((position) => {
                 const node = nodeIndex.get(position.id);
                 if (!node) {
                   return null;
                 }
                 const isSelected = selectedNode?.id === node.id;
+                const isGroupSelected = selectedGraphNodeIds.has(node.id);
                 const isFocused = neighborNodeIds.has(node.id);
                 const isHub = node.parentId === rootNode?.id;
                 const descendantStats = getDescendantStats(node, nodeIndex);
@@ -1593,13 +1511,15 @@ export function ProjectMapPanel({
                       node.stale && "is-stale",
                       node.candidate && "is-candidate",
                       isSelected && "is-selected",
+                      isGroupSelected && "is-group-selected",
+                      position.pinned && "is-pinned",
                       !isFocused && "is-dimmed",
                     )}
                     role="button"
                     tabIndex={0}
                     style={{ left: position.x, top: position.y }}
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => handleNodeSelect(node)}
+                    onPointerDown={(event) => handleNodePointerDown(event, node)}
+                    onClick={(event) => handleNodeClick(event, node)}
                     onKeyDown={(event) => handleNodeKeyDown(event, node)}
                     onDoubleClick={() => handleDrillIn(node)}
                     onMouseEnter={() => setHoverNodeId(node.id)}
@@ -1654,6 +1574,50 @@ export function ProjectMapPanel({
                 );
               })}
             </div>
+            {miniMapProjection ? (
+              <button
+                className="project-map-mini-map"
+                type="button"
+                aria-label={t("projectMap.miniMap")}
+                onClick={handleMiniMapClick}
+                style={{
+                  width: MINI_MAP_SIZE.width,
+                  height: MINI_MAP_SIZE.height,
+                }}
+              >
+                <svg
+                  viewBox={`0 0 ${MINI_MAP_SIZE.width} ${MINI_MAP_SIZE.height}`}
+                  aria-hidden
+                >
+                  <rect
+                    className="project-map-mini-map-viewport"
+                    x={miniMapProjection.viewport.left}
+                    y={miniMapProjection.viewport.top}
+                    width={Math.max(
+                      8,
+                      miniMapProjection.viewport.right - miniMapProjection.viewport.left,
+                    )}
+                    height={Math.max(
+                      8,
+                      miniMapProjection.viewport.bottom - miniMapProjection.viewport.top,
+                    )}
+                  />
+                  {miniMapProjection.dots.map((dot) => (
+                    <circle
+                      key={dot.id}
+                      className={cn(
+                        "project-map-mini-map-dot",
+                        dot.pinned && "is-pinned",
+                        selectedGraphNodeIds.has(dot.id) && "is-selected",
+                      )}
+                      cx={dot.x}
+                      cy={dot.y}
+                      r={selectedGraphNodeIds.has(dot.id) ? 4 : 3}
+                    />
+                  ))}
+                </svg>
+              </button>
+            ) : null}
 
             <DetailPanel
               node={selectedNode}
@@ -1677,6 +1641,12 @@ export function ProjectMapPanel({
               }}
               onRejectCandidate={(candidateId) => {
                 void datasetController.rejectCandidate(candidateId);
+              }}
+              onConfirmNodeCandidate={(nodeId) => {
+                void datasetController.confirmNodeCandidate(nodeId);
+              }}
+              onRejectNodeCandidate={(nodeId) => {
+                void datasetController.rejectNodeCandidate(nodeId);
               }}
               onDeleteNode={selectedNode ? handleRequestDeleteSelectedNode : null}
               onOpenTrace={onOpenEvidenceFile ? handleOpenTraceTarget : undefined}
@@ -1965,6 +1935,8 @@ function DetailPanel({
   onCalibrateNode,
   onConfirmCandidate,
   onRejectCandidate,
+  onConfirmNodeCandidate,
+  onRejectNodeCandidate,
   onDeleteNode,
   onOpenTrace,
 }: {
@@ -1984,10 +1956,15 @@ function DetailPanel({
   onCalibrateNode: () => void;
   onConfirmCandidate: (candidateId: string) => void;
   onRejectCandidate: (candidateId: string) => void;
+  onConfirmNodeCandidate: (nodeId: string) => void;
+  onRejectNodeCandidate: (nodeId: string) => void;
   onDeleteNode: (() => void) | null;
   onOpenTrace?: (target: ProjectMapTraceTarget) => void;
 }) {
   const { t } = useTranslation();
+  const isCalibratedCandidate = node
+    ? isCandidateAfterCompletedCalibration(dataset, node)
+    : false;
 
   return (
     <aside
@@ -2057,25 +2034,43 @@ function DetailPanel({
           </div>
           {node.candidate ? (
             <section className="project-map-candidate-notice">
-              <h4>{t("projectMap.candidateNotice.title")}</h4>
-              <p>{t("projectMap.candidateNotice.body")}</p>
-              {pendingCandidate ? (
-                <div className="project-map-candidate-actions">
-                  <button
-                    type="button"
-                    className="is-primary"
-                    onClick={() => onConfirmCandidate(pendingCandidate.id)}
-                  >
-                    {t("projectMap.candidateNotice.confirm")}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onRejectCandidate(pendingCandidate.id)}
-                  >
-                    {t("projectMap.candidateNotice.reject")}
-                  </button>
-                </div>
-              ) : null}
+              <h4>
+                {t(
+                  isCalibratedCandidate
+                    ? "projectMap.candidateNotice.calibratedTitle"
+                    : "projectMap.candidateNotice.title",
+                )}
+              </h4>
+              <p>
+                {t(
+                  isCalibratedCandidate
+                    ? "projectMap.candidateNotice.calibratedBody"
+                    : "projectMap.candidateNotice.body",
+                )}
+              </p>
+              <div className="project-map-candidate-actions">
+                <button
+                  type="button"
+                  className="is-primary"
+                  onClick={() =>
+                    pendingCandidate
+                      ? onConfirmCandidate(pendingCandidate.id)
+                      : onConfirmNodeCandidate(node.id)
+                  }
+                >
+                  {t("projectMap.candidateNotice.confirm")}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    pendingCandidate
+                      ? onRejectCandidate(pendingCandidate.id)
+                      : onRejectNodeCandidate(node.id)
+                  }
+                >
+                  {t("projectMap.candidateNotice.reject")}
+                </button>
+              </div>
             </section>
           ) : null}
 

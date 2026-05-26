@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import { mockProjectMapData } from "../mockProjectMapData";
 import type { ProjectMapCandidate } from "../types";
-import { confirmProjectMapCandidate, rejectProjectMapCandidate } from "./candidates";
+import {
+  confirmProjectMapCandidate,
+  confirmProjectMapNodeCandidate,
+  rejectProjectMapCandidate,
+  rejectProjectMapNodeCandidate,
+} from "./candidates";
 
 function candidate(overrides: Partial<ProjectMapCandidate> = {}): ProjectMapCandidate {
   return {
@@ -101,5 +106,39 @@ describe("project map candidates", () => {
     expect(dataset.nodes.find((node) => node.id === "project-core")?.summary).toBe(
       mockProjectMapData.nodes.find((node) => node.id === "project-core")?.summary,
     );
+  });
+
+  it("confirms standalone node candidates when no review candidate record exists", () => {
+    const result = confirmProjectMapNodeCandidate({
+      dataset: mockProjectMapData,
+      nodeId: "risk-taxonomy-drift",
+      confirmedAt: "2026-05-26T01:00:00Z",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const confirmedNode = result.dataset.nodes.find((node) => node.id === "risk-taxonomy-drift");
+      expect(confirmedNode?.candidate).toBe(false);
+      expect(result.dataset.manifest.updatedAt).toBe("2026-05-26T01:00:00Z");
+      expect(
+        result.dataset.manifest.lensStats.find((stats) => stats.lensId === "risk")?.candidateCount,
+      ).toBe(0);
+    }
+  });
+
+  it("rejects standalone node candidates without deleting the node", () => {
+    const result = rejectProjectMapNodeCandidate({
+      dataset: mockProjectMapData,
+      nodeId: "risk-taxonomy-drift",
+      rejectedAt: "2026-05-26T01:00:00Z",
+    });
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      const rejectedNode = result.dataset.nodes.find((node) => node.id === "risk-taxonomy-drift");
+      expect(rejectedNode).toBeTruthy();
+      expect(rejectedNode?.candidate).toBe(false);
+      expect(rejectedNode?.stale).toBe(true);
+    }
   });
 });

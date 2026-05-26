@@ -105,4 +105,21 @@ describe("useAppShellLayoutNodesSection adapter contract", () => {
     expect(layoutNodesOptions).toContain("editorSplitCompanion,");
     expect(layoutNodesOptions).toContain("setEditorSplitCompanion,");
   });
+
+  it("collapses the left conversation sidebar before opening Project Map", () => {
+    const source = readFileSync(
+      join(currentDir, "useAppShellLayoutNodesSection.tsx"),
+      "utf8",
+    );
+    const projectMapHandler = source.slice(
+      source.indexOf("onOpenProjectMap: () => {"),
+      source.indexOf("gitDiffViewStyle,", source.indexOf("onOpenProjectMap: () => {")),
+    );
+
+    expect(projectMapHandler).toContain("closeSettings();");
+    expect(projectMapHandler).toContain("collapseSidebar();");
+    expect(projectMapHandler.indexOf("collapseSidebar();")).toBeLessThan(
+      projectMapHandler.indexOf('setCenterMode("projectMap");'),
+    );
+  });
 });
