@@ -1049,3 +1049,51 @@ CI 中 SettingsView 删除会话测试仍断言旧刷新签名；更新为包含
 ### Next Steps
 
 - None - task complete
+
+
+## Session 587: Project Map 增量生成与交互图谱收口
+
+**Date**: 2026-05-27
+**Task**: Project Map 增量生成与交互图谱收口
+**Branch**: `feature/v0.5.3`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次收口提交：7c855a90 feat(project-map): 收口增量生成与交互图谱
+
+主要内容：
+- 回写 stabilize-project-map-incremental-generation proposal/design/spec/tasks，补齐通用证据路径推断、Codex terminal JSON 提取、校准后仍为候选的产品语义与人工出口。
+- 纳入 improve-project-map-interactive-layout OpenSpec change 与 project-xray-panel 主 spec，交付节点拖拽、multi-select、auto layout、layout preset、mini map 与 viewState 持久化。
+- 实现候选节点无 review record 时的 node-level confirm/reject，确保“任务完成”不再被误解为“候选已确认”。
+
+验证：
+- npm exec vitest -- run src/features/project-map/components/ProjectMapPanel.test.tsx src/features/project-map/hooks/useProjectMapDataset.test.tsx src/features/project-map/services/projectMapGenerationWorker.test.ts src/features/project-map/services/projectMapPersistence.test.ts src/features/project-map/utils/incrementalGeneration.test.ts src/features/project-map/utils/candidates.test.ts src/features/project-map/utils/interactiveLayout.test.ts src/app-shell-parts/useAppShellLayoutNodesSection.test.ts --maxWorkers 1 --minWorkers 1
+- npm run typecheck
+- npm run lint（0 errors；既有 src/features/threads/hooks/useThreadActionsResumeThread.ts:1108 warning 保留）
+- npm run check:large-files
+- git diff --cached --check
+- openspec validate stabilize-project-map-incremental-generation --strict
+- openspec validate improve-project-map-interactive-layout --strict
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7c855a90` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
