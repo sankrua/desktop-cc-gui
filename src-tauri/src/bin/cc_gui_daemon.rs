@@ -18,6 +18,8 @@ mod codex_doctor;
 mod codex_home;
 #[path = "../codex/installer.rs"]
 mod codex_installer;
+#[path = "../codex/launch_profile.rs"]
+mod codex_launch_profile;
 #[path = "../codex/rewind.rs"]
 mod codex_rewind;
 #[path = "../codex/thread_mode_state.rs"]
@@ -121,6 +123,9 @@ mod codex {
     }
     pub(crate) mod home {
         pub(crate) use crate::codex_home::*;
+    }
+    pub(crate) mod launch_profile {
+        pub(crate) use crate::codex_launch_profile::*;
     }
     pub(crate) mod rewind {
         pub(crate) use crate::codex_rewind::*;
@@ -1318,6 +1323,23 @@ async fn handle_rpc_request(
             let codex_bin = parse_optional_string(&params, "codexBin");
             let codex_args = parse_optional_string(&params, "codexArgs");
             state.codex_doctor(codex_bin, codex_args).await
+        }
+        "codex_preview_launch_profile" => {
+            let codex_bin = parse_optional_string(&params, "codexBin");
+            let codex_args = parse_optional_string(&params, "codexArgs");
+            let workspace_id = parse_optional_string(&params, "workspaceId");
+            let use_workspace_draft = params
+                .get("useWorkspaceDraft")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            state
+                .codex_preview_launch_profile(
+                    codex_bin,
+                    codex_args,
+                    workspace_id,
+                    use_workspace_draft,
+                )
+                .await
         }
         "claude_doctor" => {
             let claude_bin = parse_optional_string(&params, "claudeBin");

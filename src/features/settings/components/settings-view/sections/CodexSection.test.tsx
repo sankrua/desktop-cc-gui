@@ -7,14 +7,20 @@ import {
   screen,
   waitFor,
 } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppSettings, CliInstallPlan, CliInstallResult } from "@/types";
-import { getCliInstallPlan, runCliInstaller } from "@/services/tauri";
+import {
+  getCliInstallPlan,
+  previewCodexLaunchProfile,
+  runCliInstaller,
+} from "@/services/tauri";
 import { subscribeCliInstallerEvents } from "@/services/events";
 import { CodexSection } from "./CodexSection";
 
 vi.mock("@/services/tauri", () => ({
   getCliInstallPlan: vi.fn(),
+  previewCodexLaunchProfile: vi.fn(),
   runCliInstaller: vi.fn(),
 }));
 vi.mock("@/services/events", () => ({
@@ -51,13 +57,43 @@ function t(key: string) {
     "settings.cliInstallerWaitingForOutput": "Waiting for installer output...",
     "settings.runDoctor": "Run Doctor",
     "settings.runClaudeDoctor": "Run Claude Doctor",
+    "settings.previewLaunch": "Preview launch",
+    "settings.previewingLaunch": "Previewing launch...",
+    "settings.codexLaunchPreviewTitle": "Launch preview",
+    "settings.codexLaunchPreviewIssueTitle": "Launch preview issue",
+    "settings.codexLaunchResolvedExecutable": "Resolved executable",
+    "settings.codexLaunchWrapperKind": "Wrapper kind",
+    "settings.codexLaunchUserArguments": "User arguments",
+    "settings.codexLaunchInjectedArguments": "Injected arguments",
+    "settings.codexLaunchNoArguments": "No arguments",
+    "settings.codexLaunchNextLaunchOnly": "Next launch only",
+    "settings.codexLaunchExecutableDraft": "draft executable override",
+    "settings.codexLaunchArgumentsDraft": "draft arguments override",
+    "settings.codexWorkspaceSourceLabel": "Source",
+    "settings.codexWorkspaceSelect": "Workspace",
+    "settings.codexWorkspacePath": "Workspace Codex path override",
+    "settings.codexWorkspaceArgs": "Workspace Codex args override",
+    "settings.codexWorkspaceInheritPath": "Inherit global executable",
+    "settings.codexWorkspaceInheritArgs": "Inherit parent or global arguments",
+    "settings.codexWorkspaceExecutableGlobal": "global executable",
+    "settings.codexWorkspaceExecutablePath": "PATH resolution",
+    "settings.codexWorkspaceExecutableOverride": "workspace executable override",
+    "settings.codexWorkspaceArgsGlobal": "global arguments",
+    "settings.codexWorkspaceArgsDefault": "default arguments",
+    "settings.codexWorkspaceArgsOverride": "workspace arguments override",
+    "settings.codexWorkspaceArgsParent": "parent workspace arguments",
+    "settings.codexWorkspaceSave": "Save workspace launch",
+    "settings.codexWorkspaceSaveFailed": "Workspace launch save failed",
     "common.cancel": "Cancel",
   };
   return labels[key] ?? key;
 }
 
-function renderCodexSection(onInstallerDoctorResult = vi.fn()) {
-  render(
+function renderCodexSection(
+  onInstallerDoctorResult = vi.fn(),
+  overrides: Partial<ComponentProps<typeof CodexSection>> = {},
+) {
+  const rendered = render(
     <CodexSection
       active
       t={t}
@@ -87,9 +123,10 @@ function renderCodexSection(onInstallerDoctorResult = vi.fn()) {
       handleCommitRemoteHost={vi.fn()}
       handleCommitRemoteToken={vi.fn()}
       onInstallerDoctorResult={onInstallerDoctorResult}
+      {...overrides}
     />,
   );
-  return { onInstallerDoctorResult };
+  return { onInstallerDoctorResult, ...rendered };
 }
 
 function createPlan(): CliInstallPlan {
@@ -108,6 +145,140 @@ function createPlan(): CliInstallPlan {
 }
 
 describe("CodexSection CLI installer", () => {
+  it("previews global launch configuration without saving", async () => {
+    vi.mocked(previewCodexLaunchProfile).mockResolvedValueOnce({
+      ok: true,
+      scope: "global",
+      workspaceId: null,
+      executableSource: "draft",
+      argumentsSource: "draft",
+      codexBin: "/bin/codex",
+      codexArgs: "--profile demo",
+      resolvedExecutable: "/bin/codex",
+      wrapperKind: "direct",
+      userArguments: ["--profile", "demo"],
+      injectedArguments: ["app-server"],
+      launchArguments: ["--profile", "demo", "app-server"],
+      pathEnvUsed: null,
+      warnings: [],
+      details: null,
+      nextLaunchOnly: true,
+    });
+    renderCodexSection(vi.fn(), {
+      codexPathDraft: "/bin/codex",
+      codexArgsDraft: "--profile demo",
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Preview launch" })[0]);
+
+    await waitFor(() => {
+      expect(previewCodexLaunchProfile).toHaveBeenCalledWith({
+        codexBin: "/bin/codex",
+        codexArgs: "--profile demo",
+        workspaceId: null,
+        useWorkspaceDraft: false,
+      });
+    });
+    expect(await screen.findByText("Launch preview")).not.toBeNull();
+    expect(await screen.findByText("/bin/codex")).not.toBeNull();
+    expect(await screen.findByText(/draft executable override/)).not.toBeNull();
+  });
+
+  it("previews clearing saved global launch overrides before saving", async () => {
+    vi.mocked(previewCodexLaunchProfile).mockResolvedValueOnce({
+      ok: true,
+      scope: "global",
+      workspaceId: null,
+      executableSource: "draft",
+      argumentsSource: "draft",
+      codexBin: null,
+      codexArgs: null,
+      resolvedExecutable: "codex",
+      wrapperKind: "direct",
+      userArguments: [],
+      injectedArguments: ["app-server"],
+      launchArguments: ["app-server"],
+      pathEnvUsed: null,
+      warnings: [],
+      details: null,
+      nextLaunchOnly: true,
+    });
+    renderCodexSection(vi.fn(), {
+      appSettings: {
+        ...baseSettings(),
+        codexBin: "/saved/codex",
+        codexArgs: "--profile saved",
+      },
+      codexPathDraft: "",
+      codexArgsDraft: "",
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Preview launch" })[0]);
+
+    await waitFor(() => {
+      expect(previewCodexLaunchProfile).toHaveBeenCalledWith({
+        codexBin: "",
+        codexArgs: "",
+        workspaceId: null,
+        useWorkspaceDraft: false,
+      });
+    });
+  });
+
+  it("saves workspace launch overrides as next-launch-only settings", async () => {
+    const updateWorkspaceCodexBin = vi.fn().mockResolvedValue(undefined);
+    const updateWorkspaceSettings = vi.fn().mockResolvedValue(undefined);
+    const { container } = renderCodexSection(vi.fn(), {
+      workspaces: [
+        {
+          id: "ws-1",
+          name: "Workspace One",
+          path: "/tmp/ws-1",
+          connected: true,
+          codex_bin: null,
+          settings: { sidebarCollapsed: false, codexArgs: null },
+        },
+      ],
+      activeWorkspace: {
+        id: "ws-1",
+        name: "Workspace One",
+        path: "/tmp/ws-1",
+        connected: true,
+        codex_bin: null,
+        settings: { sidebarCollapsed: false, codexArgs: null },
+      },
+      onUpdateWorkspaceCodexBin: updateWorkspaceCodexBin,
+      onUpdateWorkspaceSettings: updateWorkspaceSettings,
+    });
+    await act(async () => undefined);
+
+    const workspacePathInput = container.querySelector<HTMLInputElement>(
+      "#codex-workspace-path",
+    );
+    expect(workspacePathInput).not.toBeNull();
+    await act(async () => {
+      fireEvent.change(workspacePathInput!, {
+        target: { value: "/workspace/codex" },
+      });
+    });
+    expect(workspacePathInput?.value).toBe("/workspace/codex");
+    const saveButton = Array.from(container.querySelectorAll("button")).find(
+      (button) => button.textContent?.includes("Save workspace launch"),
+    );
+    expect(saveButton).not.toBeUndefined();
+    await act(async () => {
+      fireEvent.click(saveButton!);
+    });
+
+    expect(updateWorkspaceCodexBin).toHaveBeenCalled();
+    expect(updateWorkspaceCodexBin).toHaveBeenCalledWith(
+      "ws-1",
+      "/workspace/codex",
+    );
+    expect(updateWorkspaceSettings).not.toHaveBeenCalled();
+    expect(screen.getAllByText("Next launch only").length).toBeGreaterThan(0);
+  });
+
   it("runs plan-confirm-result flow without raw command input", async () => {
     const plan = createPlan();
     const result: CliInstallResult = {

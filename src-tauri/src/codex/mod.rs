@@ -15,6 +15,7 @@ pub(crate) mod config;
 mod doctor;
 pub(crate) mod home;
 mod installer;
+pub(crate) mod launch_profile;
 mod mcp_config;
 mod model_selection;
 pub(crate) mod rewind;
@@ -258,6 +259,53 @@ pub(crate) async fn codex_doctor(
 
     let settings = state.app_settings.lock().await.clone();
     run_codex_doctor_with_settings(codex_bin, codex_args, &settings).await
+}
+
+#[tauri::command]
+pub(crate) async fn codex_preview_launch_profile(
+    codex_bin: Option<String>,
+    codex_args: Option<String>,
+    workspace_id: Option<String>,
+    use_workspace_draft: Option<bool>,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Value, String> {
+    if remote_backend::is_remote_mode(&*state).await {
+        let codex_bin = codex_bin.map(remote_backend::normalize_path_for_remote);
+        return remote_backend::call_remote(
+            &*state,
+            app,
+            "codex_preview_launch_profile",
+            json!({
+                "codexBin": codex_bin,
+                "codexArgs": codex_args,
+                "workspaceId": workspace_id,
+                "useWorkspaceDraft": use_workspace_draft.unwrap_or(false),
+            }),
+        )
+        .await;
+    }
+
+    let settings = state.app_settings.lock().await.clone();
+    if let Some(workspace_id) = workspace_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+    {
+        let workspaces = state.workspaces.lock().await.clone();
+        return launch_profile::preview_workspace_codex_launch_profile(
+            workspace_id,
+            codex_bin,
+            codex_args,
+            use_workspace_draft.unwrap_or(false),
+            &workspaces,
+            &settings,
+        );
+    }
+
+    Ok(launch_profile::preview_global_codex_launch_profile(
+        codex_bin, codex_args, &settings,
+    ))
 }
 
 pub(crate) fn remote_claude_doctor_request(claude_bin: Option<String>) -> (&'static str, Value) {

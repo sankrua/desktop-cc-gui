@@ -7,6 +7,7 @@ use crate::backend::app_server::{
     build_codex_path_env, check_cli_binary, check_codex_installation, get_cli_debug_info,
     probe_codex_app_server, resolve_codex_launch_context,
 };
+use crate::codex::launch_profile::resolve_global_codex_launch_profile;
 use crate::types::AppSettings;
 
 async fn probe_node_runtime(path_env: Option<&String>) -> (bool, Option<String>, Option<String>) {
@@ -71,16 +72,9 @@ pub(crate) async fn run_codex_doctor_with_settings(
     codex_args: Option<String>,
     settings: &AppSettings,
 ) -> Result<Value, String> {
-    let default_bin = settings.codex_bin.clone();
-    let default_args = settings.codex_args.clone();
-    let resolved = codex_bin
-        .clone()
-        .filter(|value| !value.trim().is_empty())
-        .or(default_bin);
-    let resolved_args = codex_args
-        .clone()
-        .filter(|value| !value.trim().is_empty())
-        .or(default_args);
+    let resolved_profile = resolve_global_codex_launch_profile(codex_bin, codex_args, settings);
+    let resolved = resolved_profile.codex_bin;
+    let resolved_args = resolved_profile.codex_args;
     let path_env = build_codex_path_env(resolved.as_deref());
 
     let debug_info = get_cli_debug_info(resolved.as_deref());

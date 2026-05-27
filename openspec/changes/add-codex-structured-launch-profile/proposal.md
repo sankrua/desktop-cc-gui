@@ -1,3 +1,30 @@
+## 2026-05-28 Implementation Closure
+
+- **Current branch**: `feature/v0.5.4`.
+- **Implementation state**: backend preview contract、doctor resolution alignment、settings global/workspace Launch Configuration UX、daemon/remote passthrough、i18n 与 targeted tests 已落地。
+- **Task state**: 6/7 checked；唯一未完成项是 desktop app manual matrix（3.2），需要人工在真实桌面运行态确认。
+- **Code evidence**:
+  - `src-tauri/src/codex/launch_profile.rs` 新增 `codex_preview_launch_profile` 使用的 shared launch profile resolver。
+  - `src-tauri/src/codex/doctor.rs` 复用 global launch profile resolution，避免 preview 与 doctor 解释链路漂移。
+  - `src/features/settings/components/settings-view/sections/CodexSection.tsx` 提供 global / workspace launch preview、workspace override 保存与 next-launch-only 提示。
+  - `src/services/tauri/doctor.ts`、`src/types.ts`、daemon RPC 和 command registry 接入 additive preview contract。
+- **Validation evidence**:
+  - `git diff --check` passed。
+  - `npm run lint` passed。
+  - `npm run typecheck` passed。
+  - `npm exec vitest run src/features/settings/components/settings-view/sections/CodexSection.test.tsx src/services/tauri.test.ts` passed: 110 tests。
+  - `cargo test --manifest-path src-tauri/Cargo.toml launch_profile --lib` passed: 5 tests。
+  - `openspec validate add-codex-structured-launch-profile --strict --no-interactive` passed。
+- **Manual matrix to execute before archive**:
+  - global 默认未修改时 preview 应显示 PATH/default 来源，且不保存、不重启 runtime。
+  - global path / args 草稿 preview 应显示 draft source、user args 与 injected `app-server`。
+  - 清空已保存 global path / args 后 preview 应回到 PATH/default，并显示 draft source。
+  - invalid args（例如未闭合引号）应返回 preview error，不崩溃、不伪装保存成功。
+  - workspace path / args override 保存后应显示 next-launch-only，当前 connected runtime 不被打断。
+  - worktree 自身未配置 args 时应先显示 parent workspace args，再回退 global/default。
+  - 同一 global 配置下 Preview 与 Run Doctor 的 resolved executable / wrapper kind 语义应一致。
+- **Next action**: 执行 3.2 人工桌面矩阵；通过后可进入 OpenSpec verify / archive。
+
 ## 2026-05-23 Proposal Refresh
 
 - **Current branch**: `feature/v0.5.2`; this refresh is documentation-only and does not change implementation code.

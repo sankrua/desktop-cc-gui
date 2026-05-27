@@ -83,6 +83,7 @@ import {
   archiveWorkspaceSessions,
   unarchiveWorkspaceSessions,
   deleteWorkspaceSessions,
+  previewCodexLaunchProfile,
   runCodexDoctor,
   runClaudeDoctor,
   getCliInstallPlan,
@@ -319,6 +320,25 @@ describe("tauri invoke wrappers", () => {
     expect(invokeMock).toHaveBeenCalledWith("codex_doctor", {
       codexBin: "/bin/codex",
       codexArgs: "--profile demo",
+    });
+  });
+
+  it("invokes codex launch profile preview with workspace draft inputs", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({ ok: true });
+
+    await previewCodexLaunchProfile({
+      codexBin: "/bin/codex",
+      codexArgs: "--profile demo",
+      workspaceId: "ws-1",
+      useWorkspaceDraft: true,
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("codex_preview_launch_profile", {
+      codexBin: "/bin/codex",
+      codexArgs: "--profile demo",
+      workspaceId: "ws-1",
+      useWorkspaceDraft: true,
     });
   });
 

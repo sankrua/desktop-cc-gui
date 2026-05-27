@@ -2253,6 +2253,10 @@ export function SettingsView({
                 setRemoteTokenDraft={setRemoteTokenDraft}
                 handleCommitRemoteHost={handleCommitRemoteHost}
                 handleCommitRemoteToken={handleCommitRemoteToken}
+                workspaces={runtimePanelWorkspaces}
+                activeWorkspace={activeWorkspace}
+                onUpdateWorkspaceCodexBin={onUpdateWorkspaceCodexBin}
+                onUpdateWorkspaceSettings={onUpdateWorkspaceSettings}
                 onInstallerDoctorResult={(engine, result) => {
                   if (!result) {
                     return;

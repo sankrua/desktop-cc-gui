@@ -1038,6 +1038,25 @@ export type CodexDoctorResult = {
   };
 };
 
+export type CodexLaunchProfilePreview = {
+  ok: boolean;
+  scope: "global" | "workspace" | string;
+  workspaceId: string | null;
+  executableSource: string;
+  argumentsSource: string;
+  codexBin: string | null;
+  codexArgs: string | null;
+  resolvedExecutable: string;
+  wrapperKind: string;
+  userArguments: string[];
+  injectedArguments: string[];
+  launchArguments: string[];
+  pathEnvUsed: string | null;
+  warnings: string[];
+  details: string | null;
+  nextLaunchOnly: boolean;
+};
+
 export type CliInstallEngine = "codex" | "claude";
 export type CliInstallAction = "installLatest" | "updateLatest";
 export type CliInstallStrategy = "npmGlobal" | "cliSelfUpdate";

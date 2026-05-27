@@ -443,6 +443,36 @@ impl DaemonState {
         crate::codex::run_codex_doctor_with_settings(codex_bin, codex_args, &settings).await
     }
 
+    pub(super) async fn codex_preview_launch_profile(
+        &self,
+        codex_bin: Option<String>,
+        codex_args: Option<String>,
+        workspace_id: Option<String>,
+        use_workspace_draft: bool,
+    ) -> Result<Value, String> {
+        let settings = self.app_settings.lock().await.clone();
+        if let Some(workspace_id) = workspace_id
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            let workspaces = self.workspaces.lock().await.clone();
+            return crate::codex::launch_profile::preview_workspace_codex_launch_profile(
+                workspace_id,
+                codex_bin,
+                codex_args,
+                use_workspace_draft,
+                &workspaces,
+                &settings,
+            );
+        }
+        Ok(
+            crate::codex::launch_profile::preview_global_codex_launch_profile(
+                codex_bin, codex_args, &settings,
+            ),
+        )
+    }
+
     pub(super) async fn claude_doctor(&self, claude_bin: Option<String>) -> Result<Value, String> {
         let settings = self.app_settings.lock().await.clone();
         crate::codex::run_claude_doctor_with_settings(claude_bin, &settings).await

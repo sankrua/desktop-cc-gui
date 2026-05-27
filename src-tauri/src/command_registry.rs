@@ -103,6 +103,7 @@ pub(crate) fn invoke_handler(
         // Codex
         crate::codex::get_config_model,
         crate::codex::codex_doctor,
+        crate::codex::codex_preview_launch_profile,
         crate::codex::claude_doctor,
         crate::codex::cli_install_plan,
         crate::codex::cli_install_run,
