@@ -1,10 +1,11 @@
 // @ts-nocheck
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ask } from "@tauri-apps/plugin-dialog";
 import { useLayoutNodes } from "../features/layout/hooks/useLayoutNodes";
 import { MainHeaderActions } from "../features/app/components/MainHeaderActions";
 import { WorkspaceAliasPrompt } from "../features/workspaces/components/WorkspaceAliasPrompt";
 import { useClientUiVisibility } from "../features/client-ui-visibility/hooks/useClientUiVisibility";
+import { useProjectMapDataset } from "../features/project-map";
 import { normalizeSharedSessionEngine } from "../features/shared-session/utils/sharedSessionEngines";
 import {
   recoverThreadBindingAndResendForManualRecovery,
@@ -41,6 +42,17 @@ function formatWorkspaceAliasError(error: unknown) {
 
 function reportMainFileExternalChangeMonitorCleanupError(error: unknown) {
   console.warn("[files] Failed to clear main file external change monitor", error);
+}
+
+function resolveProjectMapSelectedGenerationModel(selectedModelId: string | null, models: any[]): string | null {
+  const trimmedSelection = selectedModelId?.trim() ?? "";
+  if (!trimmedSelection) {
+    return null;
+  }
+  const matchedModel = models?.find(
+    (model) => model.id === trimmedSelection || model.model === trimmedSelection,
+  );
+  return matchedModel?.model ?? trimmedSelection;
 }
 
 export function useAppShellLayoutNodesSection(ctx: any) {
@@ -181,6 +193,16 @@ export function useAppShellLayoutNodesSection(ctx: any) {
     appSettings.detachedExternalChangeAwarenessEnabled !== false;
   const mainFileExternalChangeWatcherEnabled =
     appSettings.detachedExternalChangeWatcherEnabled !== false;
+  const projectMapGenerationModel = useMemo(
+    () => resolveProjectMapSelectedGenerationModel(effectiveSelectedModelId, effectiveModels),
+    [effectiveModels, effectiveSelectedModelId],
+  );
+  const projectMapDatasetController = useProjectMapDataset(activeWorkspace ?? null, {
+    generationDefaults: {
+      engine: activeEngine ?? null,
+      model: projectMapGenerationModel,
+    },
+  });
   const activeWorkspaceExternalChangeId = activeWorkspace?.id ?? activeWorkspaceId ?? null;
   const activeWorkspaceExternalChangePath = activeWorkspace?.path ?? null;
   const enableMainFileExternalChangeMonitoring =
@@ -956,6 +978,7 @@ export function useAppShellLayoutNodesSection(ctx: any) {
     onSelectEngine: handleSelectConversationEngine,
     models: effectiveModels,
     selectedModelId: effectiveSelectedModelId,
+    projectMapDatasetController,
     onSelectModel: handleSelectModel,
     reasoningOptions,
     selectedEffort,

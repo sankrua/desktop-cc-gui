@@ -36,6 +36,7 @@ import {
   normalizeEngineType,
   useProjectMapGenerationOptions,
 } from "../hooks/useProjectMapGenerationOptions";
+import type { ProjectMapDatasetController } from "../hooks/useProjectMapDataset";
 import {
   PROJECT_MAP_DEFAULT_FOCUS_ZOOM,
   PROJECT_MAP_DEFAULT_OVERVIEW_ZOOM,
@@ -92,6 +93,7 @@ type ProjectMapPanelProps = {
   selectedModelId?: string | null;
   models?: ModelOption[];
   dataset?: ProjectMapDataset;
+  datasetController?: ProjectMapDatasetController;
   onOpenEvidenceFile?: (path: string, location?: { line: number; column: number }) => void;
 };
 
@@ -285,6 +287,7 @@ export function ProjectMapPanel({
   selectedModelId = null,
   models,
   dataset: controlledDataset,
+  datasetController: providedDatasetController,
   onOpenEvidenceFile,
 }: ProjectMapPanelProps) {
   const { t } = useTranslation();
@@ -299,10 +302,11 @@ export function ProjectMapPanel({
     }),
     [selectedEngine, selectedGenerationModel],
   );
-  const datasetController = useProjectMapDataset(
-    controlledDataset ? null : activeWorkspace,
+  const internalDatasetController = useProjectMapDataset(
+    controlledDataset || providedDatasetController ? null : activeWorkspace,
     { generationDefaults },
   );
+  const datasetController = providedDatasetController ?? internalDatasetController;
   const dataset = controlledDataset ?? datasetController.dataset;
   const nodeIndex = useMemo(() => buildProjectMapNodeIndex(dataset.nodes), [dataset.nodes]);
   const visibleLenses = useMemo(() => getVisibleProjectMapLenses(dataset), [dataset]);

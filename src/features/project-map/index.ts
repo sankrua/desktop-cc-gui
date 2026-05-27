@@ -1,5 +1,9 @@
 export { ProjectMapPanel } from "./components/ProjectMapPanel";
 export {
+  __resetProjectMapWorkerClaimsForTests,
+  useProjectMapDataset,
+} from "./hooks/useProjectMapDataset";
+export {
   buildDatasetFromProjectMapRead,
   readProjectMapDataset,
   serializeProjectMapDataset,
@@ -38,3 +42,7 @@ export type {
   ProjectMapRunMetadata,
   ProjectMapSource,
 } from "./types";
+export type {
+  ProjectMapDatasetController,
+  ProjectMapGenerationDefaults,
+} from "./hooks/useProjectMapDataset";

@@ -20,7 +20,7 @@ import {
 import { WorkspaceSearchPanel } from "../../search/components/WorkspaceSearchPanel";
 import { PromptPanel } from "../../prompts/components/PromptPanel";
 import { ProjectMemoryPanel } from "../../project-memory/components/ProjectMemoryPanel";
-import { ProjectMapPanel } from "../../project-map";
+import { ProjectMapPanel, type ProjectMapDatasetController } from "../../project-map";
 import { WorkspaceNoteCardPanel } from "../../note-cards/components/WorkspaceNoteCardPanel";
 import { WorkspaceSessionActivityPanel } from "../../session-activity/components/WorkspaceSessionActivityPanel";
 import { WorkspaceSessionRadarPanel } from "../../session-activity/components/WorkspaceSessionRadarPanel";
@@ -684,6 +684,7 @@ type LayoutNodesOptions = {
   // Model props
   models: ModelOption[];
   selectedModelId: string | null;
+  projectMapDatasetController?: ProjectMapDatasetController;
   onSelectModel: (id: string | null) => void;
   reasoningOptions: string[];
   selectedEffort: string | null;
@@ -2388,6 +2389,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       selectedEngine={options.selectedEngine ?? null}
       selectedModelId={options.selectedModelId}
       models={options.models}
+      datasetController={options.projectMapDatasetController}
       onOpenEvidenceFile={handleOpenProjectMapEvidenceFile}
     />
   );

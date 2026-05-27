@@ -4,6 +4,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { mockProjectMapData } from "../mockProjectMapData";
+import type { ProjectMapDatasetController } from "../hooks/useProjectMapDataset";
 import type { ProjectMapDataset, ProjectMapNode, ProjectMapRunMetadata } from "../types";
 import { ProjectMapPanel } from "./ProjectMapPanel";
 
@@ -15,6 +16,35 @@ function renderMockProjectMapPanel(
 
 function expandCanvasControls() {
   fireEvent.click(screen.getByRole("button", { name: "projectMap.expandCanvasControls" }));
+}
+
+function createDatasetControllerMock(
+  overrides: Partial<ProjectMapDatasetController> = {},
+): ProjectMapDatasetController {
+  return {
+    dataset: mockProjectMapData,
+    status: "persisted",
+    storageDir: "/repo/mossx/.ccgui/project-map/mossx-test",
+    activeReadLocation: "global",
+    error: null,
+    pendingRequest: null,
+    reload: vi.fn(async () => undefined),
+    switchReadLocation: vi.fn(),
+    openGlobalCollection: vi.fn(),
+    openNodeGeneration: vi.fn(),
+    openRefreshEvidence: vi.fn(),
+    closeGenerationRequest: vi.fn(),
+    confirmGenerationRequest: vi.fn(async () => undefined),
+    cancelGenerationRun: vi.fn(async () => undefined),
+    clearFinishedRuns: vi.fn(async () => undefined),
+    confirmCandidate: vi.fn(async () => true),
+    rejectCandidate: vi.fn(async () => true),
+    confirmNodeCandidate: vi.fn(async () => true),
+    rejectNodeCandidate: vi.fn(async () => true),
+    deleteNode: vi.fn(async () => true),
+    updateDataset: vi.fn(async () => undefined),
+    ...overrides,
+  };
 }
 
 beforeEach(() => {
@@ -174,6 +204,26 @@ describe("ProjectMapPanel", () => {
       }),
     ).toBeTruthy();
     expect(view.container.querySelector("textarea, [contenteditable='true']")).toBeNull();
+  });
+
+  it("uses a provided dataset controller for Project Map actions", () => {
+    const openNodeGeneration = vi.fn();
+    const datasetController = createDatasetControllerMock({ openNodeGeneration });
+
+    render(
+      <ProjectMapPanel
+        workspaceName="mossx"
+        dataset={mockProjectMapData}
+        datasetController={datasetController}
+      />,
+    );
+
+    fireEvent.click(within(screen.getByLabelText("projectMap.detailPanel")).getByText("projectMap.completeNode"));
+
+    expect(openNodeGeneration).toHaveBeenCalledWith(
+      "node",
+      expect.objectContaining({ id: "project-core" }),
+    );
   });
 
   it("collapses the project map chrome into a compact header", () => {
