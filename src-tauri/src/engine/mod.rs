@@ -34,6 +34,7 @@ pub(crate) mod remote_bridge;
 pub mod rewind_commands;
 pub mod session_history_commands;
 pub mod status;
+pub mod task_output;
 
 // Re-exports for convenience
 pub use commands::*;
@@ -41,6 +42,7 @@ pub use manager::EngineManager;
 pub use rewind_commands::*;
 pub use session_history_commands::*;
 pub use status::resolve_engine_type;
+pub use task_output::*;
 
 /// Supported engine types
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

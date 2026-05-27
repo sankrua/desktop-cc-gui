@@ -2,11 +2,15 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ApprovalRequest, ConversationItem } from "../../../types";
-import { hydrateClaudeDeferredImage } from "../../../services/tauri";
+import {
+  hydrateClaudeDeferredImage,
+  readEngineTaskOutputArtifact,
+} from "../../../services/tauri";
 import { Messages } from "./Messages";
 
 vi.mock("../../../services/tauri", () => ({
   hydrateClaudeDeferredImage: vi.fn(),
+  readEngineTaskOutputArtifact: vi.fn(),
 }));
 
 describe("Messages rich content", () => {
@@ -16,6 +20,10 @@ describe("Messages rich content", () => {
 
   beforeEach(() => {
     vi.mocked(hydrateClaudeDeferredImage).mockReset();
+    vi.mocked(readEngineTaskOutputArtifact).mockReset();
+    vi.mocked(readEngineTaskOutputArtifact).mockImplementation(
+      () => new Promise(() => {}),
+    );
     window.localStorage.setItem("ccgui.claude.hideReasoningModule", "0");
     window.localStorage.removeItem("ccgui.messages.live.autoFollow");
     window.localStorage.removeItem("ccgui.messages.live.collapseMiddleSteps");
@@ -389,6 +397,10 @@ describe("Messages rich content", () => {
     expect(screen.getByText("completed")).toBeTruthy();
     expect(container.textContent ?? "").not.toContain("<task-notification>");
     expect(container.textContent ?? "").toContain("让我系统地读取项目的核心文件。");
+
+    fireEvent.click(screen.getByRole("button", { name: "engineTaskOutput.inspect" }));
+    expect(screen.getByLabelText("engineTaskOutput.label")).toBeTruthy();
+    expect(screen.getAllByText("task ae242051e14492047").length).toBeGreaterThan(1);
   });
 
   it("shows only the current thread approval when sibling thread ids differ", () => {

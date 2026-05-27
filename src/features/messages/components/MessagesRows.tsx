@@ -17,6 +17,13 @@ import {
   type StreamMitigationProfile,
 } from "../../threads/utils/streamLatencyDiagnostics";
 import { ProxyStatusBadge } from "../../../components/ProxyStatusBadge";
+import { EngineTaskOutputInspector } from "../../engine-task-output/components/EngineTaskOutputInspector";
+import { useEngineTaskOutputSnapshot } from "../../engine-task-output/hooks/useEngineTaskOutputSnapshot";
+import type { EngineTaskOutputSnapshot } from "../../engine-task-output/types";
+import {
+  buildEngineTaskOutputSnapshot,
+  buildTaskOutputSourceFromNotification,
+} from "../../engine-task-output/utils/engineTaskOutputProjection";
 import { languageFromPath } from "../../../utils/syntax";
 import type { PresentationProfile } from "../presentation/presentationProfile";
 import { parseAgentTaskNotification } from "../utils/agentTaskNotification";
@@ -798,6 +805,12 @@ export const MessageRow = memo(function MessageRow({
   const [memorySummaryExpanded, setMemorySummaryExpanded] = useState(false);
   const [memoryPayloadDialogOpen, setMemoryPayloadDialogOpen] = useState(false);
   const [isAgentBadgeExpanded, setIsAgentBadgeExpanded] = useState(false);
+  const [inspectedTaskOutput, setInspectedTaskOutput] =
+    useState<EngineTaskOutputSnapshot | null>(null);
+  const inspectedTaskOutputState = useEngineTaskOutputSnapshot({
+    workspaceId,
+    snapshot: inspectedTaskOutput,
+  });
   useEffect(() => {
     if (!memoryPayloadDialogOpen) {
       return undefined;
@@ -899,9 +912,26 @@ export const MessageRow = memo(function MessageRow({
       outputFileName: basenameFromPath(agentTaskNotification.outputFile),
     };
   }, [agentTaskNotification]);
+  const agentTaskOutputSnapshot = useMemo(() => {
+    if (!agentTaskNotification || !agentTaskDisplay) {
+      return null;
+    }
+    return buildEngineTaskOutputSnapshot(
+      buildTaskOutputSourceFromNotification({
+        itemId: item.id,
+        engine: activeEngine,
+        title: agentTaskDisplay.title,
+        notification: agentTaskNotification,
+      }),
+      null,
+    );
+  }, [activeEngine, agentTaskDisplay, agentTaskNotification, item.id]);
   useEffect(() => {
     setIsAgentBadgeExpanded(false);
   }, [item.id, selectedAgentIcon, selectedAgentName]);
+  useEffect(() => {
+    setInspectedTaskOutput(null);
+  }, [item.id]);
   const handleToggleAgentBadge = useCallback(() => {
     setIsAgentBadgeExpanded((current) => !current);
   }, []);
@@ -1186,6 +1216,25 @@ export const MessageRow = memo(function MessageRow({
               <span className="message-agent-task-chip">{agentTaskDisplay.outputFileName}</span>
             ) : null}
           </div>
+          {agentTaskOutputSnapshot ? (
+            <button
+              type="button"
+              className="engine-task-output-card-action"
+              onClick={() => setInspectedTaskOutput(agentTaskOutputSnapshot)}
+            >
+              {t("engineTaskOutput.inspect")}
+            </button>
+          ) : null}
+          {inspectedTaskOutput ? (
+            <div className="engine-task-output-inline">
+              <EngineTaskOutputInspector
+                snapshot={inspectedTaskOutputState.snapshot ?? inspectedTaskOutput}
+                refreshState={inspectedTaskOutputState.refreshState}
+                onRefresh={inspectedTaskOutputState.refresh}
+                onClose={() => setInspectedTaskOutput(null)}
+              />
+            </div>
+          ) : null}
         </div>
       ) : null}
       {imageItems.length > 0 && (

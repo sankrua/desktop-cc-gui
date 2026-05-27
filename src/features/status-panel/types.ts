@@ -1,4 +1,5 @@
 import type { PolicyDecision } from "./utils/policies";
+import type { EngineTaskOutputSource } from "../engine-task-output/types";
 
 export type SubagentNavigationTarget =
   | {
@@ -23,6 +24,7 @@ export interface SubagentInfo {
   description: string;
   status: "running" | "completed" | "error";
   navigationTarget?: SubagentNavigationTarget | null;
+  taskOutput?: EngineTaskOutputSource | null;
 }
 
 export interface FileChangeSummary {

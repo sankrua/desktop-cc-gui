@@ -3,11 +3,13 @@ import { useTranslation } from "react-i18next";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import CheckCircle2 from "lucide-react/dist/esm/icons/check-circle-2";
 import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import FileSearch from "lucide-react/dist/esm/icons/file-search";
 import type { SubagentInfo } from "../types";
 
 interface SubagentListProps {
   subagents: SubagentInfo[];
   onSelectSubagent?: (agent: SubagentInfo) => void;
+  onInspectSubagent?: (agent: SubagentInfo) => void;
 }
 
 const STATUS_ICON = {
@@ -19,6 +21,7 @@ const STATUS_ICON = {
 export const SubagentList = memo(function SubagentList({
   subagents,
   onSelectSubagent,
+  onInspectSubagent,
 }: SubagentListProps) {
   const { t } = useTranslation();
   if (subagents.length === 0) {
@@ -29,6 +32,7 @@ export const SubagentList = memo(function SubagentList({
       {subagents.map((agent) => {
         const Icon = STATUS_ICON[agent.status] ?? Loader2;
         const isInteractive = Boolean(agent.navigationTarget && onSelectSubagent);
+        const canInspect = Boolean(agent.taskOutput && onInspectSubagent);
         const className = `sp-subagent-item sp-subagent-${agent.status}${
           isInteractive ? " is-clickable" : ""
         }`;
@@ -44,23 +48,32 @@ export const SubagentList = memo(function SubagentList({
           </>
         );
         return (
-          isInteractive ? (
-            <button
-              key={agent.id}
-              type="button"
-              className={className}
-              onClick={() => onSelectSubagent?.(agent)}
-            >
-              {content}
-            </button>
-          ) : (
-            <div
-              key={agent.id}
-              className={className}
-            >
-              {content}
+          <div key={agent.id} className={className}>
+            {isInteractive ? (
+              <button
+                type="button"
+                className="sp-subagent-main"
+                onClick={() => onSelectSubagent?.(agent)}
+              >
+                {content}
+              </button>
+            ) : (
+              <div className="sp-subagent-main">{content}</div>
+            )}
+            <div className="sp-subagent-actions">
+              {canInspect ? (
+                <button
+                  type="button"
+                  className="sp-subagent-inspect"
+                  onClick={() => onInspectSubagent?.(agent)}
+                  aria-label={t("engineTaskOutput.inspect")}
+                  title={t("engineTaskOutput.inspect")}
+                >
+                  <FileSearch size={14} aria-hidden />
+                </button>
+              ) : null}
             </div>
-          )
+          </div>
         );
       })}
     </div>

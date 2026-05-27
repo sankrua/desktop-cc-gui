@@ -1418,6 +1418,13 @@ export type DetachedExternalChangeMonitorStatus = {
   fallbackReason?: string | null;
 };
 
+export type EngineTaskOutputArtifactTailResponse = {
+  exists: boolean;
+  content: string;
+  truncated: boolean;
+  byteLength: number;
+};
+
 export async function getWorkspaceFiles(workspaceId: string) {
   return traceStartupInvoke("list_workspace_files", workspaceScope(workspaceId), () =>
     invoke<WorkspaceFilesResponse>("list_workspace_files", {
@@ -1488,6 +1495,16 @@ export async function readExternalAbsoluteFile(workspaceId: string, path: string
   return invoke<{ content: string; truncated: boolean }>("read_external_absolute_file", {
     workspaceId,
     path,
+  });
+}
+
+export async function readEngineTaskOutputArtifact(input: {
+  workspaceId: string;
+  path: string;
+}): Promise<EngineTaskOutputArtifactTailResponse> {
+  return invoke<EngineTaskOutputArtifactTailResponse>("engine_task_output_read_artifact", {
+    workspaceId: input.workspaceId,
+    path: input.path,
   });
 }
 

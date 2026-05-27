@@ -874,6 +874,14 @@ async fn handle_rpc_request(
                 .await?;
             serde_json::to_value(response).map_err(|err| err.to_string())
         }
+        "engine_task_output_read_artifact" => {
+            let workspace_id = parse_string(&params, "workspaceId")?;
+            let path = parse_string(&params, "path")?;
+            let response = state
+                .read_engine_task_output_artifact(workspace_id, path)
+                .await?;
+            serde_json::to_value(response).map_err(|err| err.to_string())
+        }
         "write_external_spec_file" => {
             let workspace_id = parse_string(&params, "workspaceId")?;
             let spec_root = parse_string(&params, "specRoot")?;

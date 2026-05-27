@@ -2424,7 +2424,11 @@ describe("StatusPanel", () => {
     );
 
     fireEvent.click(screen.getByText("statusPanel.tabAgents"));
-    fireEvent.click(screen.getByText("Audit current panel"));
+    fireEvent.click(screen.getByRole("button", { name: "engineTaskOutput.inspect" }));
+    expect(screen.getByLabelText("engineTaskOutput.label")).toBeTruthy();
+    expect(screen.getByText("thread agent-7")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByText("Audit current panel")[0]);
 
     expect(onSelectSubagent).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -2449,7 +2453,11 @@ describe("StatusPanel", () => {
     );
 
     fireEvent.click(screen.getByText("statusPanel.tabSubagents"));
-    fireEvent.click(screen.getByText("Bug诊断与性能安全审查"));
+    fireEvent.click(screen.getByRole("button", { name: "engineTaskOutput.inspect" }));
+    expect(screen.getByLabelText("engineTaskOutput.label")).toBeTruthy();
+    expect(screen.getByText("task af452b1b615f93a9e")).toBeTruthy();
+
+    fireEvent.click(screen.getAllByText("Bug诊断与性能安全审查")[0]);
 
     expect(onSelectSubagent).toHaveBeenCalledWith(
       expect.objectContaining({

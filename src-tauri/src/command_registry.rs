@@ -94,6 +94,7 @@ pub(crate) fn invoke_handler(
         crate::engine::fork_claude_session,
         crate::engine::fork_claude_session_from_message,
         crate::engine::delete_claude_session,
+        crate::engine::engine_task_output_read_artifact,
         crate::engine::list_gemini_sessions,
         crate::engine::load_gemini_session,
         crate::engine::delete_gemini_session,

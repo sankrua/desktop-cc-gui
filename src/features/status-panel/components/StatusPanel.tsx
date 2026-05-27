@@ -40,6 +40,10 @@ import { resolveUserConversationTimeline } from "../utils/userConversationTimeli
 import { CostBudgetSection } from "./CostBudgetSection";
 import { GovernanceEvidenceSection } from "./GovernanceEvidenceSection";
 import { projectCostRecord } from "../../context-ledger/cost-budget";
+import { EngineTaskOutputInspector } from "../../engine-task-output/components/EngineTaskOutputInspector";
+import { useEngineTaskOutputSnapshot } from "../../engine-task-output/hooks/useEngineTaskOutputSnapshot";
+import type { EngineTaskOutputSnapshot } from "../../engine-task-output/types";
+import { buildEngineTaskOutputSnapshot } from "../../engine-task-output/utils/engineTaskOutputProjection";
 
 interface StatusPanelProps extends CodeAnnotationBridgeProps {
   workspaceId?: string | null;
@@ -344,6 +348,12 @@ export const StatusPanel = memo(function StatusPanel({
       dockTabAvailability,
     ),
   );
+  const [inspectedTaskOutput, setInspectedTaskOutput] =
+    useState<EngineTaskOutputSnapshot | null>(null);
+  const inspectedTaskOutputState = useEngineTaskOutputSnapshot({
+    workspaceId,
+    snapshot: inspectedTaskOutput,
+  });
 
   useEffect(() => {
     if (variant !== "popover" || !openTab) return;
@@ -704,15 +714,35 @@ export const StatusPanel = memo(function StatusPanel({
         <TodoList todos={usePlanAsTaskList ? codexTaskItems : todos} />
       )}
       {activeTab === "subagent" && (
-        <SubagentList
-          subagents={subagents}
-          onSelectSubagent={(agent) => {
-            onSelectSubagent?.(agent);
-            if (variant !== "dock") {
-              setOpenTab(null);
-            }
-          }}
-        />
+        <>
+          <SubagentList
+            subagents={subagents}
+            onSelectSubagent={(agent) => {
+              onSelectSubagent?.(agent);
+              if (variant !== "dock") {
+                setOpenTab(null);
+              }
+            }}
+            onInspectSubagent={(agent) => {
+              if (!agent.taskOutput) {
+                return;
+              }
+              setInspectedTaskOutput(
+                buildEngineTaskOutputSnapshot(agent.taskOutput, activeTokenUsage),
+              );
+            }}
+          />
+          {inspectedTaskOutput ? (
+            <div className="sp-subagent-output">
+              <EngineTaskOutputInspector
+                snapshot={inspectedTaskOutputState.snapshot ?? inspectedTaskOutput}
+                refreshState={inspectedTaskOutputState.refreshState}
+                onRefresh={inspectedTaskOutputState.refresh}
+                onClose={() => setInspectedTaskOutput(null)}
+              />
+            </div>
+          ) : null}
+        </>
       )}
       {activeTab === "checkpoint" && (
         <>

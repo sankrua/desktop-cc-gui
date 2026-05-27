@@ -662,7 +662,7 @@
 .sp-subagent-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   width: 100%;
   padding: 6px 8px;
   border: none;
@@ -678,10 +678,28 @@
 }
 
 .sp-subagent-item.is-clickable {
+  cursor: default;
+}
+
+.sp-subagent-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  padding: 0;
+}
+
+button.sp-subagent-main {
   cursor: pointer;
 }
 
-.sp-subagent-item.is-clickable:focus-visible {
+button.sp-subagent-main:focus-visible,
+.sp-subagent-item.is-clickable:focus-within {
   outline: 1px solid
     color-mix(in srgb, var(--accent-color, #61afef) 72%, white 12%);
   outline-offset: -1px;

@@ -179,6 +179,8 @@ export function useStatusPanelData(
             : undefined;
         const taskDescription = extractTaskDescription(args, item);
         const taskType = extractTaskType(args, toolName);
+        const taskId = resolveTaskLikeTaskId(args);
+        const toolOutput = getToolOutput(item) ?? null;
         const subagentId =
           scopedToolEntries.rootThreadId && threadId !== scopedToolEntries.rootThreadId
             ? threadId
@@ -193,6 +195,22 @@ export function useStatusPanelData(
           description: taskDescription,
           status: threadScopedStatus ?? taskStatus,
           statusPriority: threadScopedStatus ? 5 : 2,
+          taskOutput: {
+            id: subagentId,
+            engine: isCodexEngine ? "codex" : "claude",
+            title: taskType,
+            description: taskDescription,
+            status: mapSubagentStatusToTaskOutputStatus(threadScopedStatus ?? taskStatus),
+            taskId,
+            toolUseId: item.id,
+            threadId:
+              scopedToolEntries.rootThreadId && threadId !== scopedToolEntries.rootThreadId
+                ? threadId
+                : null,
+            outputFileName: extractOutputFileName(args),
+            outputFilePath: extractOutputFilePath(args),
+            recentOutput: toolOutput,
+          },
           navigationTarget:
             scopedToolEntries.rootThreadId && threadId !== scopedToolEntries.rootThreadId
               ? { kind: "thread", threadId }
@@ -249,6 +267,18 @@ export function useStatusPanelData(
                   collabActionName === "close agent"
                 ? 3
                 : 1,
+          taskOutput: {
+            id: agentId,
+            engine: "codex",
+            title: agentId,
+            description: collabDescription,
+            status: mapSubagentStatusToTaskOutputStatus(resolvedStatus),
+            taskId: null,
+            toolUseId: item.id,
+            threadId: agentId,
+            outputFileName: null,
+            recentOutput: collabDescription || getToolOutput(item) || null,
+          },
           navigationTarget: { kind: "thread", threadId: agentId },
         });
       });
@@ -265,6 +295,7 @@ export function useStatusPanelData(
       });
   }, [
     itemsByThread,
+    isCodexEngine,
     scopedToolEntries,
     threadStatusById,
   ]);
@@ -543,6 +574,35 @@ function resolveTaskLikeTaskId(args: Record<string, unknown> | null) {
   return normalized.length > 0 ? normalized : null;
 }
 
+function mapSubagentStatusToTaskOutputStatus(status: SubagentInfo["status"]) {
+  if (status === "error") {
+    return "error";
+  }
+  if (status === "completed") {
+    return "completed";
+  }
+  return "running";
+}
+
+function extractOutputFileName(args: Record<string, unknown> | null) {
+  const normalized = extractOutputFilePath(args);
+  if (!normalized) {
+    return null;
+  }
+  return normalized.replace(/\\/g, "/").split("/").filter(Boolean).pop() ?? normalized;
+}
+
+function extractOutputFilePath(args: Record<string, unknown> | null) {
+  const rawOutputFile =
+    typeof args?.output_file === "string"
+      ? args.output_file
+      : typeof args?.outputFile === "string"
+        ? args.outputFile
+        : "";
+  const normalized = rawOutputFile.trim();
+  return normalized.length > 0 ? normalized : null;
+}
+
 function extractCollabActionName(title: string) {
   const matched = title.match(/^Collab:\s*(.+)$/i);
   return (matched?.[1] ?? "")
@@ -753,10 +813,33 @@ function upsertSubagent(
       existing.navigationTarget,
       next.navigationTarget,
     ),
+    taskOutput: choosePreferredTaskOutput(existing.taskOutput, next.taskOutput),
     status:
       next.statusPriority >= existing.statusPriority ? next.status : existing.status,
     statusPriority: Math.max(existing.statusPriority, next.statusPriority),
   });
+}
+
+function choosePreferredTaskOutput(
+  current: SubagentInfo["taskOutput"],
+  next: SubagentInfo["taskOutput"],
+) {
+  if (!current) {
+    return next ?? null;
+  }
+  if (!next) {
+    return current;
+  }
+  if (next.recentOutput && !current.recentOutput) {
+    return next;
+  }
+  if (next.threadId && !current.threadId) {
+    return next;
+  }
+  if (next.taskId && !current.taskId) {
+    return next;
+  }
+  return current;
 }
 
 function choosePreferredNavigationTarget(

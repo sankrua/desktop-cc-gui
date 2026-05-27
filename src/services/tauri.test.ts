@@ -91,6 +91,7 @@ import {
   switchEngine,
   readExternalSpecFile,
   readExternalAbsoluteFile,
+  readEngineTaskOutputArtifact,
   resolveFilePreviewHandle,
   writeExternalSpecFile,
   writeExternalAbsoluteFile,
@@ -1415,6 +1416,27 @@ describe("tauri invoke wrappers", () => {
       workspaceId: "ws-41",
       path: "/Users/demo/.codex/skills/openspec-apply-change/SKILL.md",
     });
+  });
+
+  it("maps task output artifact tail payload", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({
+      exists: true,
+      content: "progress",
+      truncated: false,
+      byteLength: 8,
+    });
+
+    const response = await readEngineTaskOutputArtifact({
+      workspaceId: "ws-41",
+      path: "/tmp/tasks/task.output",
+    });
+
+    expect(invokeMock).toHaveBeenCalledWith("engine_task_output_read_artifact", {
+      workspaceId: "ws-41",
+      path: "/tmp/tasks/task.output",
+    });
+    expect(response.content).toBe("progress");
   });
 
   it("maps file preview handle payload", async () => {
