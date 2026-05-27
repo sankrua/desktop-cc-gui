@@ -795,6 +795,7 @@ describe("Sidebar workspace session folders", () => {
       />,
     );
 
+    await screen.findByRole("treeitem", { name: "Planning" });
     const parentRow = await screen.findByText("Parent session");
     await act(async () => {
       fireEvent.contextMenu(parentRow.closest(".thread-row") as HTMLElement);
