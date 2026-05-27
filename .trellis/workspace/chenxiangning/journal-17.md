@@ -157,3 +157,57 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 610: 收口 Codex 启动配置预览
+
+**Date**: 2026-05-28
+**Task**: 收口 Codex 启动配置预览
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## 本次完成
+
+- 实现 Codex Launch Configuration phase 1：global / workspace executable 与 arguments 的 preview、保存提示和继承来源展示。
+- 新增 backend `codex_preview_launch_profile` 解析链路，复用现有 `codexBin`、`codexArgs`、workspace `codex_bin`、workspace `settings.codexArgs` 与 worktree parent args precedence。
+- 让 Codex doctor 复用 global launch profile resolver，降低 preview 与 doctor 解释漂移。
+- 接入 Tauri command、daemon RPC、frontend service/type、Settings UI 与中英文 i18n。
+- 回写 OpenSpec proposal，记录 implementation closure、自动化验证结果和待人工执行的桌面回测矩阵。
+
+## 验证
+
+- `git diff --check` passed。
+- `npm run lint` passed。
+- `npm run typecheck` passed。
+- `npm exec vitest run src/features/settings/components/settings-view/sections/CodexSection.test.tsx src/services/tauri.test.ts` passed: 110 tests。
+- `cargo test --manifest-path src-tauri/Cargo.toml launch_profile --lib` passed: 5 tests。
+- `openspec validate add-codex-structured-launch-profile --strict --no-interactive` passed。
+
+## 后续
+
+- OpenSpec 3.2 仍保持未完成：需要在真实桌面环境执行人工矩阵，重点覆盖 global 清空草稿、workspace args override、worktree parent inherit、保存不打断当前 runtime、preview/doctor 一致性。
+- 当前工作区仍有一组未提交的 `project-map` 相关变更和 `openspec/changes/stabilize-project-map-for-v0-5-4/`，本次 commit 未包含这些文件。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5ec3c7cc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
