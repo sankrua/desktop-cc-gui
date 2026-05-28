@@ -13,7 +13,7 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 - Spec artifacts: `openspec/specs/*`
 - Change workflow artifacts: `openspec/changes/<change-id>/{proposal,design,tasks,verification}.md`
 - Archive: `openspec/changes/archive/*`
-- Current workspace state: active changes = `33`, archive changes = `339`, main specs = `282`
+- Current workspace state: active changes = `5`, archive changes = `369`, main specs = `291`
 
 ## Entry Surfaces
 
@@ -43,10 +43,40 @@ OpenSpec workflow and governance for `mossx`, covering change lifecycle, main sp
 
 ### Archive Closure Snapshot (2026-05-28)
 
-Current implementation branch for this workspace snapshot is `feature/v0.5.4`. This archive pass moved 20 explicitly verified active changes into `openspec/changes/archive/2026-05-28-*` and synced main specs where the delta had not already been incorporated.
+Current implementation branch for this workspace snapshot is `feature/v0.5.4`. This archive pass moved 50 explicitly verified active changes into `openspec/changes/archive/2026-05-28-*` across two closure batches and synced main specs where the delta had not already been incorporated.
 
 Archived changes:
 
+- `add-email-driven-session-continuation`
+- `add-engine-task-output-inspector`
+- `add-file-markdown-math-preview`
+- `add-memory-reference-persistent-mode`
+- `adjust-git-worktree-checkbox-placement`
+- `desktop-editor-split-left-composer`
+- `dynamic-project-governance-evidence`
+- `fix-bottom-status-dock-collapse-stability`
+- `fix-claude-custom-model-fact-source-normalization`
+- `fix-codex-deferred-completion-after-assistant-ingress`
+- `fix-codex-empty-draft-stale-thread-auto-replay`
+- `fix-codex-stale-history-fork-shortcut`
+- `fix-claude-issue529-second-turn-blank-session`
+- `fix-composer-file-reference-at-white-screen`
+- `fix-composer-file-reference-without-file-tree-open`
+- `fix-composer-tool-popover-stability`
+- `fix-long-live-assistant-stream-recovery`
+- `fix-markdown-preview-auto-refresh`
+- `fix-project-map-auto-ingestion-background-scheduler`
+- `fix-session-folder-intent-and-worktree-move-menu`
+- `fix-stale-thread-recovery-confidence-gates`
+- `harden-claude-sidebar-list-timeout-fallback`
+- `improve-email-mail-session-list-controls`
+- `improve-project-map-drag-and-root-visual`
+- `integrate-openspec-trellis-bridge-into-status-panel`
+- `refactor-workspace-session-management`
+- `stabilize-core-runtime-and-realtime-contracts`
+- `stabilize-file-markdown-preview-render-architecture`
+- `stabilize-markdown-preview-awareness-and-large-rendering`
+- `stabilize-session-management-truth-boundaries`
 - `advance-harness-governance-to-90`
 - `optimize-bundle-chunking`
 - `optimize-long-list-virtualization`
@@ -70,9 +100,11 @@ Archived changes:
 
 Main spec sync status:
 
+- The second closure batch synced 28 additional completed changes into main specs, including session management, markdown preview, stale-thread recovery, runtime stability, governance evidence, file reference, email controls, and related UI/runtime capabilities.
+- `add-email-driven-session-continuation` and `fix-composer-tool-popover-stability` were archived with `--skip-specs` because their stale MODIFIED delta headers no longer matched the current main spec headings; their change-local artifacts remain preserved in archive for traceability.
 - `openspec archive` synced new or still-pending delta specs for harness governance, performance gates, file rendering scheduler, composer control surface, reasoning effort, workspace session catalog, and runtime evidence gates.
 - Project Map and context-ledger changes whose requirement headings were already present in main specs were archived with `--skip-specs` to avoid duplicate requirement writes.
-- Remaining active changes are either in-progress, deferred, or completed but still need explicit closure evidence before archive.
+- Remaining active changes are either in-progress, deferred, or not yet fully approved for archive.
 
 ### Branch Calibration Snapshot (2026-05-27)
 
@@ -109,11 +141,11 @@ Runtime evidence and archive-readiness classification lives in `openspec/docs/ru
 
 ### Inventory
 
-- Active changes: `33`
-- Archive changes: `339`
-- Main specs: `282`
-- Completed task sets still active: `32`
-- In-progress task sets: `1`
+- Active changes: `5`
+- Archive changes: `369`
+- Main specs: `291`
+- Completed task sets still active: `3`
+- In-progress task sets: `2`
 
 ### In-Progress Changes
 
@@ -121,6 +153,10 @@ Runtime evidence and archive-readiness classification lives in `openspec/docs/ru
   - Task state: `6/7`.
   - Current code fact: backend preview contract, doctor resolution alignment, settings global/workspace Launch Configuration UX, daemon/remote passthrough, i18n, and targeted tests are implemented.
   - Action: keep active until the desktop manual validation matrix is completed.
+- `fix-user-input-dismiss-settlement`
+  - Task state: `0/8`.
+  - Current code fact: worktree contains in-progress source edits and draft delta specs.
+  - Action: keep active until implementation, tests, and strict OpenSpec validation pass.
 
 ### Deferred Completed Proposals
 
@@ -131,38 +167,9 @@ Runtime evidence and archive-readiness classification lives in `openspec/docs/ru
 
 ### Completed Active Changes Pending Verification / Archive Decision
 
-- `add-email-driven-session-continuation`
-- `add-engine-task-output-inspector`
-- `add-file-markdown-math-preview`
-- `add-memory-reference-persistent-mode`
-- `adjust-git-worktree-checkbox-placement`
-- `desktop-editor-split-left-composer`
-- `dynamic-project-governance-evidence`
-- `fix-bottom-status-dock-collapse-stability`
-- `fix-claude-custom-model-fact-source-normalization`
-- `fix-codex-deferred-completion-after-assistant-ingress`
-- `fix-codex-empty-draft-stale-thread-auto-replay`
-- `fix-codex-stale-history-fork-shortcut`
-- `fix-claude-issue529-second-turn-blank-session`
-- `fix-composer-file-reference-at-white-screen`
-- `fix-composer-tool-popover-stability`
-- `fix-long-live-assistant-stream-recovery`
-- `fix-markdown-preview-auto-refresh`
-- `fix-project-map-auto-ingestion-background-scheduler`
-- `fix-session-folder-intent-and-worktree-move-menu`
-- `fix-stale-thread-recovery-confidence-gates`
-- `harden-claude-sidebar-list-timeout-fallback`
-- `improve-email-mail-session-list-controls`
-- `improve-project-map-drag-and-root-visual`
-- `integrate-openspec-trellis-bridge-into-status-panel`
 - `preserve-editor-on-topbar-session-switch`
-- `refactor-workspace-session-management`
-- `stabilize-core-runtime-and-realtime-contracts`
-- `stabilize-file-markdown-preview-render-architecture`
-- `stabilize-markdown-preview-awareness-and-large-rendering`
-- `stabilize-session-management-truth-boundaries`
 
-These changes have fully checked task lists but remain in `openspec/changes/` rather than archive. Treat the next step as closure hygiene: add or refresh verification artifacts, preserve platform/manual-test qualifiers, sync main specs only where needed, then archive.
+This change has a fully checked task list but still reports `design: ready` rather than `done`; keep it active until artifact status is explicitly closed.
 
 ### Code Fact Snapshot (2026-05-24)
 

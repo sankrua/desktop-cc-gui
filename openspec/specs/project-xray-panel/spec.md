@@ -23,32 +23,27 @@ The system SHALL display a Project Knowledge Map entry in the right panel toolba
 
 The system SHALL render the Project Knowledge Map graph using a lightweight in-house SVG/HTML renderer for the initial release.
 
-#### Scenario: Graph renderer uses in-house implementation
-- **WHEN** the Project Knowledge Map graph is rendered
-- **THEN** the system SHALL use an in-house SVG/HTML implementation
-- **AND** the initial implementation SHALL NOT require a third-party graph rendering dependency
+#### Scenario: Node body drag works independent of visible edges
 
-#### Scenario: Graph interaction scope
-- **WHEN** the user interacts with graph nodes
-- **THEN** the graph SHALL support node selection, hover state, one-hop neighborhood focus, and stale/candidate/confidence visual states
-- **AND** the graph SHALL NOT expose manual node text editing
+- **WHEN** a visible Project Map graph node receives pointer capture from a drag that starts on the node body
+- **THEN** pointer move and pointer end events delivered to the node body SHALL update the drag preview and persist the pinned node position
+- **AND** this SHALL work regardless of whether the node has a visible SVG edge line in the current graph view
+- **AND** nested node action buttons SHALL NOT start node drag
 
-#### Scenario: Node selection updates inspector under canvas gestures
-- **WHEN** the user clicks a visible graph node while the canvas supports pan and zoom
-- **THEN** the selected node SHALL become the inspector subject immediately
-- **AND** canvas pointer capture SHALL NOT swallow the node selection event
-- **AND** the inspector SHALL reopen if it was collapsed
+#### Scenario: Root node is visually distinguished
 
-#### Scenario: Graph remains visible after first generation completes
-- **WHEN** the first Project Map generation completes
-- **AND** the active task banner disappears from the stage
-- **THEN** the graph canvas SHALL remain in the flexible center stage row
-- **AND** nodes, edges, zoom controls, and inspector SHALL remain visible
-- **AND** the canvas SHALL NOT collapse to zero height because of grid auto-placement
+- **WHEN** the Project Map overview graph is rendered
+- **THEN** the root node SHALL use a visual treatment that is stronger than ordinary and hub nodes
+- **AND** the treatment SHALL include a larger footprint, stronger border/halo, and primary-color anchor styling
+- **AND** existing selection, confidence, stale, candidate, and pinned indicators SHALL remain readable
 
-#### Scenario: Complex graph editing is out of scope
-- **WHEN** the graph is displayed in the initial release
-- **THEN** the system SHALL NOT require freeform node drag editing or force-directed animation
+#### Scenario: Duplicate persisted node identity renders once
+
+- **WHEN** Project Map data is loaded or merged and the same `ProjectMapNode.id` appears in multiple lens node payloads
+- **THEN** the system SHALL normalize the dataset to a single graph node for that id before layout and render
+- **AND** the canonical node SHALL preserve valid parent/child topology
+- **AND** duplicate sources, detail arrays, related artifacts, and diagram artifacts SHALL be merged with de-duplication
+- **AND** React graph keys, layout positions, minimap dots, selection, and drag state SHALL consume the deduplicated node set
 
 ### Requirement: Read-only knowledge map panel
 
@@ -867,3 +862,44 @@ The Project Knowledge Map SHALL keep Codex generation entry available when runti
 - **WHEN** Project Map generation options are loaded
 - **THEN** the UI SHALL expose fallback Codex model options from the canonical Codex model catalog
 - **AND** Project Map SHALL NOT maintain a separate hard-coded Codex fallback model list
+
+### Requirement: Project Map Auto Ingestion background scheduler ownership
+
+Project Map Auto Ingestion SHALL evaluate scheduling from the active workspace lifecycle rather than from the Project Knowledge Map view lifecycle.
+
+#### Scenario: Hidden Project Map still queues auto run
+- **GIVEN** Auto Ingestion is enabled for the active workspace
+- **AND** no Project Map auto run is pending or running
+- **AND** the configured interval has elapsed since `memoryCursor.lastCheckedAt`
+- **AND** the count of unprocessed Project Memory messages reaches `newSessionThreshold`
+- **AND** the Project Knowledge Map panel is not currently rendered or mounted
+- **WHEN** the workspace-level scheduler evaluates Auto Ingestion
+- **THEN** the system SHALL create a queued Project Map run with `kind="auto"`
+- **AND** the run SHALL use the existing Auto Ingestion request shape, consumed message hashes, and Project Memory evidence metadata
+
+#### Scenario: Returning to Project Map shows background run
+- **GIVEN** a workspace-level Auto Ingestion scheduler queued or started a Project Map auto run while the Project Knowledge Map panel was not visible
+- **WHEN** the user opens the Project Knowledge Map panel
+- **THEN** the panel SHALL load the persisted dataset
+- **AND** the existing task/run UI SHALL be able to render the queued, running, completed, or failed auto run
+
+#### Scenario: View lifecycle does not create duplicate scheduler
+- **GIVEN** the workspace-level Auto Ingestion scheduler is mounted
+- **AND** the Project Knowledge Map panel is also rendered
+- **WHEN** Auto Ingestion evaluates scheduling
+- **THEN** the system SHALL use a single scheduling owner for the active workspace
+- **AND** it SHALL NOT enqueue a duplicate auto run because both the app layer and view layer evaluated the same interval window
+
+#### Scenario: Background scheduler preserves interval gate
+- **GIVEN** Auto Ingestion is enabled
+- **AND** `memoryCursor.lastCheckedAt` is newer than the configured interval window
+- **WHEN** the workspace-level scheduler evaluates Auto Ingestion
+- **THEN** the system SHALL NOT scan Project Memory again
+- **AND** it SHALL NOT enqueue a Project Map auto run
+
+#### Scenario: Background scheduler preserves success-only processed markers
+- **GIVEN** a workspace-level Auto Ingestion scheduler created an auto run from unprocessed Project Memory messages
+- **WHEN** the run fails or is cancelled
+- **THEN** the consumed message hashes SHALL NOT be added to `memoryCursor.processedMessages`
+- **AND** the messages SHALL remain eligible for retry after the interval gate allows another scan
+

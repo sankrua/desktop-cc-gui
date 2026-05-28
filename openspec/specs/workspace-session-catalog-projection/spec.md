@@ -24,20 +24,33 @@ Defines the workspace-session-catalog-projection behavior contract, covering Sha
 
 sidebar 与 `Workspace Home` 的默认会话集合 MUST 基于共享 catalog 的 `strict + active + unarchived` projection 决定 membership 与 count；运行时线程状态 MAY 叠加其上，但 MUST NOT 单独扩大或收缩该集合。
 When the shared active projection is degraded, sidebar surfaces MAY preserve last-good Claude native rows as continuity placeholders until authoritative projection or native truth resolves membership.
+Session organization state for newly created pending engine sessions MAY be kept as a temporary UI overlay, but MUST be reconciled through explicit pending-to-real identity transition before durable folder assignment is written.
 
 #### Scenario: sidebar and home align with session management active strict projection
-
 - **GIVEN** 用户打开某个 workspace，并同时查看 sidebar 或 `Workspace Home`
 - **WHEN** 同一 workspace 的 `Session Management` 处于 `strict + active` 默认视图
 - **THEN** sidebar / `Workspace Home` 的默认会话集合 MUST 来自同一 active projection
 - **AND** count 差异 MUST 只允许来自显式展示窗口差异，而不是 scope 或 archive 口径不同
 
 #### Scenario: runtime overlay does not widen membership
-
 - **GIVEN** 运行时线程缓存中存在尚未完成清理的旧 thread 状态
 - **WHEN** 共享 active projection 刷新完成
 - **THEN** surface 的默认会话 membership MUST 以共享 projection 为准
 - **AND** runtime overlay MUST 只补充 processing、reviewing、selected 等状态
+
+#### Scenario: pending organization overlay follows identity transition
+- **GIVEN** 新建 engine session 仍处于 pending identity
+- **AND** 用户已经为该 pending session 选择了 folder/root organization intent
+- **WHEN** 系统收到明确的 `pendingThreadId -> realThreadId` identity transition
+- **THEN** surface MUST migrate organization overlay to `realThreadId`
+- **AND** durable folder assignment MUST be written for `realThreadId`
+- **AND** the migration MUST NOT select another same-engine session by catalog ordering or candidate count alone
+
+#### Scenario: all pending-finalization rename paths share organization migration
+- **GIVEN** frontend code has multiple paths that can dispatch `renameThreadId` for a pending engine session
+- **WHEN** any such path finalizes `pendingThreadId` to `realThreadId`
+- **THEN** it MUST trigger the same pending organization migration contract
+- **AND** no dispatch path MAY rely on catalog-result guessing as its primary folder-intent migration mechanism
 
 #### Scenario: Claude continuity does not bypass archive filters
 - **GIVEN** the sidebar preserves last-good Claude rows during a degraded shared projection
@@ -228,3 +241,88 @@ Session catalog stability evidence MUST evaluate scan, cursor, degraded-state, a
 - **WHEN** legacy or native list APIs are present for session continuity
 - **THEN** reports MUST describe them as compatibility or diagnostic paths
 - **AND** they MUST NOT be removed solely because the shared projection is the preferred membership truth
+
+### Requirement: Workspace Session Projection SHALL Carry Reconciliation Evidence
+
+Shared workspace session projection MUST carry enough evidence for consumers to distinguish authoritative absence from degraded or inconsistent source state.
+
+#### Scenario: omission is not deletion during degraded projection
+- **WHEN** a projection response omits a session while any source is partial or degraded
+- **THEN** consumers MUST NOT treat the omission alone as authoritative deletion
+- **AND** stale continuity rows MAY remain marked degraded until authoritative evidence arrives
+
+#### Scenario: missing-on-disk is authoritative cleanup evidence
+- **WHEN** a catalog entry is returned with `missing-on-disk`
+- **THEN** the management UI MAY offer metadata cleanup
+- **AND** sidebar active projection MUST NOT show it as a live session
+
+### Requirement: Projection Mutation Results SHALL Preserve Owner Routing
+
+Archive, unarchive, delete and folder assignment responses MUST remain tied to the actual owner workspace used for mutation.
+
+#### Scenario: project aggregate delete returns owner-aware results
+- **WHEN** a project-scoped batch delete includes sessions from multiple child workspaces
+- **THEN** each mutation result MUST be attributable to the owner workspace used for deletion
+- **AND** frontend selection keys MUST remain stable for partial success handling
+
+### Requirement: Workspace Session Projection MUST Preserve Non-Authoritative Source Status
+
+Workspace session catalog projection MUST NOT report an engine/source as complete when the source was bounded, capped, timed out, cache-degraded, or otherwise unable to prove the requested scope was fully covered.
+
+#### Scenario: bounded scan cap prevents complete status
+- **WHEN** an engine source returns one or more rows from a bounded scan
+- **AND** the scan reaches the documented cap or lookahead limit before completeness can be proven
+- **THEN** the source status MUST be `partial`, `degraded`, `uncertain_empty`, or an equivalent non-authoritative status
+- **AND** the response MUST expose cap evidence such as `scanCapReached`, `scannedCandidates`, `reason`, or equivalent diagnostics
+
+#### Scenario: non-authoritative source cannot prove deletion or empty membership
+- **WHEN** a source status is partial, degraded, capped, timed out, or uncertain
+- **THEN** dependent surfaces MUST NOT treat omitted sessions as deleted, archived, or out of scope
+- **AND** continuity rows MAY be preserved with degraded evidence until authoritative source truth is available
+
+#### Scenario: complete status requires coverage proof
+- **WHEN** the catalog reports an engine source as complete for a workspace scope
+- **THEN** the backend MUST have proof that the source was reachable, not capped, not timed out, and fully evaluated for the requested scope/filter
+- **AND** frontend surfaces MAY use that complete status as authoritative empty or authoritative omission evidence
+
+### Requirement: Workspace Session Projection MUST Bound Archived Evidence
+
+Archived evidence used by sidebar or workspace surfaces MUST be acquired through bounded requests, backend-provided archive metadata evidence, or an equivalent finite contract; failure to acquire archived evidence MUST be exposed as degraded rather than interpreted as no archived sessions.
+
+#### Scenario: archived lookup failure is degraded evidence
+- **WHEN** a sidebar refresh needs archived metadata to filter last-good continuity rows
+- **AND** the archived evidence lookup times out, fails, or cannot prove completeness
+- **THEN** the refresh MUST expose archived evidence as degraded or uncertain
+- **AND** it MUST NOT interpret the failure as an empty archived map
+
+#### Scenario: archived row is not resurrected by missing archive evidence
+- **WHEN** a row is known archived from current projection, authoritative native source, or previous complete archive evidence
+- **AND** a later archived evidence lookup is partial, degraded, or failed
+- **THEN** sidebar continuity MUST NOT resurrect that archived row as active
+- **AND** the UI MUST keep enough degraded evidence to explain why archived truth is incomplete
+
+#### Scenario: archived evidence does not require full catalog exhaustion
+- **WHEN** a workspace has more archived or active sessions than the sidebar display window
+- **THEN** archived evidence collection for a regular sidebar refresh MUST remain bounded
+- **AND** full archive exploration MUST be reserved for Session Management or global history pagination surfaces
+
+### Requirement: Workspace Session Projection MUST Use Stable Continuation Cursors
+
+Workspace session catalog pagination MUST use a stable continuation cursor or equivalent anchor-based model instead of relying solely on mutable list offsets.
+
+#### Scenario: cursor chain survives new session insertion
+- **WHEN** a caller reads the first page of a sorted catalog result
+- **AND** a newer session is inserted before the caller requests the next page with the returned cursor
+- **THEN** the next page MUST NOT skip existing entries that belonged after the original page anchor
+- **AND** it MUST NOT duplicate entries already returned in the same cursor chain
+
+#### Scenario: cursor encodes stable ordering anchor
+- **WHEN** the backend returns `nextCursor`
+- **THEN** the cursor MUST encode or reference stable ordering evidence such as updated timestamp, stable session identity, owner workspace, and filter context
+- **AND** callers MUST treat the cursor as opaque
+
+#### Scenario: legacy offset cursor remains compatibility only
+- **WHEN** a caller passes an old offset-style cursor
+- **THEN** the backend MAY accept it for compatibility
+- **AND** any new `nextCursor` returned by the backend SHOULD use the stable cursor format
+

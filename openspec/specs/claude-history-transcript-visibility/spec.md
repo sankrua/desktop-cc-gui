@@ -209,3 +209,44 @@ Claude transcript loading SHALL restore readable session history for a selected 
 - **WHEN** a delayed Claude transcript restore completes after the catalog projection has already rendered the row
 - **THEN** it MAY update the readable conversation content
 - **AND** it MUST NOT change owner workspace or strict scope membership outside the catalog resolver
+
+### Requirement: Claude Issue 529 Transcript MUST Keep Real Rows Around Synthetic Resume Rows
+
+Claude history restore MUST ignore synthetic resume/no-response rows without dropping adjacent real second-turn user, tool, and assistant rows.
+
+#### Scenario: synthetic resume rows do not hide following real turn
+- **WHEN** a Claude JSONL transcript contains synthetic resume rows such as continuation prompts or `No response requested.`
+- **AND** later rows contain a real user request and Claude assistant/tool output
+- **THEN** the restored transcript MUST omit the synthetic rows
+- **AND** it MUST keep the later real user, tool, and assistant rows visible
+
+#### Scenario: missing explicit session id still uses file session identity
+- **WHEN** Claude JSONL message rows omit explicit `session_id` fields
+- **AND** the JSONL filename and workspace `cwd` identify the session and project
+- **THEN** history restore and listing MUST use the file session identity as the canonical session identity
+- **AND** the absence of per-line `session_id` MUST NOT make the restored transcript empty
+
+### Requirement: Claude History Restore MUST Recover Interrupted Live Assistant Text From Shadow Transcript
+
+Claude history restore MUST use a trusted local live assistant shadow transcript to preserve a readable assistant surface when the Claude JSONL source lacks the final assistant body for an interrupted long output.
+
+#### Scenario: provider transcript lacks final assistant body but shadow exists
+- **WHEN** current engine is `claude`
+- **AND** a restored Claude history contains the triggering user turn, thinking, reasoning, or tool transcript entries
+- **AND** it does not contain an equivalent assistant final text body for that turn
+- **AND** a matching recent live assistant shadow transcript exists
+- **THEN** restore MUST insert a readable assistant text surface from the shadow transcript
+- **AND** the restored item MUST carry metadata indicating it was recovered from local shadow state
+
+#### Scenario: provider final body prevents shadow duplication
+- **WHEN** current engine is `claude`
+- **AND** the Claude JSONL source contains a valid assistant final text body for the same turn
+- **THEN** restore MUST use the provider transcript as the primary source
+- **AND** it MUST NOT add a duplicate recovered assistant item from shadow state
+
+#### Scenario: shadow recovery does not reveal hidden thinking
+- **WHEN** Claude thinking visibility is disabled
+- **AND** restore recovers assistant text from a shadow transcript
+- **THEN** restore MUST preserve the assistant text body
+- **AND** it MUST still apply the existing thinking visibility rules to reasoning or thinking content
+

@@ -53,7 +53,7 @@ The system MUST reconcile render state transitions when the user changes files, 
 
 ### Requirement: Large or high-cost file previews MUST protect runtime responsiveness
 
-The system MUST protect runtime responsiveness when rendering large files or high-cost preview content, and it MUST support bounded degradation, viewport projection, or scheduled rendering instead of unbounded main-thread work.
+The system MUST protect runtime responsiveness when rendering large files or high-cost preview content, and it MUST support bounded degradation instead of unbounded main-thread work.
 
 #### Scenario: first-phase degradation uses static size and line-count thresholds
 - **WHEN** the system decides whether a file can stay on a richer preview path
@@ -62,7 +62,7 @@ The system MUST protect runtime responsiveness when rendering large files or hig
 
 #### Scenario: large text preview can degrade instead of blocking indefinitely
 - **WHEN** the user opens a text file whose preview cost exceeds the safe rendering budget
-- **THEN** the system MUST degrade to a lower-cost readable rendering strategy, viewport-bounded rendering, or scheduled progressive rendering
+- **THEN** the system MUST degrade to a lower-cost readable rendering strategy
 - **AND** it MUST NOT block the UI indefinitely while attempting the richest preview
 
 #### Scenario: truncated file bypasses richer preview paths
@@ -75,30 +75,90 @@ The system MUST protect runtime responsiveness when rendering large files or hig
 - **THEN** the system MUST NOT introduce new per-interaction Tauri command calls as part of rendering stability handling
 - **AND** render-state maintenance MUST remain local to the frontend unless a file content refresh is explicitly required
 
-#### Scenario: large code preview does not synchronously render all lines
-- **WHEN** a large code file is opened in preview mode
-- **THEN** the file view MUST use viewport-bounded rows or an equivalent bounded strategy
-- **AND** it MUST NOT synchronously split, highlight, and mount the entire document as DOM before first useful paint
-
-#### Scenario: content metrics are not repeatedly recomputed during render
-- **WHEN** large file rendering needs byte length, line count, content hash, or line access
-- **THEN** those values MUST come from a document snapshot/render model boundary or equivalent memoized source
-- **AND** preview components MUST NOT independently repeat full-document split/encode/hash work during ordinary render
-
-#### Scenario: markdown progressive rendering respects foreground pressure
-- **WHEN** Markdown preview uses progressive rendering
-- **AND** the app is under foreground render pressure from active engine streaming or file interaction
-- **THEN** progressive chunks and heavy blocks MUST be scheduled so they do not monopolize the frame budget
-- **AND** the already visible preview MUST remain readable and stable
-
 #### Scenario: external file monitoring does not disturb stable preview by default
 - **WHEN** a file preview is open in default reading mode
 - **AND** external monitoring detects a clean-buffer disk update
-- **THEN** the file view MUST NOT automatically rebuild high-cost preview DOM during render pressure
+- **THEN** the file view MUST NOT automatically rebuild high-cost preview DOM
 - **AND** it MUST preserve the current preview snapshot until the user requests refresh or live preview explicitly advances it
 
-#### Scenario: secondary preview surfaces follow the same budget
-- **WHEN** hover preview or structured preview renders large text/code content
-- **THEN** it MUST use the same bounded rendering or deterministic degradation rules as the main file preview
-- **AND** it MUST NOT become a separate unbounded full-document rendering path
+### Requirement: Main File Preview MUST Remain A Stable Reading Snapshot By Default
+
+The main window file preview MUST NOT start external file-content polling solely because a workspace file is open. Background content refresh for the main file view MUST require an explicit user-visible mode that enables live external-change awareness.
+
+#### Scenario: main markdown preview does not poll by default
+
+- **WHEN** a user opens a Markdown file in the main window file module
+- **AND** live edit preview is disabled
+- **THEN** the main file preview MUST NOT enable external-change monitoring for that opened file
+- **AND** the preview MUST remain a stable reading snapshot until the user performs an explicit refresh, save, file switch, or opt-in action
+
+#### Scenario: explicit live preview can enable monitoring
+
+- **WHEN** a user opens a file in the main window file module
+- **AND** live edit preview is enabled
+- **THEN** the main file view MAY enable external-change monitoring for the active file
+- **AND** any resulting content refresh MUST continue to use the existing dirty-buffer conflict protection
+
+### Requirement: Markdown Preview Interactive Blocks MUST Preserve User View Selection
+
+Markdown preview interactive blocks MUST preserve user-selected view state across parent re-renders, Markdown AST subtree rebuilds, and same-document preview remounts. A Mermaid block that the user switched to rendered view MUST NOT silently revert to source view unless the user changes files, changes the block identity, or explicitly selects source.
+
+#### Scenario: mermaid rendered view survives same-document remount
+
+- **WHEN** a user opens a Markdown document in the main file module
+- **AND** the user switches a Mermaid block from source view to rendered view
+- **AND** the same Markdown document preview subtree is remounted or rebuilt
+- **THEN** the Mermaid block MUST restore rendered view for the same document and block identity
+- **AND** it MUST NOT return to source view solely because the preview surface re-rendered
+
+### Requirement: Main File Preview MUST Separate External Change Awareness From Forced Refresh
+
+The main window file preview MUST detect external changes for the active file without forcing a reading snapshot refresh unless the user explicitly requests refresh or an explicit live preview mode is active.
+
+#### Scenario: clean stable preview reports external change without replacing content
+
+- **WHEN** a user has a workspace file open in the main window file view
+- **AND** the file buffer is clean
+- **AND** live edit preview is disabled
+- **AND** the same file changes on disk
+- **THEN** the file view MUST expose an external-change notice for that file
+- **AND** it MUST NOT replace the current `content` or Markdown preview snapshot automatically
+
+#### Scenario: user refresh applies pending external content
+
+- **WHEN** the main file view has a pending clean external-change notice
+- **AND** the user chooses to refresh from disk
+- **THEN** the file view MUST apply the pending disk content to the file state
+- **AND** the reading preview MAY rebuild from that explicit refresh
+
+#### Scenario: dirty buffer keeps conflict protection
+
+- **WHEN** a user has unsaved local edits in the open file
+- **AND** the same file changes on disk
+- **THEN** the file view MUST keep the local dirty buffer intact
+- **AND** it MUST expose the existing conflict handling path instead of applying disk content automatically
+
+### Requirement: Main File Preview MUST Avoid Refresh-Induced IPC Churn
+
+The main window file preview MUST keep external-change awareness bounded to the active file and MUST NOT introduce new IPC calls from high-frequency render interactions.
+
+#### Scenario: preview interactions do not poll per interaction
+
+- **WHEN** the user scrolls, hovers, selects text, or interacts with Markdown preview controls
+- **THEN** the file view MUST NOT issue additional file-content IPC reads for each interaction
+- **AND** external-change detection MUST remain governed by the configured monitoring interval or watcher events
+
+#### Scenario: editor startup does not duplicate full file reads for awareness
+
+- **WHEN** a user opens a workspace file in the editor
+- **AND** external-change awareness is enabled
+- **THEN** the file view MUST use the initial file load as the current content snapshot
+- **AND** event-mode external monitoring MUST NOT immediately issue a second full-content read without an external change event
+
+#### Scenario: native metadata fallback does not become JS full-content polling
+
+- **WHEN** native file watching is unavailable or disabled
+- **AND** the backend monitor falls back to metadata polling
+- **THEN** the frontend MUST continue to consume backend change events
+- **AND** it MUST NOT switch to repeated JS-side full-content polling unless backend monitor configuration fails completely
 
