@@ -268,3 +268,55 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 612: 稳定 Markdown 文件预览
+
+**Date**: 2026-05-28
+**Task**: 稳定 Markdown 文件预览
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+
+完成文件 Markdown 预览稳定性收口：把 OpenSpec change `stabilize-file-markdown-preview-render-architecture` 的 9.x follow-up 落到实现与测试，覆盖 Markdown block rendering correctness、partial refresh non-amplification、interaction state islands。
+
+## Changes
+
+- 为文件 Markdown table wrapper 增加 preview-local horizontal scroll cache，保持 wide table 在同文档 remount、annotation rerender、same-content refresh 后不回到最左侧。
+- 将 `flowchart` fenced block 纳入 Mermaid renderer lifecycle，与 `mermaid` block 一样支持 Source/Render tab、render cache 和 previous-success SVG 稳定性。
+- 增加 focused regression，覆盖 table/list/nested list/task list/math/code block rendering semantics、flowchart Mermaid lifecycle、wide table scroll restore、annotation rerender 下 table scroll 保活。
+- 更新 OpenSpec proposal/design/spec/tasks，明确 Markdown Preview Correctness & Interaction Stability follow-up，并标记 9.1-9.9 完成。
+
+## Validation
+
+- `pnpm lint` passed
+- `pnpm typecheck` passed
+- `pnpm test` passed, 553 test files completed
+- `pnpm check:large-files:gate` passed, found=0
+- `openspec validate --all --strict --no-interactive` passed, 326 items
+- `git diff --check` clean
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2f2f18a9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
