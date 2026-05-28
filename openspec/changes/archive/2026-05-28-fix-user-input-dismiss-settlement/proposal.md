@@ -1,0 +1,74 @@
+## Why
+
+`RequestUserInput` live card previously used a single “关闭” affordance for two different user intents: visually hiding the card and skipping the pending runtime question. A prior fix made that close path settle the runtime request, which repairs liveness but makes the X button too destructive for users who only want to get the card out of the way.
+
+The refined UX contract must expose both intents explicitly: X/收起 is local presentation, while “跳过并继续” is the runtime-visible empty-answer settlement.
+
+## 目标与边界
+
+- Goal: make the explicit skip path for live user-input cards produce an explicit settled lifecycle, so the request stops blocking current and future interaction.
+- Goal: keep the card X/close affordance as local collapse only, so users can hide the card without sending a runtime answer.
+- Goal: keep submit behavior unchanged for normal answers.
+- Goal: prevent dismissed/cancelled request cards from being reintroduced by local history hydration when the user already settled them.
+- Boundary: this change targets the live `RequestUserInput` / Claude `AskUserQuestion` card path in the chat canvas.
+- Boundary: do not redesign approval dialogs, plan-mode policy, or the entire conversation history loader.
+
+## What Changes
+
+- Treat the live card’s explicit “跳过并继续” action as a settlement action, not a presentation-only hide.
+- Treat the live card’s X affordance as “收起” / local collapse only.
+- Send an empty-answer response through the existing `respond_to_server_request` contract when a still-actionable request is closed, matching the backend’s existing “dismissed without selecting” resume behavior.
+- Keep stale/unknown request fallback behavior tolerant: if runtime already timed out or disconnected, remove the request locally without throwing.
+- Preserve local dismissal cleanup and draft cleanup after settlement.
+- Update tests so the production card close path no longer asserts “without submitting”.
+- No breaking API changes and no new dependency.
+
+## Capabilities
+
+### New Capabilities
+
+- None.
+
+### Modified Capabilities
+
+- `codex-chat-canvas-user-input-elicitation`: pending request card close semantics become a settled skip/dismiss response instead of a UI-only queue removal.
+- `conversation-fact-contract`: dismissed user-input requests must stop blocking and must not rehydrate as actionable after settlement.
+
+## 技术方案选项与取舍
+
+| Option | Summary | Trade-off |
+|---|---|---|
+| A | Rename “关闭” to “收起” and keep UI-only behavior | Least invasive, but preserves the runtime mismatch and history re-pop issue. |
+| B | Add a separate “跳过并继续” action and keep close as hide | More precise UX, separates presentation from runtime lifecycle, and matches user expectation for X buttons. |
+| C | Make current close path submit an empty-answer settlement | Smallest contract repair, aligns with existing backend behavior, and fixes the current user complaint without broad UI redesign. |
+
+Chosen: Option B after refinement. Option C repaired the runtime bug but made a low-risk close affordance too semantically heavy.
+
+## 非目标
+
+- No broad modal redesign.
+- No new backend request type unless existing empty-answer settlement proves insufficient.
+- No change to normal answer submission payload shape.
+- No change to approval request accept/decline behavior.
+- No full conversation-history architecture rewrite.
+
+## 验收标准
+
+- Given a pending live `RequestUserInput` card, when the user clicks X/收起, the frontend must hide the card locally without calling `respond_to_server_request`.
+- Given a pending live `RequestUserInput` card, when the user clicks “跳过并继续”, the frontend must call `respond_to_server_request` with `{ answers: {} }` and the associated `threadId/turnId`.
+- Given that response succeeds, the frontend must remove the pending request from `userInputRequests`.
+- Given the runtime reports the request is already stale or disconnected, the frontend must remove the card locally without surfacing a fatal error.
+- Given a normal submit with answers, existing submitted audit item behavior must remain unchanged.
+- Given focused component and hook tests, close settlement and submit behavior must both pass.
+
+## Impact
+
+- Frontend:
+  - `src/features/app/components/RequestUserInputMessage.tsx`
+  - `src/features/threads/hooks/useThreadUserInput.ts`
+  - related Vitest suites
+- Backend:
+  - Reuses existing `respond_to_server_request` / Claude `respond_to_user_input` behavior.
+- Specs:
+  - `openspec/specs/codex-chat-canvas-user-input-elicitation/spec.md`
+  - `openspec/specs/conversation-fact-contract/spec.md`

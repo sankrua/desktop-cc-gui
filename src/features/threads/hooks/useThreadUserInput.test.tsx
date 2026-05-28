@@ -153,16 +153,63 @@ describe("useThreadUserInput", () => {
     });
   });
 
-  it("dismisses a stale request without calling runtime submit", () => {
+  it("settles a dismissed request through the runtime without adding a submitted audit item", async () => {
     const dispatch = vi.fn();
+    vi.mocked(respondToUserInputRequest).mockResolvedValue(undefined as never);
+
     const { result } = renderHook(() => useThreadUserInput({ dispatch }));
 
-    act(() => {
-      result.current.handleUserInputDismiss(request);
+    await act(async () => {
+      await result.current.handleUserInputDismiss(request);
     });
 
-    expect(respondToUserInputRequest).not.toHaveBeenCalled();
-    expect(dispatch).toHaveBeenCalledWith({
+    expect(respondToUserInputRequest).toHaveBeenCalledWith(
+      "ws-1",
+      "req-1",
+      {},
+      {
+        threadId: "thread-1",
+        turnId: "turn-1",
+      },
+    );
+    expect(dispatch).toHaveBeenNthCalledWith(1, {
+      type: "markProcessing",
+      threadId: "thread-1",
+      isProcessing: true,
+      timestamp: expect.any(Number),
+    });
+    expect(dispatch).toHaveBeenNthCalledWith(2, {
+      type: "removeUserInputRequest",
+      requestId: "req-1",
+      workspaceId: "ws-1",
+    });
+    expect(dispatch).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: "upsertItem" }),
+    );
+  });
+
+  it("removes dismissed stale requests when runtime has already settled them", async () => {
+    const dispatch = vi.fn();
+    vi.mocked(respondToUserInputRequest).mockRejectedValue(
+      new Error("workspace not connected"),
+    );
+
+    const { result } = renderHook(() => useThreadUserInput({ dispatch }));
+
+    await act(async () => {
+      await result.current.handleUserInputDismiss(request);
+    });
+
+    expect(respondToUserInputRequest).toHaveBeenLastCalledWith(
+      "ws-1",
+      "req-1",
+      {},
+      {
+        threadId: "thread-1",
+        turnId: "turn-1",
+      },
+    );
+    expect(dispatch).toHaveBeenNthCalledWith(3, {
       type: "removeUserInputRequest",
       requestId: "req-1",
       workspaceId: "ws-1",

@@ -155,8 +155,13 @@ export function useThreadUserInput({
   dispatch,
   resolveClaudeContinuationThreadId,
 }: UseThreadUserInputOptions) {
-  const handleUserInputSubmit = useCallback(
-    async (request: RequestUserInputRequest, response: RequestUserInputResponse) => {
+  const settleUserInputRequest = useCallback(
+    async (
+      request: RequestUserInputRequest,
+      response: RequestUserInputResponse,
+      options?: { recordSubmittedItem?: boolean },
+    ) => {
+      const recordSubmittedItem = options?.recordSubmittedItem ?? true;
       const rawThreadId = request.params.thread_id;
       const resolvedThreadId =
         (rawThreadId
@@ -208,7 +213,7 @@ export function useThreadUserInput({
         }
         throw error;
       }
-      if (stateThreadId) {
+      if (stateThreadId && recordSubmittedItem) {
         const payload = buildSubmittedPayload(request, response);
         dispatch({
           type: "upsertItem",
@@ -236,15 +241,22 @@ export function useThreadUserInput({
     [dispatch, resolveClaudeContinuationThreadId],
   );
 
-  const handleUserInputDismiss = useCallback(
-    (request: RequestUserInputRequest) => {
-      dispatch({
-        type: "removeUserInputRequest",
-        requestId: request.request_id,
-        workspaceId: request.workspace_id,
-      });
+  const handleUserInputSubmit = useCallback(
+    async (request: RequestUserInputRequest, response: RequestUserInputResponse) => {
+      await settleUserInputRequest(request, response, { recordSubmittedItem: true });
     },
-    [dispatch],
+    [settleUserInputRequest],
+  );
+
+  const handleUserInputDismiss = useCallback(
+    async (request: RequestUserInputRequest) => {
+      await settleUserInputRequest(
+        request,
+        { answers: {} },
+        { recordSubmittedItem: false },
+      );
+    },
+    [settleUserInputRequest],
   );
 
   return { handleUserInputSubmit, handleUserInputDismiss };
