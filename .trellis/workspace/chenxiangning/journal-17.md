@@ -211,3 +211,60 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 611: Project Map v0.5.4 稳定性收口
+
+**Date**: 2026-05-28
+**Task**: Project Map v0.5.4 稳定性收口
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+目标：收口 v0.5.4 Project Map 稳定性改动，并将当前工作区代码事实回写到 OpenSpec 提案。
+
+主要改动：
+- 新增 OpenSpec change `stabilize-project-map-for-v0-5-4`，覆盖 proposal/design/tasks/spec deltas/implementation inventory/verification。
+- 加固 Project Map run ownership：生成 request/run metadata 捕获 workspace/storage ownership，worker progress/completion/failure 使用 captured context。
+- 加固 frontend/backend storage guard：frontend 写入校验 expected storageKey；Rust snapshot 写入要求 manifest、拒绝 malformed/mismatched manifest，并在 root-level snapshot lock 下完成 backup/write。
+- 稳定 Auto Ingestion 和 candidate safety：保留 createCandidate 与 autoApplyEvidenceBacked 差异，弱证据/unsupported/memory-only claims 保持 candidate。
+- 稳定 graph projection：使用 normalized node projection 驱动 layout 和 inspector，避免 duplicate stable node id 造成图和详情漂移。
+- 增加 failed run category 展示和 i18n 文案，structured output / ownership / evidence / persistence failure 在 task drawer 可诊断。
+- Project Map generation options 在 Codex runtime catalogs 为空或失败时复用 canonical `CODEX_MODEL_CATALOG`，避免维护 parallel fallback model list。
+
+验证：
+- `npm exec vitest run src/features/project-map/hooks/useProjectMapGenerationOptions.test.tsx` 通过，3 tests。
+- `npm exec vitest run src/features/project-map/hooks/useProjectMapDataset.test.tsx src/features/project-map/services/projectMapGenerationWorker.test.ts src/features/project-map/services/projectMapPersistence.test.ts src/features/project-map/utils/incrementalGeneration.test.ts src/features/project-map/utils/interactiveLayout.test.ts src/features/project-map/utils/autoIngestion.test.ts src/features/project-map/components/ProjectMapPanel.test.tsx` 通过，7 files / 118 tests。
+- `cargo test --manifest-path src-tauri/Cargo.toml project_map` 通过，11 tests。
+- `openspec validate stabilize-project-map-for-v0-5-4 --strict --no-interactive` 通过。
+- `npm run lint` 通过。
+- `npm run typecheck` 通过。
+- `cargo fmt --manifest-path src-tauri/Cargo.toml --check` 通过。
+- `git diff --check` 通过。
+
+剩余风险：
+- 本轮未做 packaged macOS/Windows/Linux desktop visual smoke；verification.md 已明确平台手测缺口。
+- 无 schema migration；回滚不需要数据迁移。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `020ebee8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
