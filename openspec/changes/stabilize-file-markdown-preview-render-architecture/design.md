@@ -29,6 +29,7 @@ file read / external sync
   -> compileFileMarkdownDocument(documentKey, contentHash, rendererProfile)
   -> block render model
   -> annotation placement index
+  -> interaction state islands
   -> visible block renderer
   -> heavy block renderer cache/lazy budget
 ```
@@ -76,7 +77,25 @@ Mermaid、KaTeX、large table、large code block 独立 lifecycle：
 - 大 table / 超长 code block 支持 lazy mount、collapse 或 viewport window。
 - viewport 外 heavy block 不启动昂贵 render。
 
-### Layer 5: Large Markdown Progressive / Virtualized Rendering
+### Layer 5: Render Correctness Contract
+
+性能优化不得改变 Markdown 文件预览的类型语义。编译缓存、progressive render、heavy block lazy mount 和 partial refresh 都必须以 rendered output correctness 为前提。
+
+必须按 block type 建立 focused regression：
+
+- table：header/body、alignment、wide table horizontal overflow、inline Markdown in cells。
+- list：ordered/unordered、nested list、task list、列表内 paragraph/code/math。
+- math：inline math、block math、invalid formula fallback、source line mapping。
+- Mermaid / flowchart：source tab、rendered tab、render failure fallback、theme refresh previous-success preservation。
+- code block：language class、plain fallback、large code lazy mount、annotation anchor stability。
+
+局部刷新原则：
+
+- content hash changed：允许重新 compile / rerender affected document model。
+- block content changed：允许重建该 block 及其 dependent heavy render state。
+- annotation / hover / scroll / draft / same-content refresh changed：只能更新 affected overlay 或 interaction island，不能重建无关 block subtree。
+
+### Layer 6: Large Markdown Progressive / Virtualized Rendering
 
 按 deterministic threshold 选择 render path：
 
@@ -89,6 +108,27 @@ Mermaid、KaTeX、large table、large code block 独立 lifecycle：
 
 推荐初始阈值由文件大小、line count、block count、heavy block count 和 `truncated` 决定，避免使用设备速度作为 primary trigger。
 
+### Layer 7: Interaction State Islands
+
+stable snapshot 与 compile cache 只能保证“同内容不重编译”。文件预览还必须保护用户正在操作的 DOM-local state，避免父组件刷新、annotation overlay 更新或同内容 refresh 让交互状态回到初始值。
+
+受保护的 state 至少包括：
+
+- table wrapper horizontal scroll：`blockKey -> scrollLeft`
+- annotation draft input：`draftKey -> value/selection/composition/focus intent`
+- Mermaid / flowchart view mode：`blockKey -> rendered/source tab + previous successful render`
+- heavy block visibility：`blockKey -> lazy visibility/expanded state`
+
+实现上优先使用 preview-local registry/ref，而不是把每一次滚动或输入都提升成高频 React state。React state 只用于必须驱动可见 UI 的低频状态；滚动位置、selection、composition 这类高频状态应在 affected node unmount/remount 边界做 capture/restore。
+
+关键 contract：
+
+- block identity MUST derive from compiled block key and content hash, not array index alone.
+- unrelated annotation changes MUST NOT recreate unrelated heavy block renderer props.
+- table wrapper MUST restore `scrollLeft` after same-content rerender or block-local remount.
+- annotation draft textarea MUST preserve focus, text, selection, and IME composition across preview-local refresh.
+- interaction state capture MUST stay frontend-local and MUST NOT introduce per-scroll/per-keypress IPC.
+
 ## Data Flow
 
 1. `FileViewPanel` 读取文件并维护 content/snapshot refs。
@@ -96,8 +136,9 @@ Mermaid、KaTeX、large table、large code block 独立 lifecycle：
 3. `FileMarkdownPreview` 接收 stable snapshot，不直接订阅 external sync state。
 4. compile helper 根据 content hash 产出 block model。
 5. annotation index 根据 block ranges 和 annotations 派生。
-6. visible renderer 根据 budget 渲染 blocks。
-7. heavy blocks 通过 cache/lazy renderer 单独运行。
+6. interaction state registry 根据 stable block identity 绑定 scroll/input/view-mode 状态。
+7. visible renderer 根据 budget 渲染 blocks。
+8. heavy blocks 通过 cache/lazy renderer 单独运行。
 
 ## Error Handling
 
@@ -114,7 +155,10 @@ Mermaid、KaTeX、large table、large code block 独立 lifecycle：
 | Type safety | `npm run typecheck` |
 | File preview regression | focused `FileViewPanel` / `FileMarkdownPreview` tests |
 | Mermaid no-flicker | rendered tab survives same-content rerender/remount without source/loading flash |
+| Rendering correctness | table/list/math/Mermaid/flowchart/code block fixtures keep expected rendered semantics |
 | Annotation overlay | annotation typing does not call markdown compile again |
+| Partial refresh | annotation/hover/scroll/same-content refresh does not recreate unrelated block subtrees |
+| Interaction state islands | table horizontal scroll and annotation draft focus/value survive parent rerender |
 | External sync stability | pending external change does not replace preview DOM in default read mode |
 | Large markdown | deterministic degradation/progressive/virtualized path covered by test or perf smoke |
 | Large file governance | `npm run check:large-files:gate` if touched files grow near policy limits |

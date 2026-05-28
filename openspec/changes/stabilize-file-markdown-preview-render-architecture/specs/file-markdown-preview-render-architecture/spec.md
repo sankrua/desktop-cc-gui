@@ -77,3 +77,53 @@ Large Markdown preview MUST choose degradation, progressive rendering, or virtua
 - **WHEN** a Markdown file exceeds the rich preview budget
 - **THEN** the preview MUST use a bounded strategy such as low-cost fallback, progressive block rendering, or block virtualization
 - **AND** it MUST NOT attempt unbounded full-document rich rendering that can freeze the UI indefinitely
+
+### Requirement: Markdown block rendering correctness MUST be type-specific and regression-tested
+
+Markdown preview performance optimizations MUST preserve rendered output semantics for supported Markdown block types.
+
+#### Scenario: table rendering remains correct under optimization
+- **WHEN** a Markdown table contains headers, body rows, alignment, wide columns, or inline Markdown inside cells
+- **THEN** the preview MUST render it as a table with the expected GitHub-style structure and overflow behavior
+- **AND** performance optimizations MUST NOT degrade it into incorrect paragraph or plain-text output
+
+#### Scenario: list rendering remains correct under optimization
+- **WHEN** Markdown contains ordered lists, unordered lists, nested lists, task lists, or list items containing paragraphs, code, or formulas
+- **THEN** the preview MUST preserve list hierarchy, numbering semantics, check states, and nested content placement
+- **AND** annotation placement or progressive rendering MUST NOT duplicate or flatten nested list items
+
+#### Scenario: math and diagram rendering remain correct under optimization
+- **WHEN** Markdown contains inline math, block math, Mermaid diagrams, or flowchart fenced blocks
+- **THEN** the preview MUST render supported content through the dedicated math/diagram lifecycle
+- **AND** invalid math or diagram source MUST fail locally to a readable fallback without corrupting surrounding Markdown blocks
+
+### Requirement: Markdown preview partial refresh MUST not amplify local UI changes
+
+Markdown preview MUST keep non-content UI updates local to the affected block, overlay, or interaction island.
+
+#### Scenario: annotation update does not recreate unrelated blocks
+- **WHEN** an annotation marker, draft composer, hover state, or same-content refresh changes
+- **THEN** the preview MUST update only the affected annotation overlay or affected block presentation
+- **AND** unrelated Markdown block subtrees MUST keep their identity and local rendered state
+
+### Requirement: Markdown preview interaction state MUST survive non-content refreshes
+
+Markdown preview MUST preserve user interaction state inside stable rendered blocks when source content is unchanged.
+
+#### Scenario: wide table horizontal scroll survives same-content rerender
+- **WHEN** the user horizontally scrolls a wide Markdown table in preview
+- **AND** annotation state, parent view state, or same-content refresh causes the preview to rerender
+- **THEN** the table wrapper MUST restore the previous horizontal scroll position
+- **AND** it MUST NOT reset `scrollLeft` to the left edge unless the table block content or document identity changed
+
+#### Scenario: annotation draft input survives markdown preview rerender
+- **WHEN** the user is typing in an AI annotation draft inside Markdown preview
+- **AND** the preview rerenders without changing the underlying Markdown content for that draft target
+- **THEN** the draft MUST preserve its current text, focus, selection, and IME composition state
+- **AND** the rerender MUST NOT force the user to retype or recover lost input
+
+#### Scenario: heavy block local view state survives unrelated overlay updates
+- **WHEN** a Mermaid, flowchart, KaTeX, large table, or large code block has local rendered/expanded/visible state
+- **AND** an unrelated annotation overlay or parent preview state changes
+- **THEN** that heavy block MUST preserve its local interaction state
+- **AND** unrelated overlay updates MUST NOT recreate the heavy block subtree in a way that drops visible rendered output

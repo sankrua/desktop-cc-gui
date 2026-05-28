@@ -47,3 +47,15 @@
 - [x] 8.3 [P1][depends:7][I: large Markdown fixture][O: perf evidence][V: deterministic degradation/progressive/virtualized path demonstrated] Run large Markdown smoke/perf evidence.
 - [x] 8.4 [P0][depends:all][I: OpenSpec artifacts][O: strict validation][V: `openspec validate stabilize-file-markdown-preview-render-architecture --strict --no-interactive`] Validate OpenSpec.
 - [x] 8.5 [P1][depends:all][I: file sizes/style changes][O: governance evidence][V: `npm run check:large-files:gate` when policy-relevant files are touched] Run large-file gate as needed.
+
+## 9. 2026-05-28 Markdown Preview Correctness & Interaction Follow-up
+
+- [x] 9.1 [P0][depends:4-7][I: current Markdown fixtures and renderer behavior][O: block-type correctness matrix][V: table, list/nested list, math, Mermaid/flowchart, and code block expected semantics documented] Calibrate Markdown block rendering correctness coverage.
+- [x] 9.2 [P0][depends:9.1][I: focused regression fixtures][O: rendering correctness tests][V: table/list/math/Mermaid/flowchart/code block fixtures keep expected rendered output after renderer changes] Add type-specific rendering correctness regressions.
+- [x] 9.3 [P0][depends:4-7][I: current `FileMarkdownPreview` table wrapper][O: table interaction state registry][V: horizontal `scrollLeft` survives annotation updates, parent rerender, and same-content refresh] Preserve wide-table horizontal scroll state.
+- [x] 9.4 [P0][depends:5][I: current inline annotation draft composer][O: draft input state island contract][V: typing, selection, focus, and IME composition survive Markdown preview rerender without full compile] Harden AI annotation draft input stability.
+- [x] 9.5 [P0][depends:6][I: Mermaid / flowchart heavy block renderer][O: stable view-mode/render-result state][V: rendered tab remains rendered and does not flash source/loading during same-content rerender] Preserve Mermaid / flowchart block interaction state.
+- [x] 9.6 [P0][depends:5-7,9.2-9.5][I: annotation, hover, scroll, same-content refresh events][O: partial refresh non-amplification guard][V: unrelated block subtrees are not recreated by overlay/local interaction changes] Enforce partial refresh boundaries.
+- [x] 9.7 [P1][depends:6,9.3][I: KaTeX and large table/code heavy blocks][O: heavy block prop isolation audit][V: unrelated annotation changes do not recreate unrelated heavy block subtrees] Audit heavy block prop identity and rerender boundaries.
+- [x] 9.8 [P0][depends:9.1-9.7][I: focused regression fixtures][O: Vitest coverage][V: tests cover correctness, wide table scroll, annotation draft input, Mermaid rendered view, partial refresh, and many-column large table preview] Add focused follow-up regressions.
+- [x] 9.9 [P0][depends:9.1-9.8][I: touched TS/TSX/CSS][O: validation evidence][V: focused Vitest suites + typecheck + `openspec validate stabilize-file-markdown-preview-render-architecture --strict --no-interactive`] Run validation for the follow-up implementation.
