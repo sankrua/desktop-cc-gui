@@ -1461,6 +1461,30 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
             category: 'workflow',
           },
           {
+            id: 'goal',
+            label: '/goal',
+            description: t('chat.commands.goal'),
+            category: 'workflow',
+          },
+          {
+            id: 'goal-pause',
+            label: '/goal pause',
+            description: t('chat.commands.goalPause'),
+            category: 'workflow',
+          },
+          {
+            id: 'goal-resume',
+            label: '/goal resume',
+            description: t('chat.commands.goalResume'),
+            category: 'workflow',
+          },
+          {
+            id: 'goal-clear',
+            label: '/goal clear',
+            description: t('chat.commands.goalClear'),
+            category: 'workflow',
+          },
+          {
             id: 'plan',
             label: '/plan',
             description: t('chat.commands.plan'),
