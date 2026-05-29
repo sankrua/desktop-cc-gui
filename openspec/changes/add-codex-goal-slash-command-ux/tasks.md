@@ -24,7 +24,7 @@
   - [x] 4.2 回写 design：明确 non-interception contract。
   - [x] 4.3 回写 spec：明确 `/goal...` must use normal send path。
 
-- [ ] 5. Manual verification
-  - [ ] 5.1 人工验证命令面板展示四个 `/goal` entries。
-  - [ ] 5.2 人工验证 `/goal 项目分析` 发送后幕布正常响应。
-  - [ ] 5.3 人工验证 `/goal pause|resume|clear` 仍走普通发送。
+- [x] 5. Manual verification
+  - [x] 5.1 人工验证命令面板展示四个 `/goal` entries。
+  - [x] 5.2 人工验证 `/goal 项目分析` 发送后幕布正常响应。
+  - [x] 5.3 人工验证 `/goal pause|resume|clear` 仍走普通发送。
