@@ -2261,3 +2261,19 @@ export async function deleteGeminiSession(workspacePath: string, sessionId: stri
 export async function getPendingOpenPaths(): Promise<string[]> {
   return invoke<string[]>("get_pending_open_paths");
 }
+
+export type WindowOpacityApplyResult = {
+  requestedOpacity: number;
+  appliedOpacity: number;
+  applied: boolean;
+  platform: string;
+  reason: string | null;
+};
+
+export function setMainWindowOpacity(
+  opacity: number,
+): Promise<WindowOpacityApplyResult> {
+  return invoke<WindowOpacityApplyResult>("set_main_window_opacity", {
+    opacity,
+  });
+}

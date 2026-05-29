@@ -356,6 +356,11 @@ const zhPart1 = {
     themePresetSolarizedDark: "Solarized Dark",
     reduceTransparency: "减少透明度",
     reduceTransparencyDesc: "禁用透明效果以获得更好的兼容性。",
+    windowTransparency: "窗口透明",
+    windowTransparencyDesc:
+      "调整客户端原生窗口透明度；不支持的平台会安全降级。",
+    windowOpacity: "整体透明度",
+    windowOpacityValue: "{{value}}%",
     uiScale: "界面缩放",
     uiFont: "界面字体",
     codeFont: "代码字体",

@@ -55,6 +55,7 @@ pub(crate) fn invoke_handler(
         // Menu
         crate::menu::menu_set_accelerators,
         crate::menu::menu_update_labels,
+        crate::window::set_main_window_opacity,
         // Engine management
         crate::engine::detect_engines,
         crate::engine::get_active_engine,

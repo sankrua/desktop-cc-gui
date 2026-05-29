@@ -385,15 +385,31 @@ const renderDisplaySection = (
     onToggleTransparency?: ComponentProps<
       typeof SettingsView
     >["onToggleTransparency"];
+    windowTransparencyEnabled?: boolean;
+    onToggleWindowTransparency?: ComponentProps<
+      typeof SettingsView
+    >["onToggleWindowTransparency"];
+    windowOpacity?: number;
+    onWindowOpacityChange?: ComponentProps<
+      typeof SettingsView
+    >["onWindowOpacityChange"];
   } = {},
 ) => {
   cleanup();
   const onUpdateAppSettings =
     options.onUpdateAppSettings ?? vi.fn().mockResolvedValue(undefined);
   const onToggleTransparency = options.onToggleTransparency ?? vi.fn();
+  const onToggleWindowTransparency =
+    options.onToggleWindowTransparency ?? vi.fn();
+  const onWindowOpacityChange = options.onWindowOpacityChange ?? vi.fn();
   const props: ComponentProps<typeof SettingsView> = {
     reduceTransparency: options.reduceTransparency ?? false,
     onToggleTransparency,
+    windowTransparencyEnabled:
+      options.windowTransparencyEnabled ?? !(options.reduceTransparency ?? false),
+    onToggleWindowTransparency,
+    windowOpacity: options.windowOpacity ?? 88,
+    onWindowOpacityChange,
     appSettings: { ...baseSettings, ...options.appSettings },
     openAppIconById: {},
     onUpdateAppSettings,
@@ -424,7 +440,13 @@ const renderDisplaySection = (
 
   const view = render(<SettingsView {...props} />);
 
-  return { ...view, onUpdateAppSettings, onToggleTransparency };
+  return {
+    ...view,
+    onUpdateAppSettings,
+    onToggleTransparency,
+    onToggleWindowTransparency,
+    onWindowOpacityChange,
+  };
 };
 
 const renderComposerSection = (
@@ -1536,13 +1558,44 @@ describe("SettingsView Display", () => {
     appRoot.remove();
   });
 
-  it("hides remaining limits, message anchors, and transparency toggles", async () => {
+  it("hides remaining limits and message anchors while showing window transparency controls", async () => {
     renderDisplaySection();
     await flushSettingsViewEffects();
 
     expect(screen.queryByText("Show remaining Codex limits")).toBeNull();
     expect(screen.queryByText("Show message anchors")).toBeNull();
     expect(screen.queryByText("Reduce transparency")).toBeNull();
+    expect(screen.getByText("Window transparency")).toBeTruthy();
+    expect(screen.getByLabelText("Overall opacity")).toBeTruthy();
+  });
+
+  it("updates window transparency toggle and opacity", async () => {
+    const onToggleWindowTransparency = vi.fn();
+    const onWindowOpacityChange = vi.fn();
+    renderDisplaySection({
+      windowTransparencyEnabled: false,
+      onToggleWindowTransparency,
+      onWindowOpacityChange,
+    });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Window transparency" }));
+
+    expect(onToggleWindowTransparency).toHaveBeenCalledWith(true);
+    expect(screen.queryByLabelText("Overall opacity")).toBeNull();
+
+    cleanup();
+    renderDisplaySection({
+      windowTransparencyEnabled: true,
+      windowOpacity: 88,
+      onToggleWindowTransparency,
+      onWindowOpacityChange,
+    });
+
+    fireEvent.change(screen.getByLabelText("Overall opacity"), {
+      target: { value: "72" },
+    });
+
+    expect(onWindowOpacityChange).toHaveBeenCalledWith(72);
   });
 
   it("updates ui scale from slider and save action", async () => {

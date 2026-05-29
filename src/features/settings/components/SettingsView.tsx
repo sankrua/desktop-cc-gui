@@ -170,6 +170,10 @@ export type SettingsViewProps = {
   ) => Promise<boolean | null>;
   reduceTransparency: boolean;
   onToggleTransparency: (value: boolean) => void;
+  windowTransparencyEnabled?: boolean;
+  onToggleWindowTransparency?: (value: boolean) => void;
+  windowOpacity?: number;
+  onWindowOpacityChange?: (value: number) => void;
   appSettings: AppSettings;
   openAppIconById: Record<string, string>;
   onUpdateAppSettings: (next: AppSettings) => Promise<void>;
@@ -331,7 +335,11 @@ export function SettingsView({
   onDeleteWorkspaceGroup,
   onAssignWorkspaceGroup,
   reduceTransparency,
-  onToggleTransparency: _onToggleTransparency,
+  onToggleTransparency,
+  windowTransparencyEnabled,
+  onToggleWindowTransparency,
+  windowOpacity,
+  onWindowOpacityChange,
   appSettings,
   openAppIconById,
   onUpdateAppSettings,
@@ -2002,6 +2010,15 @@ export function SettingsView({
                 <BasicAppearanceSection
                   appSettings={appSettings}
                   onUpdateAppSettings={onUpdateAppSettings}
+                  windowTransparencyEnabled={
+                    windowTransparencyEnabled ?? !reduceTransparency
+                  }
+                  onToggleWindowTransparency={
+                    onToggleWindowTransparency ??
+                    ((enabled) => onToggleTransparency(!enabled))
+                  }
+                  windowOpacity={windowOpacity ?? 88}
+                  onWindowOpacityChange={onWindowOpacityChange ?? (() => undefined)}
                   activeThemePresetId={activeThemePresetId}
                   resolvedAppearanceTheme={resolvedAppearanceTheme}
                   themePresetOptions={themePresetOptions}

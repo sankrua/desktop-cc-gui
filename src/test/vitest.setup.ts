@@ -328,6 +328,11 @@ vi.mock("react-i18next", () => ({
         "settings.terminalShellPathClear": "Clear terminal shell path",
         "settings.showRemainingLimits": "Show remaining Codex limits",
         "settings.reduceTransparency": "Reduce transparency",
+        "settings.windowTransparency": "Window transparency",
+        "settings.windowTransparencyDesc":
+          "Adjust the native client window opacity; unsupported platforms fall back safely.",
+        "settings.windowOpacity": "Overall opacity",
+        "settings.windowOpacityValue": "{{value}}%",
         "settings.fontSizeLabel": "Font size",
         "settings.fontSizeLevel1": "Small (80%)",
         "settings.fontSizeLevel2": "Smaller (90%)",

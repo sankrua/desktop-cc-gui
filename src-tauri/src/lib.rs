@@ -168,7 +168,8 @@ pub fn run() {
                     .title("ccgui")
                     .inner_size(1300.0, 800.0)
                     .min_inner_size(800.0, 600.0)
-                    .devtools(true);
+                    .devtools(true)
+                    .transparent(true);
 
             #[cfg(target_os = "windows")]
             {
@@ -180,8 +181,7 @@ pub fn run() {
                 win_builder = win_builder
                     .background_throttling(BackgroundThrottlingPolicy::Disabled)
                     .title_bar_style(tauri::TitleBarStyle::Overlay)
-                    .hidden_title(true)
-                    .transparent(false);
+                    .hidden_title(true);
             }
 
             win_builder = win_builder.on_navigation(|url: &tauri::Url| {

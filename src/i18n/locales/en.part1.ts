@@ -257,6 +257,11 @@ const enPart1 = {
     reduceTransparency: "Reduce transparency",
     reduceTransparencyDesc:
       "Disable vibrancy effects for better compatibility.",
+    windowTransparency: "Window transparency",
+    windowTransparencyDesc:
+      "Adjust the native client window opacity; unsupported platforms fall back safely.",
+    windowOpacity: "Overall opacity",
+    windowOpacityValue: "{{value}}%",
     uiScale: "UI Scale",
     uiFont: "UI Font",
     codeFont: "Code Font",

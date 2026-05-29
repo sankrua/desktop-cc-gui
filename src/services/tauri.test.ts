@@ -103,6 +103,7 @@ import {
   appendClientErrorLog,
   exportDiagnosticsBundle,
   hydrateClaudeDeferredImage,
+  setMainWindowOpacity,
 } from "./tauri";
 import { resetRuntimeModeStateForTests } from "./tauri/runtimeMode";
 import {
@@ -176,6 +177,23 @@ describe("tauri invoke wrappers", () => {
     expect(invokeMock).toHaveBeenCalledWith("add_workspace", {
       path: "/tmp/project",
       codex_bin: null,
+    });
+  });
+
+  it("maps native window opacity requests to the Tauri command", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce({
+      requestedOpacity: 0.72,
+      appliedOpacity: 0.72,
+      applied: true,
+      platform: "macos",
+      reason: null,
+    });
+
+    await setMainWindowOpacity(0.72);
+
+    expect(invokeMock).toHaveBeenCalledWith("set_main_window_opacity", {
+      opacity: 0.72,
     });
   });
 

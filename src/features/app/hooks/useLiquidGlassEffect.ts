@@ -11,7 +11,10 @@ type Params = {
   onDebug?: (entry: DebugEntry) => void;
 };
 
-export function useLiquidGlassEffect({ reduceTransparency, onDebug }: Params) {
+export function useLiquidGlassEffect({
+  reduceTransparency,
+  onDebug,
+}: Params) {
   const supportedRef = useRef<boolean | null>(null);
 
   useEffect(() => {
@@ -20,15 +23,13 @@ export function useLiquidGlassEffect({ reduceTransparency, onDebug }: Params) {
     const apply = async () => {
       try {
         const window = getCurrentWindow();
-        // Always disable window transparency effects (glass/vibrancy)
-        // All themes now use opaque backgrounds
         if (supportedRef.current === null) {
           supportedRef.current = await isGlassSupported();
         }
         if (supportedRef.current) {
           await setLiquidGlassEffect({ enabled: false });
         }
-        await window.setEffects({ effects: [] });
+        await window.clearEffects();
       } catch (error) {
         if (cancelled || !onDebug) {
           return;
