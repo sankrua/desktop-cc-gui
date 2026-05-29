@@ -66,6 +66,9 @@ Payloads contain ids, status enum, scope booleans, timestamps, stale progress ag
 
 The global client error log must persist the early breadcrumb labels as well as abnormal outcomes:
 
+- `thread/session:turn-diagnostic:codex-no-progress-watchdog-scheduled`
+- `thread/session:turn-diagnostic:codex-no-progress-watchdog-fired`
+- `thread/session:turn-diagnostic:codex-no-progress-watchdog-skipped`
 - `thread/session:turn-diagnostic:codex-no-progress-suspected`
 - `thread/session:turn-diagnostic:three-evidence-reconciliation-query-requested`
 - `thread/session:turn-diagnostic:three-evidence-reconciliation-query-rejected`
@@ -73,6 +76,8 @@ The global client error log must persist the early breadcrumb labels as well as 
 - abnormal `thread/session:turn-diagnostic:three-evidence-reconciliation-query-resolved` outcomes such as scoped terminal status or `cleanup-residue`
 
 If a stuck UI reproduces but the log contains neither `codex-no-progress-suspected` nor `three-evidence-reconciliation-query-requested`, the watchdog/reconciliation trigger path did not run. If it contains `query-requested` but no resolved/rejected/failed outcome, the status query was issued but did not complete or did not report back through the diagnostics channel.
+
+If a stuck UI reproduces but the log contains no `codex-no-progress-watchdog-*` labels for the affected scoped turn, the visible loading state is not being driven through the Codex no-progress watchdog lifecycle and should be traced from the UI loading source. If `watchdog-fired` is followed by `watchdog-skipped`, the `reason` field is the primary next-hop diagnostic; expected reasons include `missing-diagnostic`, `completed`, `error`, `interrupted`, `not-processing`, `active-turn-mismatch`, and `progress-still-fresh`.
 
 ## PHASE2B_HANDOFF_MARKER
 

@@ -687,6 +687,42 @@ export function useThreadEventHandlers({
     [dispatch, emitThreeEvidenceDryRunDiagnostic, emitTurnDiagnostic, getThreadLifecycleSnapshot],
   );
 
+  const emitCodexNoProgressWatchdogDiagnostic = useCallback(
+    (
+      stage: "scheduled" | "fired" | "skipped",
+      input: {
+        threadId: string;
+        diagnostic: TurnDiagnosticState | null;
+        reason?: string;
+        timeoutMs?: number | null;
+        elapsedSinceProgressMs?: number | null;
+        delayMs?: number | null;
+        lifecycle?: ThreadLifecycleSnapshot | null;
+      },
+    ) => {
+      emitTurnDiagnostic(`codex-no-progress-watchdog-${stage}`, {
+        workspaceId: input.diagnostic?.workspaceId ?? null,
+        threadId: input.threadId,
+        turnId: input.diagnostic?.turnId ?? null,
+        diagnosticCategory: "codex-no-progress-watchdog",
+        stage,
+        reason: input.reason ?? null,
+        timeoutMs: input.timeoutMs ?? null,
+        elapsedSinceProgressMs: input.elapsedSinceProgressMs ?? null,
+        delayMs: input.delayMs ?? null,
+        lastProgressSource: input.diagnostic?.lastProgressSource ?? null,
+        progressSequence: input.diagnostic?.progressSequence ?? null,
+        activeExecutionItemCount:
+          input.diagnostic?.activeExecutionItems.size ?? null,
+        isProcessing: input.lifecycle?.isProcessing ?? null,
+        activeTurnId: input.lifecycle?.activeTurnId ?? null,
+        activeThreadId,
+        ...buildThreadStreamCorrelationDimensions(input.threadId),
+      }, { force: true });
+    },
+    [activeThreadId, emitTurnDiagnostic],
+  );
+
   const scheduleCodexNoProgressTimer = useCallback(
     (threadId: string) => {
       if (typeof window === "undefined" || inferThreadEngine(threadId) !== "codex") {
@@ -694,6 +730,11 @@ export function useThreadEventHandlers({
       }
       const diagnostic = turnDiagnosticsRef.current.get(threadId);
       if (!diagnostic) {
+        emitCodexNoProgressWatchdogDiagnostic("skipped", {
+          threadId,
+          diagnostic: null,
+          reason: "missing-diagnostic",
+        });
         return;
       }
       clearCodexNoProgressTimer(threadId);
@@ -701,27 +742,97 @@ export function useThreadEventHandlers({
       const timeoutMs = getCodexNoProgressTimeoutMs(diagnostic);
       const elapsedSinceProgressMs = Math.max(0, now - diagnostic.lastProgressAt);
       const delayMs = Math.max(0, timeoutMs - elapsedSinceProgressMs);
+      emitCodexNoProgressWatchdogDiagnostic("scheduled", {
+        threadId,
+        diagnostic,
+        timeoutMs,
+        elapsedSinceProgressMs,
+        delayMs,
+      });
       const timerId = window.setTimeout(() => {
         const latestDiagnostic = turnDiagnosticsRef.current.get(threadId);
-        if (
-          !latestDiagnostic ||
-          latestDiagnostic.completedAt !== null ||
-          latestDiagnostic.errorAt !== null ||
-          interruptedThreadsRef.current.has(threadId)
-        ) {
-          return;
-        }
-        const lifecycle = getThreadLifecycleSnapshot(threadId);
-        if (
-          !lifecycle.isProcessing ||
-          (lifecycle.activeTurnId !== null && lifecycle.activeTurnId !== latestDiagnostic.turnId)
-        ) {
+        if (!latestDiagnostic) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: null,
+            reason: "missing-diagnostic",
+          });
           return;
         }
         const now = Date.now();
         const elapsedSinceProgressMs = Math.max(0, now - latestDiagnostic.lastProgressAt);
         const timeoutMs = getCodexNoProgressTimeoutMs(latestDiagnostic);
+        emitCodexNoProgressWatchdogDiagnostic("fired", {
+          threadId,
+          diagnostic: latestDiagnostic,
+          timeoutMs,
+          elapsedSinceProgressMs,
+        });
+        if (latestDiagnostic.completedAt !== null) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "completed",
+            timeoutMs,
+            elapsedSinceProgressMs,
+          });
+          return;
+        }
+        if (latestDiagnostic.errorAt !== null) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "error",
+            timeoutMs,
+            elapsedSinceProgressMs,
+          });
+          return;
+        }
+        if (interruptedThreadsRef.current.has(threadId)) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "interrupted",
+            timeoutMs,
+            elapsedSinceProgressMs,
+          });
+          return;
+        }
+        const lifecycle = getThreadLifecycleSnapshot(threadId);
+        if (!lifecycle.isProcessing) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "not-processing",
+            timeoutMs,
+            elapsedSinceProgressMs,
+            lifecycle,
+          });
+          return;
+        }
+        if (
+          lifecycle.activeTurnId !== null &&
+          lifecycle.activeTurnId !== latestDiagnostic.turnId
+        ) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "active-turn-mismatch",
+            timeoutMs,
+            elapsedSinceProgressMs,
+            lifecycle,
+          });
+          return;
+        }
         if (elapsedSinceProgressMs < timeoutMs) {
+          emitCodexNoProgressWatchdogDiagnostic("skipped", {
+            threadId,
+            diagnostic: latestDiagnostic,
+            reason: "progress-still-fresh",
+            timeoutMs,
+            elapsedSinceProgressMs,
+            lifecycle,
+          });
           return;
         }
         markCodexNoProgressSuspected(
@@ -734,6 +845,7 @@ export function useThreadEventHandlers({
     },
     [
       clearCodexNoProgressTimer,
+      emitCodexNoProgressWatchdogDiagnostic,
       getThreadLifecycleSnapshot,
       interruptedThreadsRef,
       markCodexNoProgressSuspected,

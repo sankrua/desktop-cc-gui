@@ -556,6 +556,36 @@ describe("useThreadEventHandlers diagnostics", () => {
     expect(suspectedEntry?.payload.source).toBe("frontend-no-progress-suspected");
     expect(suspectedEntry?.payload.terminal).toBe(false);
     expect(suspectedEntry?.payload.quarantine).toBe(false);
+    const watchdogScheduledEntry = collectDiagnosticCalls(onDebug).find(
+      (entry) =>
+        entry.label ===
+        "thread/session:turn-diagnostic:codex-no-progress-watchdog-scheduled",
+    );
+    expect(watchdogScheduledEntry?.payload).toEqual(
+      expect.objectContaining({
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        diagnosticCategory: "codex-no-progress-watchdog",
+        stage: "scheduled",
+        timeoutMs: CODEX_TURN_NO_PROGRESS_STALL_MS,
+      }),
+    );
+    const watchdogFiredEntry = collectDiagnosticCalls(onDebug).find(
+      (entry) =>
+        entry.label ===
+        "thread/session:turn-diagnostic:codex-no-progress-watchdog-fired",
+    );
+    expect(watchdogFiredEntry?.payload).toEqual(
+      expect.objectContaining({
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        diagnosticCategory: "codex-no-progress-watchdog",
+        stage: "fired",
+        timeoutMs: CODEX_TURN_NO_PROGRESS_STALL_MS,
+      }),
+    );
     const dryRunEntry = collectDiagnosticCalls(onDebug).find(
       (entry) => entry.label === "thread/session:turn-diagnostic:three-evidence-dry-run",
     );
@@ -572,6 +602,42 @@ describe("useThreadEventHandlers diagnostics", () => {
         activeTurnId: "turn-1",
       }),
     );
+  });
+
+  it("records why the codex no-progress watchdog skips an interrupted turn", () => {
+    const onDebug = vi.fn();
+    const options = makeOptions(onDebug);
+    const { result } = renderHook(() => useThreadEventHandlers(options));
+
+    act(() => {
+      result.current.onTurnStarted("ws-1", "thread-1", "turn-1");
+      options.interruptedThreadsRef.current.add("thread-1");
+      vi.advanceTimersByTime(CODEX_TURN_NO_PROGRESS_STALL_MS);
+    });
+
+    expect(options.markProcessing).not.toHaveBeenCalledWith("thread-1", false);
+    const skippedEntry = collectDiagnosticCalls(onDebug).find(
+      (entry) =>
+        entry.label ===
+        "thread/session:turn-diagnostic:codex-no-progress-watchdog-skipped",
+    );
+    expect(skippedEntry?.payload).toEqual(
+      expect.objectContaining({
+        workspaceId: "ws-1",
+        threadId: "thread-1",
+        turnId: "turn-1",
+        diagnosticCategory: "codex-no-progress-watchdog",
+        stage: "skipped",
+        reason: "interrupted",
+      }),
+    );
+    expect(
+      collectDiagnosticCalls(onDebug).some(
+        (entry) =>
+          entry.label ===
+          "thread/session:turn-diagnostic:codex-no-progress-suspected",
+      ),
+    ).toBe(false);
   });
 
   it("queries scoped backend status after reconciliation-needed dry run without clearing busy state", async () => {
@@ -1126,7 +1192,12 @@ describe("useThreadEventHandlers diagnostics", () => {
       result.current.onTurnCompleted("ws-1", "thread-1", "turn-1");
     });
 
-    expect(collectDiagnosticCalls(onDebug)).toEqual([]);
+    const labels = collectDiagnosticCalls(onDebug).map((entry) => entry.label);
+    expect(labels).not.toContain("thread/session:turn-diagnostic:first-delta");
+    expect(labels).not.toContain("thread/session:turn-diagnostic:first-item");
+    expect(labels).not.toContain("thread/session:turn-diagnostic:first-execution-item");
+    expect(labels).not.toContain("thread/session:turn-diagnostic:completed");
+    expect(labels).not.toContain("thread/session:turn-diagnostic:stalled-after-first-delta");
   });
 
   it("defers codex turn completion while a child agent tool is still active", () => {
@@ -1817,7 +1888,6 @@ describe("useThreadEventHandlers diagnostics", () => {
     });
 
     const labels = collectDiagnosticCalls(onDebug).map((entry) => entry.label);
-    expect(labels).toEqual([]);
     expect(labels).not.toContain("thread/session:turn-diagnostic:first-delta");
     expect(labels).not.toContain("thread/session:turn-diagnostic:stalled-after-first-delta");
   });
