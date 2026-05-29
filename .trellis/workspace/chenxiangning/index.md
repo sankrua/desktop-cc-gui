@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-17.md`
-- **Total Sessions**: 640
+- **Total Sessions**: 641
 - **Last Active**: 2026-05-30
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-17.md` | ~1526 | Active |
+| `journal-17.md` | ~1559 | Active |
 | `journal-16.md` | ~1985 | Archived |
 | `journal-15.md` | ~1996 | Archived |
 | `journal-14.md` | ~1969 | Archived |
@@ -45,6 +45,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 641 | 2026-05-30 | 记录 Codex 无进展 watchdog 生命周期 | `f2cf941d` | `feature/v0.5.4` |
 | 640 | 2026-05-30 | 收口文件树 fallback 根层快照 | `24780685` | `feature/v0.5.4` |
 | 639 | 2026-05-30 | 修复命令补全快捷发送 | `c2ac6c00` | `feature/v0.5.4` |
 | 638 | 2026-05-30 | 标记 Codex goal 手工验证完成 | `e7061617` | `feature/v0.5.4` |

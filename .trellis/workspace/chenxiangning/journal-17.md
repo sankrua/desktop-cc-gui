@@ -1524,3 +1524,36 @@ Validation:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 641: 记录 Codex 无进展 watchdog 生命周期
+
+**Date**: 2026-05-30
+**Task**: 记录 Codex 无进展 watchdog 生命周期
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+为 Codex no-progress watchdog 增加 scheduled/fired/skipped 生命周期诊断，并把 codex-no-progress-watchdog-* 写入全局 error-log；补充 hook 与 error-log 回归测试，更新 Phase2a 设计里的下一步排查依据。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f2cf941d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
