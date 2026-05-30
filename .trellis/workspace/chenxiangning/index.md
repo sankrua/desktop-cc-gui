@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-17.md`
-- **Total Sessions**: 646
+- **Total Sessions**: 647
 - **Last Active**: 2026-05-31
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-17.md` | ~1753 | Active |
+| `journal-17.md` | ~1786 | Active |
 | `journal-16.md` | ~1985 | Archived |
 | `journal-15.md` | ~1996 | Archived |
 | `journal-14.md` | ~1969 | Archived |
@@ -45,6 +45,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 647 | 2026-05-31 | 补齐三证查询超时收口 | `2017a5ab` | `feature/v0.5.4` |
 | 646 | 2026-05-31 | 同步项目地图整理体验规范 | `1a4d56cc` | `feature/v0.5.4` |
 | 645 | 2026-05-31 | 强化待整理发现的 AI 整理候选 | `54ea3040` | `feature/v0.5.4` |
 | 644 | 2026-05-31 | 拆分线程事件处理辅助逻辑 | `7db221a7` | `feature/v0.5.4` |

@@ -1751,3 +1751,36 @@ Review 后修正 Codex no-progress watchdog 生命周期观测的全局日志范
 ### Next Steps
 
 - None - task complete
+
+
+## Session 647: 补齐三证查询超时收口
+
+**Date**: 2026-05-31
+**Task**: 补齐三证查询超时收口
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+Phase 2a reconciliation status query 增加 15 秒诊断 timeout，悬挂时写入 query-failed 终态日志；保持诊断旁路，不清理 processing/activeTurnId，并补充 Vitest 与 OpenSpec 约束。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `2017a5ab` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
