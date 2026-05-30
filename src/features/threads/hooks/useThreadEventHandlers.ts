@@ -1,10 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from "react";
-import type { Dispatch, MutableRefObject } from "react";
 import type {
   AppServerEvent,
   CollaborationModeBlockedRequest,
   CollaborationModeResolvedRequest,
-  DebugEntry,
   RequestUserInputRequest,
   TurnReconciliationRuntimeStatus,
 } from "../../../types";
@@ -16,7 +14,6 @@ import { useThreadUserInputEvents } from "./useThreadUserInputEvents";
 import { parseFirstPacketTimeoutSeconds, stripBackendErrorPrefix } from "../utils/networkErrors";
 import { captureClaudeMcpRuntimeSnapshotFromRaw } from "../utils/claudeMcpRuntimeSnapshot";
 import { buildThreadDebugCorrelation } from "../utils/threadDebugCorrelation";
-import type { ThreadAction } from "./useThreadsReducer";
 import type {
   ConversationEngine,
   NormalizedThreadEvent,
@@ -41,8 +38,15 @@ import {
 } from "../utils/turnSettlementDecision";
 import {
   domainEventFactories,
-  type DomainEventRuntimeController,
 } from "../domain-events";
+import type { ThreadEventHandlersOptions } from "./threadEventHandlerTypes";
+import {
+  FOREGROUND_TERMINAL_EVENT_METHODS,
+  extractTerminalEventResultTextLength,
+  extractTerminalEventThreadId,
+  extractTerminalEventTurnId,
+  normalizeRuntimeEndedCount,
+} from "./threadTerminalEventHelpers";
 import {
   TURN_FIRST_DELTA_WARNING_MS,
   TURN_STALL_WARNING_MS,
@@ -74,142 +78,6 @@ export {
   CODEX_EXECUTION_ACTIVE_NO_PROGRESS_STALL_MS,
   CODEX_TURN_NO_PROGRESS_STALL_MS,
 } from "./threadEventDiagnostics";
-
-type ThreadEventHandlersOptions = {
-  activeThreadId: string | null;
-  dispatch: Dispatch<ThreadAction>;
-  getCustomName: (workspaceId: string, threadId: string) => string | undefined;
-  resolveCanonicalThreadId?: (threadId: string) => string;
-  resolveCollaborationUiMode?: (
-    threadId: string,
-  ) => "plan" | "code" | null;
-  isAutoTitlePending: (workspaceId: string, threadId: string) => boolean;
-  isThreadHidden: (workspaceId: string, threadId: string) => boolean;
-  markProcessing: (threadId: string, isProcessing: boolean) => void;
-  markReviewing: (threadId: string, isReviewing: boolean) => void;
-  setActiveTurnId: (threadId: string, turnId: string | null) => void;
-  codexCompactionInFlightByThreadRef: MutableRefObject<Record<string, boolean>>;
-  safeMessageActivity: () => void;
-  recordThreadActivity: (
-    workspaceId: string,
-    threadId: string,
-    timestamp?: number,
-  ) => void;
-  pushThreadErrorMessage: (threadId: string, message: string) => void;
-  onDebug?: (entry: DebugEntry) => void;
-  onWorkspaceConnected: (workspaceId: string) => void;
-  applyCollabThreadLinks: (
-    threadId: string,
-    item: Record<string, unknown>,
-  ) => void;
-  approvalAllowlistRef: MutableRefObject<Record<string, string[][]>>;
-  pendingInterruptsRef: MutableRefObject<Set<string>>;
-  interruptedThreadsRef: MutableRefObject<Set<string>>;
-  renameCustomNameKey: (
-    workspaceId: string,
-    oldThreadId: string,
-    newThreadId: string,
-  ) => void;
-  renameAutoTitlePendingKey: (
-    workspaceId: string,
-    oldThreadId: string,
-    newThreadId: string,
-  ) => void;
-  renameThreadTitleMapping: (
-    workspaceId: string,
-    oldThreadId: string,
-    newThreadId: string,
-  ) => Promise<void>;
-  resolveClaudeContinuationThreadId?: (
-    workspaceId: string,
-    threadId: string,
-    turnId?: string | null,
-  ) => string | null;
-  resolvePendingThreadForSession?: (
-    workspaceId: string,
-    engine: "claude" | "gemini" | "opencode",
-  ) => string | null;
-  resolvePendingThreadForTurn?: (
-    workspaceId: string,
-    engine: "claude" | "gemini" | "opencode",
-    turnId: string | null | undefined,
-  ) => string | null;
-  getActiveTurnIdForThread?: (threadId: string) => string | null;
-  renamePendingMemoryCaptureKey: (
-    oldThreadId: string,
-    newThreadId: string,
-  ) => void;
-  onAgentMessageCompletedExternal?: (payload: {
-    workspaceId: string;
-    threadId: string;
-    turnId?: string | null;
-    itemId: string;
-    text: string;
-  }) => void;
-  onTurnCompletedExternal?: (payload: {
-    workspaceId: string;
-    threadId: string;
-    turnId: string;
-  }) => void;
-  onTurnTerminalExternal?: (payload: {
-    workspaceId: string;
-    threadId: string;
-    turnId: string;
-    status: "completed" | "error" | "stalled";
-  }) => void;
-  onCollaborationModeResolved?: (
-    event: CollaborationModeResolvedRequest,
-  ) => void;
-  onExitPlanModeToolCompleted?: (payload: {
-    workspaceId: string;
-    threadId: string;
-    itemId: string;
-  }) => void;
-  domainEventController?: DomainEventRuntimeController | null;
-};
-
-const FOREGROUND_TERMINAL_EVENT_METHODS = new Set([
-  "turn/completed",
-  "turn/error",
-  "turn/stalled",
-  "runtime/ended",
-]);
-
-function extractTerminalEventThreadId(params: Record<string, unknown>): string {
-  const turn = (params.turn as Record<string, unknown> | undefined) ?? {};
-  const thread = (params.thread as Record<string, unknown> | undefined) ?? {};
-  return asString(
-    params.threadId ??
-      params.thread_id ??
-      turn.threadId ??
-      turn.thread_id ??
-      thread.threadId ??
-      thread.thread_id ??
-      thread.id ??
-      "",
-  ).trim();
-}
-
-function extractTerminalEventTurnId(params: Record<string, unknown>): string {
-  const turn = (params.turn as Record<string, unknown> | undefined) ?? {};
-  return asString(params.turnId ?? params.turn_id ?? turn.id ?? "").trim();
-}
-
-function extractTerminalEventResultTextLength(params: Record<string, unknown>): number | null {
-  const result = (params.result as Record<string, unknown> | undefined) ?? {};
-  const text = [
-    params.text,
-    result.text,
-    result.output_text,
-    result.outputText,
-    result.content,
-  ].find((value) => typeof value === "string" && value.trim().length > 0);
-  return typeof text === "string" ? text.length : null;
-}
-
-function normalizeRuntimeEndedCount(value: unknown): number {
-  return Array.isArray(value) ? value.length : 0;
-}
 
 export function useThreadEventHandlers({
   activeThreadId,
