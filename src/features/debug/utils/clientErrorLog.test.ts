@@ -89,6 +89,14 @@ describe("clientErrorLog", () => {
       shouldPersistClientErrorLogEntry(
         debugEntry({
           label:
+            "thread/session:turn-diagnostic:three-evidence-reconciliation-query-skipped",
+        }),
+      ),
+    ).toBe(true);
+    expect(
+      shouldPersistClientErrorLogEntry(
+        debugEntry({
+          label:
             "thread/session:turn-diagnostic:three-evidence-reconciliation-query-resolved",
           payload: {
             status: "runtime-ended",
@@ -108,7 +116,15 @@ describe("clientErrorLog", () => {
           },
         }),
       ),
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      shouldPersistClientErrorLogEntry(
+        debugEntry({
+          label:
+            "thread/session:turn-diagnostic:three-evidence-reconciliation-cleanup-skipped",
+        }),
+      ),
+    ).toBe(true);
     expect(
       shouldPersistClientErrorLogEntry(
         debugEntry({

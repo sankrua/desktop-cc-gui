@@ -338,6 +338,30 @@ export function useThreadEventHandlers({
       }, { force: decision.action !== "settle" });
 
       if (decision.action !== "request-reconciliation") {
+        emitTurnDiagnostic("three-evidence-reconciliation-query-skipped", {
+          workspaceId: input.workspaceId,
+          threadId: input.threadId,
+          turnId: input.turnId || null,
+          engine,
+          diagnosticCategory: "three-evidence-reconciliation",
+          skipReason: "decision-not-reconciliation",
+          decisionAction: decision.action,
+          decisionReason: decision.reason,
+          scopeMatch: decision.scopeMatch,
+          acceptedEvidence: decision.acceptedEvidence,
+          boundedReason: decision.diagnostics.boundedReason,
+          missingScope: decision.diagnostics.missingScope ?? [],
+          staleEvidence: Boolean(decision.diagnostics.staleEvidence),
+          residue: Boolean(decision.diagnostics.residue),
+          handled: input.handled,
+          fallbackApplied: input.fallbackApplied,
+          isProcessing: input.lifecycle.isProcessing,
+          activeTurnId: input.lifecycle.activeTurnId,
+          lastProgressSource: input.diagnostic?.lastProgressSource ?? null,
+          lastProgressAgeMs,
+          progressSequence: input.diagnostic?.progressSequence ?? null,
+          activeThreadId,
+        }, { force: decision.action !== "settle" });
         return;
       }
 
@@ -353,6 +377,23 @@ export function useThreadEventHandlers({
       };
       const queryKey = buildReconciliationQueryKey(request);
       if (reconciliationQueryInFlightRef.current.has(queryKey)) {
+        emitTurnDiagnostic("three-evidence-reconciliation-query-skipped", {
+          workspaceId: input.workspaceId,
+          threadId: input.threadId,
+          turnId: input.turnId || null,
+          engine,
+          diagnosticCategory: "three-evidence-reconciliation",
+          skipReason: "query-already-in-flight",
+          requestSource: request.requestSource,
+          decisionAction: decision.action,
+          decisionReason: decision.reason,
+          boundedReason: decision.diagnostics.boundedReason,
+          queryKeyHash: queryKey.length,
+          isProcessing: input.lifecycle.isProcessing,
+          activeTurnId: input.lifecycle.activeTurnId,
+          lastProgressAgeMs,
+          activeThreadId,
+        }, { force: true });
         return;
       }
       reconciliationQueryInFlightRef.current.add(queryKey);
@@ -465,6 +506,30 @@ export function useThreadEventHandlers({
             activeTurnId: latestLifecycle.activeTurnId,
             activeThreadId,
           }, { force: true });
+          if (responseDecision.action !== "cleanup-residue") {
+            emitTurnDiagnostic("three-evidence-reconciliation-cleanup-skipped", {
+              workspaceId: input.workspaceId,
+              threadId: input.threadId,
+              turnId: input.turnId || null,
+              engine,
+              diagnosticCategory: "three-evidence-reconciliation",
+              skipReason: responseDecision.scopeMatch.matched
+                ? "decision-not-cleanup-residue"
+                : "scope-mismatch",
+              status: response.status,
+              statusSource: response.statusSource,
+              decisionAction: responseDecision.action,
+              decisionReason: responseDecision.reason,
+              scopeMatch: responseDecision.scopeMatch,
+              acceptedEvidence: responseDecision.acceptedEvidence,
+              boundedReason: response.boundedReason,
+              helperBoundedReason: responseDecision.diagnostics.boundedReason,
+              lastProgressAgeMs: responseLastProgressAgeMs,
+              isProcessing: latestLifecycle.isProcessing,
+              activeTurnId: latestLifecycle.activeTurnId,
+              activeThreadId,
+            }, { force: true });
+          }
         })
         .catch((error: unknown) => {
           const latestLifecycle = getThreadLifecycleSnapshot(input.threadId);
@@ -658,11 +723,13 @@ export function useThreadEventHandlers({
         const now = Date.now();
         const elapsedSinceProgressMs = Math.max(0, now - latestDiagnostic.lastProgressAt);
         const timeoutMs = getCodexNoProgressTimeoutMs(latestDiagnostic);
+        const lifecycle = getThreadLifecycleSnapshot(threadId);
         emitCodexNoProgressWatchdogDiagnostic("fired", {
           threadId,
           diagnostic: latestDiagnostic,
           timeoutMs,
           elapsedSinceProgressMs,
+          lifecycle,
         });
         if (latestDiagnostic.completedAt !== null) {
           emitCodexNoProgressWatchdogDiagnostic("skipped", {
@@ -694,7 +761,6 @@ export function useThreadEventHandlers({
           });
           return;
         }
-        const lifecycle = getThreadLifecycleSnapshot(threadId);
         if (!lifecycle.isProcessing) {
           emitCodexNoProgressWatchdogDiagnostic("skipped", {
             threadId,

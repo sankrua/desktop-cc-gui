@@ -34,3 +34,14 @@ Phase 2a implements the conservative next step: query backend/runtime status wit
 - Unknown, failed, stale, or scope-mismatched query responses never complete the turn.
 - Query attempts are throttled per workspace/engine/thread/turn suspicion.
 - OpenSpec strict validation and focused automated tests pass.
+
+## 2026-06-01 Evidence Logging Marker
+
+Post-Phase2a reproduction showed stuck GUI symptoms without enough persisted evidence to decide Phase2b. This follow-up only strengthens the client error-log contract:
+
+- persist `three-evidence-reconciliation-query-skipped` when dry-run arbitration does not issue a status query or the same scoped query is already in flight;
+- persist all `three-evidence-reconciliation-query-resolved` outcomes, including `running` and `unknown`, so GO/NO-GO analysis can see why Phase2b did not start;
+- persist `three-evidence-reconciliation-cleanup-skipped` when a resolved query is not eligible for `cleanup-residue`;
+- include latest lifecycle evidence on `codex-no-progress-watchdog-fired`.
+
+Boundary: this marker does not enable Phase2b, does not clear frontend loading residue, does not infer completion from time or visible text, and does not relax `PHASE2B_HANDOFF_MARKER`.
