@@ -438,6 +438,8 @@ const zhPart2 = {
     runProject: "运行项目",
     openRunConsole: "打开运行控制台",
     openDetachedExplorer: "打开独立文件窗口",
+    openDetachedTab: "独立窗口打开",
+    openDetachedTabFor: "独立窗口打开 {{name}}",
     closeDetachedExplorer: "关闭独立文件窗口",
     detachedExplorerTitle: "独立文件窗口",
     detachedExplorerEmptyTitle: "选择一个文件开始浏览",

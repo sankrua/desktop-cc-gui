@@ -2433,6 +2433,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       <Suspense fallback={<HeavyPanelFallback />}>
       <FileViewPanel
         workspaceId={options.activeWorkspace.id}
+        workspaceName={options.activeWorkspace.name}
         workspacePath={options.activeWorkspace.path}
         gitRoot={options.gitRoot}
         customSpecRoot={activeWorkspaceCustomSpecRoot}

@@ -89,24 +89,33 @@
   filter: saturate(1) contrast(1.05);
 }
 
+.fvp-tab-detach,
 .fvp-tab-close {
   border: none;
   background: transparent;
   color: inherit;
-  padding: 3px 4px 3px 2px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  width: 20px;
+  height: 22px;
+  padding: 0;
   border-radius: 0;
   opacity: 0.62;
   transition: background 120ms ease, opacity 120ms ease;
 }
 
+.fvp-tab-detach {
+  color: color-mix(in srgb, var(--accent) 70%, currentColor);
+}
+
+.fvp-tab-detach:hover,
 .fvp-tab-close:hover {
   background: color-mix(in srgb, var(--surface-active) 42%, transparent);
   opacity: 1;
 }
 
+.fvp-tab.is-active .fvp-tab-detach,
 .fvp-tab.is-active .fvp-tab-close {
   opacity: 0.9;
 }

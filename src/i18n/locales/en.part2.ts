@@ -468,6 +468,8 @@ const enPart2 = {
     runProject: "Run project",
     openRunConsole: "Open run console",
     openDetachedExplorer: "Open detached explorer",
+    openDetachedTab: "Open in detached window",
+    openDetachedTabFor: "Open {{name}} in detached window",
     closeDetachedExplorer: "Close detached explorer",
     detachedExplorerTitle: "Detached explorer",
     detachedExplorerEmptyTitle: "Select a file to start browsing",
