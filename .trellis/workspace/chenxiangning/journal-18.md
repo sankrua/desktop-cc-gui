@@ -95,3 +95,60 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 654: 修复 Git 差异文件规范化展示
+
+**Date**: 2026-06-01
+**Task**: 修复 Git 差异文件规范化展示
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| OpenSpec | Added `fix-git-change-canonical-model` proposal, design, delta spec, tasks, closure notes, validation evidence, and manual review caveat. |
+| Git panel | Added canonical status+diff projection so diff-only added/deleted files render without losing status-authoritative behavior. |
+| Safety | Marked diff-only fallback rows preview-only and excluded them from stage, unstage, discard, and commit inclusion mutation flows. |
+| Cross-platform | Normalized repository-relative Git paths without OS path APIs and covered Windows-style separators plus LF/CRLF diffs. |
+| UI | Added deleted-row visual marker with line-through treatment. |
+| Validation | Ran typecheck, focused Git/message/documentation tests, large-file governance checks, and heavy-test-noise gate. |
+
+**Primary commit**: `8438d73d fix(git): 修复差异文件规范化展示`
+
+**Validation**:
+- `npm run typecheck`
+- `npx vitest run src/features/git/utils/gitChangeModel.test.ts src/features/git/components/GitDiffPanel.test.tsx`
+- `npx vitest run src/features/messages/components/Messages.runtime-reconnect.test.tsx src/features/messages/components/runtimeReconnect.test.ts`
+- `npx vitest run src/features/client-documentation/components/ClientDocumentationWindow.test.tsx`
+- `node --test scripts/check-large-files.test.mjs`
+- `npm run check:large-files:near-threshold`
+- `npm run check:large-files:gate`
+- `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs`
+- `npm run check:heavy-test-noise`
+
+**Caveat**:
+- Manual interactive Git panel smoke was not executed; remaining visual check is deleted-row line-through and preview-only fallback rows in the running app.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8438d73d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
