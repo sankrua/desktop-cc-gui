@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-18.md`
-- **Total Sessions**: 652
+- **Total Sessions**: 653
 - **Last Active**: 2026-06-01
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-18.md` | ~55 | Active |
+| `journal-18.md` | ~97 | Active |
 | `journal-17.md` | ~1971 | Archived |
 | `journal-16.md` | ~1985 | Archived |
 | `journal-15.md` | ~1996 | Archived |
@@ -46,6 +46,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 653 | 2026-06-01 | 收口 Codex 线程列表和引擎切换降级修复 | `4ac0b0d6` | `feature/v0.5.4` |
 | 652 | 2026-06-01 | 收口会话恢复 Fork 入口 | `e450586e` | `feature/v0.5.4` |
 | 651 | 2026-05-31 | 修复文件 tab 独立窗口拖拽与多实例 | `586f12eb` | `feature/v0.5.4` |
 | 650 | 2026-05-31 | 修复 daemon helper read runtime 守卫 | `0cf871b1` | `feature/v0.5.4` |

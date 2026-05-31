@@ -53,3 +53,45 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 653: 收口 Codex 线程列表和引擎切换降级修复
+
+**Date**: 2026-06-01
+**Task**: 收口 Codex 线程列表和引擎切换降级修复
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 目标 | 修复 2026-05-31 error-log 中 `thread/list live timeout`、`thread/list error`、`engine/switch error` 三类问题的可感知失败路径。 |
+| 代码提交 | `4ac0b0d6 fix(codex): 降级处理线程列表和引擎切换错误` |
+| 后端修复 | `thread_listing.rs` 和 daemon `list_threads` 在 live Codex thread/list 超时或失败时，不再直接 fatal，而是走 bounded local session fallback，并通过 `partialSource` 标记 degraded 状态。 |
+| 前端修复 | `useEngineController` 在切换 engine 前刷新 stale detection；Codex 仍不可用时调用 doctor，输出 `resolvedBinaryPath`、`pathEnvUsed`、`environmentDiagnosis` 等证据，避免只有泛化 `Engine codex is not installed`。 |
+| 规范记录 | 新增 OpenSpec change `fix-codex-thread-list-engine-switch-degradation`，记录目标、设计、任务和两组 behavior spec delta。 |
+| 范围排除 | `account/rateLimits/read error` 未纳入本次修复；Git diff canonical model 相关 dirty files 未暂存、未提交。 |
+| 验证 | 已通过 `cargo fmt --check`、目标 Rust tests、`cargo check`、engine hook ESLint/Vitest、`npm run check:runtime-contracts`、`openspec validate --strict`；`npm run typecheck` 仍受 unrelated `RuntimeReconnectCard.tsx` 既有类型错误阻断。 |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4ac0b0d6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
