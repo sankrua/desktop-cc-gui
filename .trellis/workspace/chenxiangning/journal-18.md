@@ -202,3 +202,51 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 656: 归档已验证 OpenSpec 变更并回写主规范
+
+**Date**: 2026-06-01
+**Task**: 归档已验证 OpenSpec 变更并回写主规范
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+批量归档 9 个已验证 OpenSpec change，回写主 specs，并完成 OpenSpec strict validation。
+
+### Main Changes
+
+本次会话完成 OpenSpec 收口：
+
+- 批量归档 9 个已验证 change：classify-auto-session-visibility、fix-git-change-canonical-model、fix-codex-thread-list-engine-switch-degradation、add-file-tab-detached-open、fix-runtime-acquire-helper-read-regression、refine-conversation-message-copy-actions、harden-project-map-organizer-review-ux、fix-thread-recovery-fork-shortcut、add-codex-structured-launch-profile。
+- 回写主 specs，新增 auto-session-visibility-classification、codex-launch-profile-resolution、codex-launch-profile-settings、conversation-message-actions 等 capability specs。
+- 保留 add-agent-task-orchestration-center active，不做实现或归档。
+- 针对 fix-thread-recovery-fork-shortcut 完成 focused Vitest、typecheck、单 change validate 后归档。
+- add-codex-structured-launch-profile 经用户在桌面 UI 手动确认 Launch Configuration 矩阵通过后归档。
+
+验证：
+
+- npx vitest run src/features/messages/components/Messages.runtime-reconnect.test.tsx：20 passed。
+- npm run typecheck：通过。
+- openspec validate fix-thread-recovery-fork-shortcut --strict --no-interactive：通过。
+- openspec validate add-codex-structured-launch-profile --strict --no-interactive：通过。
+- openspec validate --all --strict --no-interactive：304 passed, 0 failed。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `bad389e5d757670e12bf7acbbfdcad0a927b34f8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
