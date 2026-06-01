@@ -194,6 +194,10 @@ describe("taskRunStorage", () => {
       title: "Example",
       capturedAt: 100,
       state: "available",
+      summary: "bounded summary",
+      diagnostics: [],
+      redactedKinds: ["token"],
+      codeCandidates: [],
     });
   });
 });

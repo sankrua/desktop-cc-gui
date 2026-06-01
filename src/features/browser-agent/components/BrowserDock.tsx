@@ -50,6 +50,12 @@ type BrowserDockNotice = {
   message: string;
 };
 
+type TauriInternalsWindow = Window & {
+  __TAURI_INTERNALS__?: {
+    transformCallback?: unknown;
+  };
+};
+
 function normalizeUrlDraft(value: string): string {
   const trimmed = value.trim();
   if (!trimmed) {
@@ -78,6 +84,13 @@ function sessionStatusKey(session: BrowserSession | null): string {
     return "browserAgent.dock.statusNeedsAttention";
   }
   return "browserAgent.dock.statusPreparing";
+}
+
+function hasTauriEventBridge(): boolean {
+  if (typeof window === "undefined") {
+    return false;
+  }
+  return typeof (window as TauriInternalsWindow).__TAURI_INTERNALS__?.transformCallback === "function";
 }
 
 export function BrowserDock({
@@ -182,6 +195,9 @@ export function BrowserDock({
   }, [workspaceId]);
 
   useEffect(() => {
+    if (!hasTauriEventBridge()) {
+      return;
+    }
     let disposed = false;
     let cleanup: (() => void) | null = null;
     void listen<BrowserWebviewEvent>(BROWSER_WEBVIEW_EVENT, (event) => {
@@ -243,6 +259,14 @@ export function BrowserDock({
         return;
       }
       cleanup = unlisten;
+    }).catch((error: unknown) => {
+      if (disposed) {
+        return;
+      }
+      setNotice({
+        kind: "error",
+        message: error instanceof Error ? error.message : String(error),
+      });
     });
     return () => {
       disposed = true;
