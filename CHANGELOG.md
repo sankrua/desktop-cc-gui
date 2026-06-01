@@ -15,6 +15,8 @@
 - 新增核心错误日志持久化与三证结算 diagnostics，支持干跑判断、状态查询和前后端对账
 - 新增知识地图待整理发现的 AI 整理候选能力，支持对候选节点进行结构化归并、过滤和复核
 - 新增消息尾部操作图标，将复制、Fork 等助手回复操作收敛到更清晰的消息级入口
+- 新增内嵌 Browser Agent MVP，支持应用内浏览器 dock、平台能力探测、浏览器上下文附件和任务中心联动
+- 新增浏览器上下文结构化采集能力，支持页面摘要、DOM/代码候选、只读采集脚本、上下文预览和 Composer 附件注入
 - 新增原生窗口透明度设置，让自定义外观可以控制 desktop window 的透明呈现
 
 🔧 Improvements
@@ -29,10 +31,12 @@
 - 优化消息恢复卡片与 Fork 入口展示，将 stale recovery 场景下的继续执行路径和分叉入口区分得更明确
 - 优化 Git diff 规范化展示模型，统一 renamed / deleted / untracked 等文件状态在 diff 面板中的分组与路径呈现
 - 优化线程事件处理结构，拆分 terminal event helper 与事件类型，降低会话恢复和运行时事件链路的维护成本
+- 优化文件 tab 独立窗口图标主题色，让 detached file explorer 在不同主题下保持更一致的视觉反馈
 - 优化工作区文件树首屏加载，改用 root-first directory children 路径，减少启动和切换工作区时的递归扫描压力
 - 优化远程工作区 Git / GitHub 操作转发矩阵，降低 remote backend 模式误走本地 Git 的风险
 - 优化工作区会话文件夹相关操作，补齐远程后端转发并收敛阻塞式文件扫描边界
 - 补齐三证结算状态查询的 OpenSpec 设计记录与二阶段启动条件，增强 diagnostics 能力的交付可追踪性
+- 补齐三证对账采证日志，让 diagnostics 能记录 settlement evidence collection 过程，便于复盘 timeout、missing evidence 和状态漂移
 - 升级应用版本号到 `0.5.4`，同步前端包配置与 Tauri 配置
 
 🐛 Fixes
@@ -68,6 +72,8 @@ English:
 - Add persisted core error logs and three-evidence settlement diagnostics with dry-run checks, status queries, and frontend/backend reconciliation
 - Add AI organization candidates for Project Map discovered items, with structured merging, filtering, and review of candidate nodes
 - Add message-tail action icons so copy, fork, and related assistant-response actions are consolidated into clearer per-message entrypoints
+- Add the embedded Browser Agent MVP with an in-app browser dock, platform capability checks, browser-context attachments, and Task Center integration
+- Add structured browser-context capture with page summaries, DOM/code candidates, read-only capture scripts, context previews, and Composer attachment injection
 - Add native window transparency settings so custom appearance presets can control desktop window translucency
 
 🔧 Improvements
@@ -82,10 +88,12 @@ English:
 - Improve reconnect cards and fork entrypoints so stale-recovery continuation paths and fork actions are easier to distinguish
 - Improve the canonical Git diff display model so renamed, deleted, untracked, and related file states render consistently in diff grouping and paths
 - Improve thread event handling structure by splitting terminal-event helpers and event types, reducing maintenance risk in session recovery and runtime-event flows
+- Improve detached file explorer icon theme colors so file-tab popout windows provide more consistent visual feedback across themes
 - Improve workspace file-tree first paint with a root-first directory-children path to reduce recursive scan pressure during startup and workspace switches
 - Improve remote-workspace Git / GitHub forwarding coverage so remote backend mode does not fall back to local Git execution
 - Improve workspace session-folder operations by forwarding remote backend commands and narrowing blocking filesystem scan boundaries
 - Add OpenSpec design notes and phase-two entry conditions for three-evidence settlement status queries to improve diagnostics traceability
+- Add three-evidence reconciliation evidence-collection logs so diagnostics can reconstruct timeout, missing-evidence, and state-drift cases
 - Bump app version to `0.5.4` across frontend package metadata and Tauri configuration
 
 🐛 Fixes
