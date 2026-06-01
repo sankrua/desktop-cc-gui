@@ -44,4 +44,4 @@ Post-Phase2a reproduction showed stuck GUI symptoms without enough persisted evi
 - persist `three-evidence-reconciliation-cleanup-skipped` when a resolved query is not eligible for `cleanup-residue`;
 - include latest lifecycle evidence on `codex-no-progress-watchdog-fired`.
 
-Boundary: this marker does not enable Phase2b, does not clear frontend loading residue, does not infer completion from time or visible text, and does not relax `PHASE2B_HANDOFF_MARKER`.
+Boundary: this marker does not itself enable Phase2b, does not clear frontend loading residue, and does not infer completion from time or visible text. Follow-up evidence from `2026-06-01` showed a second valid Phase2b GO path: matched terminal evidence plus scoped busy residue may start Phase2b without a reconciliation query, provided `scopeMatch.matched = true`, terminal/state evidence are both accepted, `decisionAction = "cleanup-residue"`, and `activeTurnId` still matches the stuck `turnId`.

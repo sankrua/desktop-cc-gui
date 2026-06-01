@@ -80,12 +80,26 @@ If a stuck UI reproduces but the log contains no `codex-no-progress-watchdog-fir
 
 ## PHASE2B_HANDOFF_MARKER
 
-Start Phase 2b only after a real post-Phase2a reproduction writes all of these signals for the same scoped turn in `~/.ccgui/error-log/YYYY-MM-DD.jsonl`:
+Start Phase 2b only after a real post-Phase2a reproduction writes one of these evidence sets for the same scoped turn in `~/.ccgui/error-log/YYYY-MM-DD.jsonl`.
+
+### GO path A: reconciliation terminal evidence
 
 - `label = "thread/session:turn-diagnostic:three-evidence-reconciliation-query-resolved"`
 - `payload.scopeMatch.matched = true`
 - `payload.status` is one of `runtime-ended`, `failed`, `stalled`, or `completed`
 - `payload.decisionAction = "cleanup-residue"`
+
+### GO path B: matched terminal evidence with busy residue
+
+- `label = "thread/session:turn-diagnostic:three-evidence-reconciliation-query-skipped"`
+- `payload.skipReason = "decision-not-reconciliation"`
+- `payload.scopeMatch.matched = true`
+- `payload.acceptedEvidence.terminal = true`
+- `payload.acceptedEvidence.state = true`
+- `payload.decisionAction = "cleanup-residue"`
+- `payload.decisionReason = "busy-residue"`
+- `payload.isProcessing = true`
+- `payload.activeTurnId = payload.turnId`
 
 Do not start Phase 2b from any of these signals alone:
 
@@ -95,5 +109,6 @@ Do not start Phase 2b from any of these signals alone:
 - `payload.status = "query-failed"`
 - `three-evidence-reconciliation-query-rejected`
 - any response whose `scopeMatch.matched` is not `true`
+- `three-evidence-reconciliation-query-skipped` without matched terminal evidence, state evidence, and `busy-residue`
 
-Phase 2b should implement scoped guarded cleanup only. Its cleanup may clear frontend loading residue such as `isProcessing` and the matching `activeTurnId`, but only after the pure helper accepts the authoritative status-query evidence for the current workspace/engine/thread/turn. Phase 2b must not infer completion from elapsed time, visible/history text, or stale progress alone, and must continue to protect normal long-running turns.
+Phase 2b should implement scoped guarded cleanup only. Its cleanup may clear frontend loading residue such as `isProcessing` and the matching `activeTurnId`, but only after the pure helper accepts either authoritative status-query evidence or matched terminal evidence for the current workspace/engine/thread/turn. Phase 2b must not infer completion from elapsed time, visible/history text, or stale progress alone, and must continue to protect normal long-running turns.
