@@ -633,3 +633,42 @@ Commit: e22c9b1b fix(browser-agent): 收窄浏览器自动打开触发
 ### Next Steps
 
 - None - task complete
+
+
+## Session 666: 稳定 Project Map 面板批量测试
+
+**Date**: 2026-06-01
+**Task**: 稳定 Project Map 面板批量测试
+**Branch**: `feature/v0.5.4`
+
+### Summary
+
+修复 ProjectMapPanel 测试在 batch/CI 下可能受全局查询与状态残留影响的 flaky 风险。
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 改动 | 为 `ProjectMapPanel.test.tsx` 增加 afterEach cleanup/localStorage/mock 清理，并将 API Surface 节点点击限定到 graph viewport 内。 |
+| 验证 | `npx vitest run src/features/project-map/components/ProjectMapPanel.test.tsx --reporter=verbose` 通过 35/35。 |
+| 验证 | `npx vitest run --maxWorkers 1 --minWorkers 1 src/features/project-map/components/ProjectMapPanel.test.tsx src/features/project-map/hooks/useProjectMapDataset.test.tsx src/features/project-map/hooks/useProjectMapGenerationOptions.test.tsx src/features/project-map/projectMapI18n.test.ts --reporter=verbose` 通过 71/71。 |
+| 门禁 | `npm run lint` 与 `npm run typecheck` 通过。 |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `90bf8321` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
