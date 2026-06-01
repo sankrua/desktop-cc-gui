@@ -211,6 +211,9 @@ const baseSettings: AppSettings = {
   terminalShellPath: null,
   geminiEnabled: true,
   opencodeEnabled: true,
+  browserAgentEnabled: true,
+  browserAgentPreferBuiltIn: true,
+  browserAgentAllowExternalProviderFallback: true,
   backendMode: "local",
   remoteBackendHost: "127.0.0.1:4732",
   remoteBackendToken: null,
@@ -230,6 +233,7 @@ const baseSettings: AppSettings = {
   newWorktreeAgentShortcut: null,
   newCloneAgentShortcut: null,
   archiveThreadShortcut: null,
+  closeCurrentSessionShortcut: null,
   openChatShortcut: null,
   openKanbanShortcut: null,
   cycleOpenSessionPrevShortcut: null,
@@ -385,15 +389,31 @@ const renderDisplaySection = (
     onToggleTransparency?: ComponentProps<
       typeof SettingsView
     >["onToggleTransparency"];
+    windowTransparencyEnabled?: boolean;
+    onToggleWindowTransparency?: ComponentProps<
+      typeof SettingsView
+    >["onToggleWindowTransparency"];
+    windowOpacity?: number;
+    onWindowOpacityChange?: ComponentProps<
+      typeof SettingsView
+    >["onWindowOpacityChange"];
   } = {},
 ) => {
   cleanup();
   const onUpdateAppSettings =
     options.onUpdateAppSettings ?? vi.fn().mockResolvedValue(undefined);
   const onToggleTransparency = options.onToggleTransparency ?? vi.fn();
+  const onToggleWindowTransparency =
+    options.onToggleWindowTransparency ?? vi.fn();
+  const onWindowOpacityChange = options.onWindowOpacityChange ?? vi.fn();
   const props: ComponentProps<typeof SettingsView> = {
     reduceTransparency: options.reduceTransparency ?? false,
     onToggleTransparency,
+    windowTransparencyEnabled:
+      options.windowTransparencyEnabled ?? !(options.reduceTransparency ?? false),
+    onToggleWindowTransparency,
+    windowOpacity: options.windowOpacity ?? 88,
+    onWindowOpacityChange,
     appSettings: { ...baseSettings, ...options.appSettings },
     openAppIconById: {},
     onUpdateAppSettings,
@@ -424,7 +444,13 @@ const renderDisplaySection = (
 
   const view = render(<SettingsView {...props} />);
 
-  return { ...view, onUpdateAppSettings, onToggleTransparency };
+  return {
+    ...view,
+    onUpdateAppSettings,
+    onToggleTransparency,
+    onToggleWindowTransparency,
+    onWindowOpacityChange,
+  };
 };
 
 const renderComposerSection = (
@@ -829,7 +855,7 @@ describe("SettingsView Display", () => {
     expect(doctorBodyText).toContain("Wrapper Kind: cmd-wrapper");
     expect(doctorBodyText).toContain("Wrapper Fallback Retry: attempted");
     expect(doctorBodyText).toContain("HTTP_PROXY=http://127.0.0.1:7890");
-    expect(doctorBodyText).toContain("HTTPS_PROXY=Not set");
+    expect(doctorBodyText).not.toContain("HTTPS_PROXY=Not set");
   });
 
   it("switches to the Claude Code tab and runs Claude doctor", async () => {
@@ -1536,13 +1562,44 @@ describe("SettingsView Display", () => {
     appRoot.remove();
   });
 
-  it("hides remaining limits, message anchors, and transparency toggles", async () => {
+  it("hides remaining limits and message anchors while showing window transparency controls", async () => {
     renderDisplaySection();
     await flushSettingsViewEffects();
 
     expect(screen.queryByText("Show remaining Codex limits")).toBeNull();
     expect(screen.queryByText("Show message anchors")).toBeNull();
     expect(screen.queryByText("Reduce transparency")).toBeNull();
+    expect(screen.getByText("Window transparency")).toBeTruthy();
+    expect(screen.getByLabelText("Overall opacity")).toBeTruthy();
+  });
+
+  it("updates window transparency toggle and opacity", async () => {
+    const onToggleWindowTransparency = vi.fn();
+    const onWindowOpacityChange = vi.fn();
+    renderDisplaySection({
+      windowTransparencyEnabled: false,
+      onToggleWindowTransparency,
+      onWindowOpacityChange,
+    });
+
+    fireEvent.click(screen.getByRole("switch", { name: "Window transparency" }));
+
+    expect(onToggleWindowTransparency).toHaveBeenCalledWith(true);
+    expect(screen.queryByLabelText("Overall opacity")).toBeNull();
+
+    cleanup();
+    renderDisplaySection({
+      windowTransparencyEnabled: true,
+      windowOpacity: 88,
+      onToggleWindowTransparency,
+      onWindowOpacityChange,
+    });
+
+    fireEvent.change(screen.getByLabelText("Overall opacity"), {
+      target: { value: "72" },
+    });
+
+    expect(onWindowOpacityChange).toHaveBeenCalledWith(72);
   });
 
   it("updates ui scale from slider and save action", async () => {
