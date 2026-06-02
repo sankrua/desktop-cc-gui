@@ -288,6 +288,55 @@ describe("FileTreePanel run action isolation", () => {
     expect(fileLabel.className).toContain("git-m");
   });
 
+  it("marks visible folders as gitignored only when the whole folder is ignored", () => {
+    render(
+      <FileTreePanel
+        workspaceId="workspace-1"
+        workspacePath="/tmp/workspace"
+        files={[
+          "node_modules/pkg/index.js",
+          ".idea/workspace.xml",
+          "src-tauri/target/debug/app",
+          "src-tauri/src/main.rs",
+          "src-tauri/Cargo.toml",
+          "src/index.ts",
+        ]}
+        directories={[
+          "node_modules",
+          "node_modules/pkg",
+          ".idea",
+          "src-tauri",
+          "src-tauri/target",
+          "src-tauri/target/debug",
+          "src-tauri/src",
+          "src",
+        ]}
+        isLoading={false}
+        filePanelMode="files"
+        onFilePanelModeChange={() => undefined}
+        onOpenFile={() => undefined}
+        onInsertText={() => undefined}
+        openTargets={[]}
+        openAppIconById={{}}
+        selectedOpenAppId=""
+        onSelectOpenAppId={() => undefined}
+        gitStatusFiles={[]}
+        gitignoredFiles={new Set<string>()}
+        gitignoredDirectories={new Set<string>(["node_modules", ".idea", "target"])}
+      />,
+    );
+
+    const ignoredFolderLabels = Array.from(
+      document.querySelectorAll(".file-tree-row.is-gitignored .file-tree-name"),
+    ).map((label) => label.textContent ?? "");
+
+    expect(ignoredFolderLabels).toContain("node_modules");
+    expect(ignoredFolderLabels).toContain(".idea");
+    expect(ignoredFolderLabels).toContain("target");
+    expect(ignoredFolderLabels).not.toContain("src-tauri");
+    expect(ignoredFolderLabels).not.toContain("src");
+  });
+
   it("applies git color class for repo-relative status when git root is a workspace subdirectory", () => {
     render(
       <FileTreePanel

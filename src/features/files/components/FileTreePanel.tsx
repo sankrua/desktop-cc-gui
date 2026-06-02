@@ -250,6 +250,60 @@ function filterDeletedFileTreePathFromMap<T>(valuesByPath: Map<string, T>, delet
   return changed ? next : valuesByPath;
 }
 
+function getFileTreePathLeaf(path: string) {
+  return path.split("/").filter(Boolean).pop() ?? path;
+}
+
+function isDirectlyGitignoredFolderPath(path: string, ignoredDirectories: Set<string>) {
+  if (ignoredDirectories.has(path)) {
+    return true;
+  }
+  const pathLeaf = getFileTreePathLeaf(path);
+  for (const ignoredDirectory of ignoredDirectories) {
+    if (!ignoredDirectory) {
+      continue;
+    }
+    const ignoredLeaf = getFileTreePathLeaf(ignoredDirectory);
+    if (
+      pathLeaf === ignoredDirectory ||
+      pathLeaf === ignoredLeaf
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isGitignoredFileTreeNode(
+  node: FileTreeNode,
+  ignoredFiles: Set<string>,
+  ignoredDirectories: Set<string>,
+  memo: Map<string, boolean>,
+): boolean {
+  const memoized = memo.get(node.path);
+  if (memoized !== undefined) {
+    return memoized;
+  }
+  if (node.type === "file") {
+    const ignored = ignoredFiles.has(node.path) ||
+      Array.from(ignoredDirectories).some((ignoredDirectory) =>
+        isSameOrDescendantFileTreePath(node.path, ignoredDirectory),
+      );
+    memo.set(node.path, ignored);
+    return ignored;
+  }
+  if (isDirectlyGitignoredFolderPath(node.path, ignoredDirectories)) {
+    memo.set(node.path, true);
+    return true;
+  }
+  const ignored = node.children.length > 0 &&
+    node.children.every((child) =>
+      isGitignoredFileTreeNode(child, ignoredFiles, ignoredDirectories, memo),
+    );
+  memo.set(node.path, ignored);
+  return ignored;
+}
+
 function setFileTreeDragBridge(paths: string[]) {
   if (typeof window === "undefined") {
     return;
@@ -1035,6 +1089,18 @@ export function FileTreePanel({
       mergedFiles,
     ],
   );
+  const gitignoredTreeNodeMap = useMemo(() => {
+    const memo = new Map<string, boolean>();
+    nodes.forEach((node) => {
+      isGitignoredFileTreeNode(
+        node,
+        mergedGitignoredFiles,
+        mergedGitignoredDirectories,
+        memo,
+      );
+    });
+    return memo;
+  }, [mergedGitignoredDirectories, mergedGitignoredFiles, nodes]);
   const folderGitStatusMap = useMemo(() => {
     if (!gitStatusFiles || gitStatusFiles.length === 0) {
       return new Map<string, string>();
@@ -2332,7 +2398,7 @@ export function FileTreePanel({
       ? ` git-${fileGitStatus.toLowerCase()}`
       : "";
     const isGitignored = isFolder
-      ? mergedGitignoredDirectories.has(node.path)
+      ? gitignoredTreeNodeMap.get(node.path) === true
       : mergedGitignoredFiles.has(node.path);
     const isSelected = selectedNodePaths.has(node.path);
     const isPrimarySelection = selectedNodePath === node.path;
@@ -2517,7 +2583,7 @@ export function FileTreePanel({
       ? ` git-${fileGitStatus.toLowerCase()}`
       : "";
     const isGitignored = isFolder
-      ? mergedGitignoredDirectories.has(node.path)
+      ? gitignoredTreeNodeMap.get(node.path) === true
       : mergedGitignoredFiles.has(node.path);
     const isSelected = selectedNodePaths.has(node.path);
     const isPrimarySelection = selectedNodePath === node.path;
