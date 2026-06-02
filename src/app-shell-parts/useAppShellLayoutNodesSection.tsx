@@ -763,7 +763,11 @@ export function useAppShellLayoutNodesSection(ctx: any) {
         isSoloMode={isSoloMode}
         onToggleSoloMode={toggleSoloMode}
         isBrowserDockOpen={browserDockOpen}
-        onToggleBrowserDock={handleToggleBrowserDock}
+        onToggleBrowserDock={
+          clientUiVisibility.isControlVisible("topTool.browserDock")
+            ? handleToggleBrowserDock
+            : undefined
+        }
         showClientDocumentationButton={
           !isCompact && clientUiVisibility.isControlVisible("topTool.clientDocumentation")
         }

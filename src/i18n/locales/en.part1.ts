@@ -1116,6 +1116,7 @@ const enPart1 = {
         topToolRuntimeConsole: "Runtime console shortcut",
         topToolTerminal: "Terminal shortcut",
         topToolFocus: "Focus mode shortcut",
+        topToolBrowserDock: "Browser Dock shortcut",
         topToolRightPanel: "Right panel toggle",
         topToolClientDocumentation: "Client documentation entry",
         rightToolbarActivity: "Activity entry",
@@ -1143,6 +1144,8 @@ const enPart1 = {
           "Hides the top terminal shortcut; terminal shortcuts keep working.",
         topToolFocus:
           "Hides the focus mode shortcut without changing focus state.",
+        topToolBrowserDock:
+          "Hides the top Browser Dock shortcut without closing existing browser sessions.",
         topToolRightPanel: "Hides the top right-panel collapse/expand button.",
         topToolClientDocumentation:
           "Hides the client documentation entry without removing the documentation window.",

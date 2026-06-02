@@ -1170,6 +1170,7 @@ const zhPart1 = {
         topToolRuntimeConsole: "Runtime console 快捷入口",
         topToolTerminal: "终端快捷入口",
         topToolFocus: "聚焦模式快捷入口",
+        topToolBrowserDock: "Browser Dock 快捷入口",
         topToolRightPanel: "右侧面板开关",
         topToolClientDocumentation: "客户端说明文档入口",
         rightToolbarActivity: "活动入口",
@@ -1194,6 +1195,8 @@ const zhPart1 = {
           "隐藏顶部 runtime console 入口；runtime 行为不变。",
         topToolTerminal: "隐藏顶部终端入口；终端快捷键仍可使用。",
         topToolFocus: "隐藏聚焦模式入口，不改变当前聚焦状态。",
+        topToolBrowserDock:
+          "隐藏顶部 Browser Dock 入口；不关闭已有浏览器会话。",
         topToolRightPanel: "隐藏顶部右侧面板展开/收起按钮。",
         topToolClientDocumentation:
           "隐藏客户端说明文档入口；说明窗口能力不被移除。",
