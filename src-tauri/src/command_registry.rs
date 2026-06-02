@@ -35,6 +35,7 @@ pub(crate) fn invoke_handler(
         crate::browser_agent::close_browser_agent_session,
         crate::browser_agent::cleanup_browser_agent_sessions,
         crate::browser_agent::mount_browser_agent_webview,
+        crate::browser_agent::open_browser_agent_window,
         crate::browser_agent::sync_browser_agent_webview_bounds,
         crate::browser_agent::hide_browser_agent_webview,
         crate::browser_agent::list_browser_agent_evidence,

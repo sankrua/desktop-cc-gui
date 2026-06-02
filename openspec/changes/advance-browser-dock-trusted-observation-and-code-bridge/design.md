@@ -395,3 +395,28 @@ Annotations inherit the same stale reason model. A region or point annotation MU
 | Visual evidence leaks sensitive data | Privacy regression | Explicit confirmation, sanitizer, budget metadata |
 | Action preview becomes accidental execution | Unsafe automation | Confirmation gate, settings gate, blocked mutating actions |
 | Large files grow again | Maintainability regression | Dedicated modules and large-file governance |
+
+## Implementation Mapping - 2026-06-03
+
+### Runtime Architecture
+
+Browser Dock 当前实现分为五条协作链路：
+
+1. Detached Dock Window：前端通过 `browserAgentDockWindow.ts` 打开独立 Browser Dock renderer，`DetachedBrowserAgentWindow.tsx` 承接窗口页面，`browser-agent-window.css` 提供窗口级样式。
+2. Tauri Browser Agent Bridge：`src-tauri/src/browser_agent/mod.rs` 负责窗口创建、toolbar 注入、capture bridge、安全 action、snapshot refresh、multi-tab session routing 和 toolbar i18n。
+3. Trusted Observation Capture：`src/features/browser-agent/capture/read-only-capture-script.js` 是唯一 capture script 源，Rust 侧 `capture_script.rs` 只 include，不再维护重复脚本。
+4. Evidence and Annotation Surface：`evidence/*`、`visual-evidence/*`、`annotations/*`、`components/BrowserEvidencePanel*` 负责把 DOM/text/visual/a11y 证据转换成可审计 UI。
+5. Code Bridge and Task Context：`code-bridge/*`、`utils/codeCandidates.ts`、`types.ts`、`features/tasks/types.ts`、`taskRunStorage.ts`、`useThreadMessaging.ts` 负责把浏览器证据桥接到任务和消息上下文。
+
+### Source of Truth Decisions
+
+- Capture script source of truth 是 frontend `capture/read-only-capture-script.js`；Rust 侧不得再手写第二份脚本。
+- Active browser context source of truth 是 Browser Agent session id + workspace id；toolbar action 必须从当前 toolbar URL query 读取 session/workspace，不能依赖创建时闭包里的旧 session。
+- Browser Dock UI copy source of truth 分两层：React UI 使用 `src/i18n/locales/*.part1.ts`；Rust 注入 toolbar 使用 `browser_toolbar_labels(locale)`，由前端打开窗口时传入 `i18n.language`。
+- Evidence UI 和 Code Bridge 都必须保持 read-only observation 边界；涉及 action 的能力必须经 Action Preview/Audit Trail 显式呈现。
+
+### Residual Design Risks
+
+- Detached window 生命周期和主界面 session 状态同步仍需端到端验证，尤其是多 tab、关闭窗口、重开窗口、跨 workspace 场景。
+- Toolbar i18n 当前覆盖 Browser Dock 注入层静态 copy，后续如果增加更多 toolbar 文案，需要同步扩展 Rust labels。
+- Visual evidence 与 DOM evidence 的一致性需要继续保留 degraded capability matrix，避免在不同平台/browser runtime 下过度承诺。

@@ -1,10 +1,10 @@
+use serde::Serialize;
 use std::sync::Mutex;
 #[cfg(target_os = "macos")]
 use tauri::utils::config::BackgroundThrottlingPolicy;
 use tauri::webview::WebviewWindowBuilder;
 #[cfg(not(target_os = "macos"))]
 use tauri::RunEvent;
-use serde::Serialize;
 use tauri::{DragDropEvent, Emitter, Manager, Webview, WebviewEvent};
 #[cfg(target_os = "macos")]
 use tauri::{RunEvent, WindowEvent};
@@ -85,7 +85,9 @@ fn forward_webview_drag_drop_to_main<R: tauri::Runtime>(
         DragDropEvent::Leave => None,
         _ => None,
     };
-    if let (Some(payload), Some(main_window)) = (payload, webview.window().get_webview_window("main")) {
+    if let (Some(payload), Some(main_window)) =
+        (payload, webview.window().get_webview_window("main"))
+    {
         let _ = main_window.emit(MAIN_WINDOW_DRAG_DROP_FORWARD_EVENT, payload);
     }
 }

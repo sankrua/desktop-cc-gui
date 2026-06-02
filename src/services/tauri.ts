@@ -120,6 +120,7 @@ export {
   listBrowserAgentEvidence,
   listBrowserAgentSessions,
   mountBrowserAgentWebview,
+  openBrowserAgentWindow,
   refreshBrowserAgentSnapshot,
   routeBrowserAgentProvider,
   runBrowserAgentAction,

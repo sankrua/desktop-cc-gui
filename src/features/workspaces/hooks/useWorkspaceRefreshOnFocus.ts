@@ -73,8 +73,8 @@ export function useWorkspaceRefreshOnFocus({
             preserveState: true,
             includeOpenCodeSessions: false,
             recoverySource: "focus-refresh",
-          allowRuntimeReconnect: false,
-});
+            allowRuntimeReconnect: false,
+          });
         }
         await Promise.allSettled(
           rest.map((workspace) =>
@@ -82,8 +82,8 @@ export function useWorkspaceRefreshOnFocus({
               preserveState: true,
               includeOpenCodeSessions: false,
               recoverySource: "focus-refresh",
-            allowRuntimeReconnect: false,
-}),
+              allowRuntimeReconnect: false,
+            }),
           ),
         );
       } finally {

@@ -38,9 +38,25 @@ export type TaskRunBrowserEvidenceRef = {
   redactedKinds?: string[];
   codeCandidates?: Array<{
     filePath: string;
-    reason: "route_match" | "visible_text_match" | "landmark_match" | "manual_hint";
+    reason:
+      | "route_match"
+      | "file_name_match"
+      | "visible_text_match"
+      | "heading_match"
+      | "button_label_match"
+      | "form_label_match"
+      | "aria_label_match"
+      | "test_id_match"
+      | "component_symbol_match"
+      | "manual_hint";
     confidence: "high" | "medium" | "low";
     matchedText?: string | null;
+    sourceEvidence?: string[];
+    explanation?: string;
+    openAction?: {
+      kind: "open_file";
+      filePath: string;
+    } | null;
   }>;
 };
 

@@ -108,3 +108,25 @@ openspec validate advance-browser-dock-trusted-observation-and-code-bridge --str
 npx vitest run src/features/browser-agent/utils/attachment.test.ts src/features/browser-agent/components/BrowserContextPreview.test.tsx src/features/browser-agent/components/BrowserContextSummaryCard.test.tsx
 cargo test --manifest-path src-tauri/Cargo.toml browser_agent
 ```
+
+## Implementation Calibration - 2026-06-03
+
+本 PRD 原始定位是 Browser Dock Phase 3 observation core first slice。根据当前工作区浏览器相关变更区，实际推进范围已经覆盖更完整的 trusted observation + evidence inspector + action audit + code bridge + detached dock window 链路。
+
+### Calibrated Scope
+
+- Browser Dock 已从主界面面板迁移到 detached renderer window。
+- Tauri Browser Agent 已承接 toolbar bridge、capture bridge、safe action、snapshot refresh、session routing、toolbar i18n。
+- Capture script 已抽成 frontend canonical source，Rust 侧 include，降低脚本双写漂移。
+- Evidence、visual evidence、annotation、action audit、code bridge、task/thread context 都已有对应代码落点。
+- 2026-06-03 晚间补丁包含多 tab toolbar action session targeting 修正，以及 toolbar i18n locale propagation。
+
+### Current Completion Interpretation
+
+该任务不再按“仅首片”理解；当前应视为实现已大范围落地，但验收仍依赖后续测试和手工矩阵确认。后续继续推进时，应优先验证现有实现，而不是继续盲目扩展能力。
+
+### Next Acceptance Gate
+
+- 先跑 Browser Agent 相关 vitest fixture/unit tests。
+- 再跑 TypeScript typecheck。
+- 最后做 detached window + 多 tab + locale + evidence/code bridge 手工验收。

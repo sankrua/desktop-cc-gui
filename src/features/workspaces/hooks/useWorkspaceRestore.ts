@@ -60,7 +60,7 @@ export function useWorkspaceRestore({
         await listThreadsForWorkspace(workspace, {
           includeOpenCodeSessions: false,
           recoverySource: "workspace-restore",
-          allowRuntimeReconnect: false,
+          allowRuntimeReconnect: !restoreThreadsOnlyOnLaunch,
         });
         // A rerender may cancel the current effect while the in-flight restore
         // still succeeds. Keep the success marker so we do not restart the same

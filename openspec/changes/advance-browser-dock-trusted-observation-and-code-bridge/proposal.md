@@ -118,3 +118,24 @@ Phase 3 chooses B as the main path. C and D may become provider or opt-in supple
 - Navigate/reload/scroll can be previewed, confirmed, audited, and compared with before/after snapshots.
 - Click/type/select/submit remain blocked by default in Phase 3.
 - No browser context payload exposes raw DOM, cookies, headers, storage, scripts, styles, password/token/Authorization values, hidden input values, or page secrets.
+
+## Implementation Calibration - 2026-06-03
+
+本次校准基于工作区浏览器相关变更区，而不是只按原始 Phase 3 first slice 设想回写。实际实现已经从“只做 observation core”推进到更完整的 Browser Dock trusted observation + evidence + code bridge 能力链路。
+
+### Actual Implemented Scope
+
+- Browser Dock 从主界面内嵌面板迁移为 detached renderer window，由 `src/features/browser-agent/browserAgentDockWindow.ts`、`src/features/browser-agent/components/DetachedBrowserAgentWindow.tsx`、`src/styles/browser-agent-window.css` 和 `src/router.tsx` 承接窗口入口。
+- Tauri Browser Agent 新增 dock renderer window、toolbar bridge、capture bridge、safe browser action、snapshot refresh、trusted observation DTO、toolbar i18n 和多 tab session targeting。
+- Read-only capture script 以 `src/features/browser-agent/capture/read-only-capture-script.js` 作为 canonical frontend source，Rust 侧 `src-tauri/src/browser_agent/capture_script.rs` 通过 `include_str!` 引用，避免双份脚本漂移。
+- 前端新增 Evidence Inspector、Action Preview/Audit Trail、Annotation contract、Visual Evidence gate/reference、Code Bridge candidate extraction 与 active browser context attachment command bus。
+- Thread messaging、task run storage、task types、Tauri service API、i18n locale copy 已跟随浏览器上下文链路补齐。
+
+### Late-session Fixes Included
+
+- 多 tab toolbar 点击关联逻辑已从闭包内 stale `browserSessionId` 改为读取 toolbar query 中的 `sessionId` / `workspaceId`，使 attach/open/close/activate fallback 命中当前 active tab。
+- Browser Dock toolbar 的静态文案已补 i18n，`open_browser_agent_window` 接受 locale 并向 Rust toolbar script 传播当前语言。
+
+### Calibration Implication
+
+该 change 当前不应再被描述为“只完成首片 observation core”。更准确的状态是：主要实现已落地，剩余风险集中在验证、跨平台降级矩阵确认、窗口生命周期边界和 evidence/code bridge 的端到端回归。

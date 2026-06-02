@@ -29,8 +29,6 @@ import { ProjectMapPanel, type ProjectMapDatasetController } from "../../project
 import { WorkspaceNoteCardPanel } from "../../note-cards/components/WorkspaceNoteCardPanel";
 import { WorkspaceSessionActivityPanel } from "../../session-activity/components/WorkspaceSessionActivityPanel";
 import { WorkspaceSessionRadarPanel } from "../../session-activity/components/WorkspaceSessionRadarPanel";
-import { BrowserDock } from "../../browser-agent/components/BrowserDock";
-import { requestBrowserContextAttachment } from "../../browser-agent/state/browserContextAttachmentCommands";
 import { DebugPanel } from "../../debug/components/DebugPanel";
 import { PanelTabs } from "../components/PanelTabs";
 import { TabBar } from "../../app/components/TabBar";
@@ -2646,60 +2644,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       <span className="workspace-title">{t("workspace.diff")}</span>
     </div>
   );
-  const browserDockNode = options.browserDockOpen ? (
-    <section
-      className="browser-agent-center-panel"
-      aria-label={t("browserAgent.dock.panelTitle")}
-    >
-      <div className="browser-agent-center-panel-header">
-        <div className="browser-agent-center-panel-heading">
-          <div className="browser-agent-center-panel-title">
-            {t("browserAgent.dock.panelTitle")}
-          </div>
-          <div className="browser-agent-center-panel-kicker">
-            {t("browserAgent.dock.panelKicker")}
-          </div>
-        </div>
-        <div className="browser-agent-center-panel-actions">
-          <button
-            type="button"
-            className="browser-agent-center-panel-attach"
-            onClick={() =>
-              requestBrowserContextAttachment({
-                workspaceId: options.activeWorkspaceId,
-              })
-            }
-            disabled={!options.activeWorkspaceId}
-            aria-label={t("browserAgent.composer.attach")}
-            title={t("browserAgent.composer.attach")}
-            data-tauri-drag-region="false"
-          >
-            {t("browserAgent.composer.attach")}
-          </button>
-          <button
-            type="button"
-            className="browser-agent-center-panel-close"
-            onClick={options.onCloseBrowserDock}
-            aria-label={t("browserAgent.dock.closePanel")}
-            data-tauri-drag-region="false"
-          >
-            ×
-          </button>
-        </div>
-      </div>
-      {options.activeWorkspaceId ? (
-        <BrowserDock
-          workspaceId={options.activeWorkspaceId}
-          ownerSurface="main-split-browser-dock"
-          className="browser-agent-center-panel-dock"
-        />
-      ) : (
-        <div className="browser-agent-center-panel-empty">
-          {t("browserAgent.dock.noWorkspace")}
-        </div>
-      )}
-    </section>
-  ) : null;
+  const browserDockNode = null;
 
   return {
     codeAnnotationBridgeProps,

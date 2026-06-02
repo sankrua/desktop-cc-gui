@@ -751,3 +751,25 @@ If broader UI integration changes touch Composer/Messages send path, also run fo
 - Do not create Browser Agent-specific file navigation.
 - Do not grow `Composer.tsx` or `BrowserDock.tsx` with heavy logic.
 - Do not claim code candidates are definitive ownership.
+
+## Current Reality Calibration - 2026-06-03
+
+This plan originally framed Phase 3 as a constrained first implementation slice. The current browser-related working tree changes have advanced beyond that slice.
+
+### Implemented Beyond Original First Slice
+
+- Detached Browser Dock renderer window and routing.
+- Tauri Browser Agent toolbar bridge, capture bridge, snapshot refresh, safe actions, session routing, and toolbar i18n.
+- Canonical read-only capture script owned by frontend and included by Rust.
+- Evidence inspector, visual evidence references, annotations, action audit trail, and code bridge candidates.
+- Browser context propagation into thread messaging, task types, and task run storage.
+- Multi-tab toolbar click targeting fix and Browser Dock toolbar i18n propagation added on 2026-06-03.
+
+### Planning Consequence
+
+Future work should not restart from the old first-slice recommendation. The correct next step is verification and hardening:
+
+1. Validate unit/fixture coverage for Browser Agent utilities and capture script.
+2. Typecheck the cross-layer DTO/API changes.
+3. Manually verify detached window lifecycle, multiple tabs, locale switching, evidence rendering, and code bridge candidate extraction.
+4. Only after verification, decide whether to archive the OpenSpec change or split remaining risks into follow-up changes.
