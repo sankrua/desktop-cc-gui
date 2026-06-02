@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-18.md`
-- **Total Sessions**: 677
+- **Total Sessions**: 678
 - **Last Active**: 2026-06-02
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-18.md` | ~1184 | Active |
+| `journal-18.md` | ~1234 | Active |
 | `journal-17.md` | ~1971 | Archived |
 | `journal-16.md` | ~1985 | Archived |
 | `journal-15.md` | ~1996 | Archived |
@@ -46,6 +46,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 678 | 2026-06-02 | 收敛 stale cleanup runtime ended 事件 | `0dae096c` | `feature/v0.5.5` |
 | 677 | 2026-06-02 | 优化 Browser Dock Phase 3 提案中文可读性 | `d9da91f7` | `feature/v0.5.5` |
 | 676 | 2026-06-02 | 修复 DMG 安装引导布局回退 | `e0ec07c6` | `feature/v0.5.5` |
 | 675 | 2026-06-02 | 归档已验证 OpenSpec 变更 | `e3ac6a9a` | `feature/v0.5.5` |

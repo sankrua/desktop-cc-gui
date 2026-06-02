@@ -1182,3 +1182,53 @@ Validation performed before commit:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 678: 收敛 stale cleanup runtime ended 事件
+
+**Date**: 2026-06-02
+**Task**: 收敛 stale cleanup runtime ended 事件
+**Branch**: `feature/v0.5.5`
+
+### Summary
+
+修复 stale_reuse_cleanup 被 manual_shutdown 早退吞掉导致 Codex 生成态偶发残留的问题。
+
+### Main Changes
+
+## Work Summary
+
+- Investigated 2026-06-02 client error log and source path for occasional Codex session/runtime non-settlement.
+- Identified frontend routing gap: `runtime/ended` with `reasonCode=manual_shutdown` returned before `onTurnError`, even when backend shutdown source was `stale_reuse_cleanup` or active lease/pending work existed.
+- Changed `useAppServerEvents` to only ignore benign manual shutdowns with no active lease, no pending request, no affected thread/turn, and no stale/internal shutdown source.
+- Added focused regression coverage for stale cleanup manual shutdowns and active-lease manual shutdowns.
+
+## Verification
+
+- `npx vitest run src/features/app/hooks/useAppServerEvents.runtime-ended.test.tsx` passed: 6 tests.
+- `npm run lint` passed.
+- `npm run typecheck` passed.
+- `git diff --check` passed.
+
+## Impact
+
+- Runtime cleanup events that affect an active Codex turn now route to `onTurnError`, allowing UI processing state to settle instead of remaining in `正在生成响应...`.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0dae096c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
