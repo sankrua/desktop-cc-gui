@@ -858,3 +858,53 @@ Validation performed before commit:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 671: 修复多 WebView 外部拖拽断链
+
+**Date**: 2026-06-02
+**Task**: 修复多 WebView 外部拖拽断链
+**Branch**: `feature/v0.5.5`
+
+### Summary
+
+恢复外部文件/文件夹拖入 Composer：新增 child WebView drag-drop 转发到 main 的桥接链路，并回写 OpenSpec/Trellis 契约。
+
+### Main Changes
+
+## 完成内容
+
+- 修复 Browser Agent child WebView 截获 OS 文件/文件夹 drop 后 main Composer 收不到路径的问题。
+- 在 Rust 全局 `on_webview_event` 中只转发非 main WebView 的 drag/drop payload 到 `main-window://drag-drop`。
+- 在 `src/services/dragDrop.ts` 中统一消费 main native `onDragDropEvent` 与 forwarded drag-drop event。
+- 保留透明窗口能力，避免通过牺牲 WebView drag/drop handler 来修复。
+- 回写 `.trellis/spec/frontend/desktop-drag-drop.md`、frontend index、cross-layer guide、composer drag-drop OpenSpec，以及 Browser Agent proposal/design。
+
+## 验证事实
+
+- 用户在 macOS 上实测外部拖拽恢复可用。
+- 本回合未主动运行自动化测试。
+
+## 后续建议
+
+- 后续补充 `src/services/dragDrop.ts` listener cleanup 与 forwarded event 的 focused unit test。
+- Windows / Linux 需要按 Desktop Drag-Drop Contract 做 Explorer / file manager 手测。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `695b64de` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
