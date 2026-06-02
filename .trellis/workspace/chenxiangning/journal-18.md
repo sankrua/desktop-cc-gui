@@ -953,3 +953,40 @@ Validation performed before commit:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 673: 修复文件树 ignored 文件夹置灰
+
+**Date**: 2026-06-02
+**Task**: 修复文件树 ignored 文件夹置灰
+**Branch**: `feature/v0.5.5`
+
+### Summary
+
+修复文件树中 gitignored 文件夹的灰显投影语义：目录自身 ignored 或全部可见子项 ignored 时才置灰，避免部分 ignored 子目录导致父目录误置灰。
+
+### Main Changes
+
+- 修改 `src/features/files/components/FileTreePanel.tsx`，新增 bottom-up ignored 状态预计算，统一供虚拟列表和普通渲染路径消费。
+- 保留 `.file-tree-row.is-gitignored` 样式契约，不新增 CSS 或依赖。
+- 修改 `src/features/files/components/FileTreePanel.run.test.tsx`，覆盖 `node_modules` / `.idea` 置灰，以及 `src-tauri` 混合目录不置灰。
+- 验证：本回合未运行测试；用户要求提交收口，按 focused test 变更记录测试覆盖点。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0841d893` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
