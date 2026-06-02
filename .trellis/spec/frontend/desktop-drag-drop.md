@@ -9,6 +9,7 @@
 - Trigger：修改 `src-tauri/src/lib.rs` 的 window/webview builder、`src-tauri/src/browser_agent/**` child WebView 生命周期、`src/services/dragDrop.ts`、`ChatInputBox` paste/drop hook，或新增会覆盖主窗口的 native WebView。
 - 目标：保证 macOS Finder、Windows Explorer、Linux file manager 拖入文件/文件夹时，Composer 仍能通过同一 file-reference pipeline 插入绝对路径。
 - 风险：Tauri/Wry 的 drag-drop event 按 WebView label 分发；如果 child WebView 截获 OS drop，main WebView 的 `getCurrentWindow().onDragDropEvent` 不会收到该事件。
+- Regression memory：2026-06-02 曾尝试“加固”为只转发非 `main` WebView，结果 macOS Finder 外部拖拽再次断裂。当前实测事实是：`Builder::on_webview_event(...) -> main-window://drag-drop` 是必须保留的统一入口，即使事件来自 `main` WebView 也必须转发；重复 drop 必须在 frontend service 层幂等处理。
 
 ### 2. Signatures
 
@@ -57,7 +58,9 @@ type UsePasteAndDropOptions = {
   - `getCurrentWindow().onDragDropEvent(...)` for events received by the main WebView.
   - `main-window://drag-drop` for events forwarded from child WebViews.
 - Rust MUST register a global `Builder::on_webview_event(...)` bridge for `WebviewEvent::DragDrop` when child WebViews can exist above the main app surface.
-- The bridge MUST forward child WebView events only. It MUST NOT forward `webview.label() == "main"` because the main WebView already emits `getCurrentWindow().onDragDropEvent(...)` to the frontend.
+- The bridge MUST forward all WebView drag/drop events, including `webview.label() == "main"`. The main native `getCurrentWindow().onDragDropEvent(...)` path is not sufficient as the only delivery path in the current Tauri/Wry runtime.
+- `src/services/dragDrop.ts` MUST handle duplicate `drop` payloads idempotently because main WebView drops can arrive through both the native window listener and the forwarded bridge.
+- Rust bridge MUST NOT add `if webview.label() == "main" { return; }`. That optimization breaks the verified macOS external drag-drop path.
 - Forwarded `position` MUST be converted to main-window viewport coordinates before frontend target hit-testing. For child WebViews, add the child WebView physical position offset to the event-local physical position.
 - Forwarded `paths` MUST be absolute path strings derived from `PathBuf::to_string_lossy()`.
 - `drop` events with paths MUST flow through the existing Composer path pipeline:
@@ -74,6 +77,7 @@ type UsePasteAndDropOptions = {
 |---|---|---|
 | main WebView receives OS drop | frontend consumes native `onDragDropEvent` | require forwarded event only |
 | child WebView receives OS drop | Rust forwards payload to main event bridge | silently keep event on child label |
+| main WebView receives OS drop | Rust still forwards payload and frontend dedupes duplicate drop | skip main in Rust bridge |
 | forwarded child position | position is main-window viewport compatible | use child-local position for Composer hit-test |
 | Browser Dock active | external drop into Composer still inserts path | Browser Dock steals global drag/drop permanently |
 | macOS Finder folder | inserts absolute folder reference | require folder expansion or workspace membership |
@@ -87,6 +91,7 @@ type UsePasteAndDropOptions = {
 - Good：Browser Agent child WebView receives the event; Rust forwards `main-window://drag-drop`; `dragDrop.ts` dispatches it to the same subscribers.
 - Base：no child WebViews are mounted; forwarded listener remains idle and harmless.
 - Bad：Browser Agent child WebView handles `DragDropEvent::Drop` only inside the browser module and the main Composer never receives `paths`.
+- Bad：Rust bridge skips `webview.label() == "main"` because it assumes `getCurrentWindow().onDragDropEvent` is always sufficient. This regressed macOS Finder drag-drop after the first successful fix.
 - Bad：frontend reads `DataTransfer.files[].path` as the primary source of truth; this is unreliable for directories and modern WebViews.
 
 ### 6. Tests Required
@@ -137,6 +142,17 @@ tauri::Builder::default().setup(|app| {
 });
 ```
 
+#### Wrong
+
+```rust
+fn forward_webview_drag_drop_to_main(webview: &Webview, event: &WebviewEvent) {
+    if webview.label() == "main" {
+        return;
+    }
+    // This broke macOS Finder -> Composer external drag-drop.
+}
+```
+
 #### Correct
 
 ```rust
@@ -146,4 +162,15 @@ tauri::Builder::default()
         create_browser_child_webview(app)?;
         Ok(())
     });
+```
+
+#### Correct
+
+```typescript
+function dispatchDragDropEvent(event: DragDropEvent) {
+  if (isDuplicateDropEvent(event)) {
+    return;
+  }
+  listeners.forEach((listener) => listener(event));
+}
 ```

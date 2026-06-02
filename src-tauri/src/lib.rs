@@ -62,9 +62,6 @@ fn forward_webview_drag_drop_to_main<R: tauri::Runtime>(
     webview: &Webview<R>,
     event: &WebviewEvent,
 ) {
-    if webview.label() == "main" {
-        return;
-    }
     let event = match event {
         WebviewEvent::DragDrop(event) => event,
         _ => return,

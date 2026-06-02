@@ -46,6 +46,12 @@ The system SHALL accept drag-drop of files and folders from external file manage
 - **AND** Composer SHALL preserve the same insert-or-ignore target boundary as a main WebView drop
 - **AND** the child WebView MUST NOT silently consume the external file or folder drop
 
+#### Scenario: Main WebView drop remains forwarded
+- **WHEN** an external file-system drag-drop event is captured by the main application WebView
+- **THEN** the backend WebView drag-drop bridge SHALL still forward the payload to the main Composer drag-drop service
+- **AND** the frontend service SHALL deduplicate duplicate `drop` payloads if the same event also arrives through the native window listener
+- **AND** the backend MUST NOT skip forwarding solely because `webview.label() == "main"`
+
 #### Scenario: Drag external folder while Browser Dock child WebView exists
 - **GIVEN** Browser Dock is open in the main workspace surface
 - **WHEN** user drags a folder from Finder, Windows Explorer, or a Linux file manager into Composer input area
