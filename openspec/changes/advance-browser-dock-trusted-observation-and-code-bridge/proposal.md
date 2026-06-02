@@ -1,3 +1,15 @@
+## 中文阅读导引
+
+这份 proposal 的核心是：Browser Dock Phase 3 不急着做“AI 自动操作浏览器”，而是先补一层可信的浏览器观察与证据系统。
+
+关键 English terms 保留不翻译，避免后续实现歧义：
+
+- `BrowserObservation`：浏览器观察的可信度外壳，描述这次 capture 是否 fresh、stale、degraded、expired 或 unsupported。
+- `Evidence Inspector`：把页面证据拆成 overview、primary content、interactive elements、diagnostics 等区块给用户审查。
+- `Code Bridge`：把 workspace-local page facts 转成可解释的本地代码候选。
+- `BrowserUserAnnotation`：用户在浏览器页面上做的 point / region / element / text_range 标注，AI 默认看到结构化文字证据，不默认看到截图。
+- `Action Preview`：浏览器动作必须先 preview、confirm、audit，Phase 3 不默认执行 click/type/submit。
+
 ## Why
 
 Browser Dock Phase 2 has closed the read-only evidence-grade page understanding MVP: the app can attach active-tab page facts to an AI turn as a bounded BrowserContextAttachment. The next bottleneck is not "more DOM text"; it is whether the observation is trustworthy, whether page facts can point to local code with explainable confidence, and whether future browser actions can be previewed and audited before execution.
@@ -18,6 +30,7 @@ Phase 3 upgrades Browser Dock from a page snapshot attachment into a trusted obs
 - Phase 3 MUST make capture trust explicit through availability, stale reasons, degradation diagnostics, budget state, privacy state, and renderer binding state.
 - Phase 3 MUST treat Browser Dock as an observation surface first. Browser actions may be previewed and audited, but mutating actions remain blocked by default.
 - Phase 3 MUST improve local page-to-code candidates for workspace-local pages without claiming certain ownership unless evidence is strong and explicit.
+- Phase 3 MUST define a `BrowserUserAnnotation` contract：用户可以在打开的 Browser Dock 页面里标注 point、region、element 或 text range；AI 看到的是结构化证据，包括用户备注、坐标、附近文本、最近元素、stale reasons，而不是默认截图。
 - Phase 3 MUST keep AI-visible browser context engine-agnostic across Claude, Codex, Gemini, OpenCode, and custom providers.
 - Phase 3 MUST avoid growing `Composer.tsx` and `BrowserDock.tsx` with new responsibilities; observation, evidence, code-bridge, visual evidence, and action logic must live in focused Browser Agent modules.
 - Phase 3 MUST continue to exclude raw DOM, cookies, headers, storage, scripts, styles, password values, token values, Authorization values, hidden input values, and page secrets from preview, evidence, storage, and AI payloads.
@@ -27,8 +40,10 @@ Phase 3 upgrades Browser Dock from a page snapshot attachment into a trusted obs
 - Do not implement full Playwright/CDP-grade browser automation runtime.
 - Do not allow AI to click, type, select, or submit without user confirmation.
 - Do not send full screenshots, OCR output, or image binaries to models by default.
+- Do not send annotated screenshots, image overlays, or multimodal region images to models by default. Phase 3 的 annotation 默认只是 structured text evidence；带标注截图和 multimodal region payload 留到后续显式 opt-in visual flow。
 - Do not store complete HTML or raw DOM for evidence.
 - Do not create a Browser Agent-specific file navigation system that bypasses existing code-intelligence/file-view navigation surfaces.
+- Do not let AI automatically click, type, select, submit, or otherwise act on a user annotation in Phase 3。用户标注只是证据，不是自动执行授权。
 - Do not guarantee perfect understanding for iframe, shadow DOM, canvas, virtual list, heavily authenticated, or cross-origin embedded content; Phase 3 must expose degraded diagnostics instead.
 - Do not convert code candidates into definitive file ownership claims. Candidates remain suggestions with evidence, reason, and confidence.
 
@@ -39,6 +54,7 @@ Phase 3 upgrades Browser Dock from a page snapshot attachment into a trusted obs
 - Extend stale policy from a boolean to explicit reasons: active tab switch, renderer mismatch, URL change, title change, scroll threshold, DOM fingerprint change, TTL expiry, Browser Dock close, session close, and workspace mismatch.
 - Replace the current single expanded context block with a Browser Context Evidence Inspector that separates overview, primary content, readable blocks, interactive elements, visual evidence, code candidates, diagnostics, and privacy/budget.
 - Upgrade Local Page-to-Code Bridge into a workspace-aware candidate pipeline using route, file name, visible text, headings, button labels, form labels, ARIA labels, test ids, and component symbols.
+- Add `BrowserUserAnnotation` Contract：支持用户创建 point、region、element、text anchors。Annotation 必须绑定 `BrowserObservation`，记录 user note、viewport coordinates、scroll state、`devicePixelRatio`、nearby DOM/text evidence、`staleReasons`、privacy/budget metadata。
 - Add visual evidence MVP as an opt-in channel for screenshot thumbnails, OCR text, and multimodal references, with explicit user confirmation before model injection.
 - Add an Authorized Browser Action Preview contract. Phase 3 may enable preview-confirm-audit flow for navigate, reload, and scroll; click, type, select, and submit remain blocked by default.
 - Gate safe browser actions by settings and platform capability even after user confirmation.
@@ -97,6 +113,8 @@ Phase 3 chooses B as the main path. C and D may become provider or opt-in supple
 - Workspace-local pages generate explainable code candidates with reason, confidence, matched text, source evidence, and open action.
 - External sites do not generate local code candidates unless a later explicit manual mapping feature is designed.
 - Screenshot/OCR/vision payloads are opt-in and are not sent to AI by default.
+- User annotations 只有在 Browser Context attached 时，才作为 structured browser evidence 进入 AI-visible payload；annotated screenshots 和 image binaries 仍属于 opt-in/future visual evidence。
+- 当 page URL、title、scroll position、DOM fingerprint、renderer binding、session、workspace 或 observation age 与原 anchor 不再匹配时，stale annotations 必须显示 diagnostics，不能伪装成 fresh evidence。
 - Navigate/reload/scroll can be previewed, confirmed, audited, and compared with before/after snapshots.
 - Click/type/select/submit remain blocked by default in Phase 3.
 - No browser context payload exposes raw DOM, cookies, headers, storage, scripts, styles, password/token/Authorization values, hidden input values, or page secrets.

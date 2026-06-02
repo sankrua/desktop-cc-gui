@@ -4,7 +4,11 @@
 
 **Goal:** Implement Browser Dock Phase 3 as a trusted observation and code-bridge substrate before enabling higher-risk browser automation.
 
-**Architecture:** Preserve the existing Browser Dock single-renderer and active-tab baseline. Add a BrowserObservation trust envelope, sectioned Browser Evidence view model, workspace-aware code candidates, and preview-first action contracts without expanding BrowserDock or Composer responsibilities.
+中文目标：Phase 3 先把 Browser Dock 做成“可信观察层 + 证据审查层 + 用户标注契约 + 本地代码候选桥”，暂时不急着做高风险 browser automation。
+
+**Architecture:** Preserve the existing Browser Dock single-renderer and active-tab baseline. Add a BrowserObservation trust envelope, sectioned Browser Evidence view model, structured user annotations, workspace-aware code candidates, and preview-first action contracts without expanding BrowserDock or Composer responsibilities.
+
+中文架构理解：`BrowserDock` 只管 session/tab/renderer lifecycle；`BrowserObservation` 判断 capture 是否可信；`Evidence Inspector` 负责展示证据；`BrowserUserAnnotation` 把用户标注变成 structured text evidence；`Code Bridge` 给代码候选；`Action Preview` 只做 preview/confirm/audit。
 
 **Tech Stack:** React + TypeScript + Vitest for frontend, Tauri 2 + Rust for backend commands/DTOs, OpenSpec for behavior contracts, Trellis for implementation workflow.
 
@@ -51,12 +55,13 @@ Change 'advance-browser-dock-trusted-observation-and-code-bridge' is valid
 
 | Batch | Scope | Goal | Risk |
 |---|---|---|---|
-| Batch 1 | Observation + stale reasons | Establish trusted observation contract | Medium |
-| Batch 2 | Canonical capture script | Remove frontend/Rust script drift | Medium-high |
-| Batch 3 | Evidence Inspector | Unify Composer and message evidence views | Medium |
-| Batch 4 | Code Bridge v2 core | Improve workspace-local code candidates | Medium |
-| Batch 5 | Action Preview contract | Define gate/preview/audit shape without mutating action execution | Medium |
-| Batch 6 | Visual Evidence scaffold | Add opt-in gate and contracts; defer OCR execution if needed | High |
+| Batch 1 | Observation + stale reasons | 建立可信 observation contract，明确 stale/degraded/expired | Medium |
+| Batch 2 | Canonical capture script | 统一 frontend/Rust extraction，避免 capture drift | Medium-high |
+| Batch 3 | Evidence Inspector | Composer 和 message evidence views 使用同一 view model | Medium |
+| Batch 4 | User Annotation contract | 用户可标注 page point/region/element/text，AI 看到 structured evidence | Medium |
+| Batch 5 | Code Bridge v2 core | 改进 workspace-local code candidates | Medium |
+| Batch 6 | Action Preview contract | 定义 gate/preview/audit，不执行 mutating actions | Medium |
+| Batch 7 | Visual Evidence scaffold | 增加 opt-in gate；OCR/annotated screenshots 先 defer | High |
 
 Recommended first implementation task: Batch 1 + the minimum UI integration from Batch 3.
 
@@ -97,6 +102,7 @@ Explicitly out of scope for first slice:
 4.x full code bridge scoring
 5.x visual evidence
 6.3+ safe action execution
+annotated screenshot / image overlay / vision payload
 ```
 
 Rationale: establish observation + UI contract first. Capture transport and action runtime should not be changed in the same slice.
@@ -518,7 +524,99 @@ Expected: PASS.
 
 ## Batch 4: Code Bridge v2 Core
 
-### Task 8: Define candidate v2 contract
+### Task 8: Define user annotation contract
+
+中文目标：先定义 `BrowserUserAnnotation` 的数据契约和 stale policy，让“用户圈这里/点这里/选这段文本”能被 AI 作为 structured text evidence 理解。此任务不做 annotated screenshot，也不做 vision model injection。
+
+**Files:**
+
+- Create: `src/features/browser-agent/annotations/browserUserAnnotationTypes.ts`
+- Create: `src/features/browser-agent/annotations/browserUserAnnotation.ts`
+- Test: `src/features/browser-agent/annotations/browserUserAnnotation.test.ts`
+- Modify: `src/features/browser-agent/evidence/browserEvidenceViewModel.ts`
+
+**Step 1: Add annotation types**
+
+Define:
+
+```ts
+export type BrowserAnnotationAnchorType =
+  | "point"
+  | "region"
+  | "element"
+  | "text_range";
+
+export type BrowserUserAnnotation = {
+  annotationId: string;
+  observationId: string;
+  browserSessionId: string;
+  workspaceId: string;
+  createdAt: number;
+  url: string;
+  title?: string;
+  anchorType: BrowserAnnotationAnchorType;
+  userNote: string;
+  viewport: {
+    width: number;
+    height: number;
+    scrollX: number;
+    scrollY: number;
+    devicePixelRatio: number;
+  };
+  region?: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+  nearbyText?: string;
+  nearestElement?: {
+    role?: string;
+    label?: string;
+    placeholder?: string;
+    hrefOrigin?: string;
+    selectorHint?: string;
+    sensitive?: boolean;
+  };
+  staleReasons: BrowserObservationStaleReason[];
+};
+```
+
+**Step 2: Add stale reconciliation helper**
+
+Use the same observation stale policy for annotation freshness. A coordinate-only annotation becomes stale when URL/title/scroll/session/workspace/TTL/renderer no longer match.
+
+**Step 3: Attach annotations to evidence view model**
+
+Add an optional `annotations` section to the Browser Evidence view model. Default AI payload is structured text evidence:
+
+```text
+User annotation:
+- note
+- anchor type
+- viewport and region metadata
+- nearby text
+- nearest element metadata
+- stale reasons
+```
+
+**Step 4: Keep visual payload blocked**
+
+Do not send annotated screenshots, overlay images, or multimodal region payloads in this task.
+
+**Step 5: Run focused tests**
+
+```bash
+npx vitest run src/features/browser-agent/annotations/browserUserAnnotation.test.ts src/features/browser-agent/evidence/browserEvidenceViewModel.test.ts
+```
+
+Expected: PASS.
+
+---
+
+## Batch 5: Code Bridge v2 Core
+
+### Task 9: Define candidate v2 contract
 
 **Files:**
 
@@ -554,7 +652,7 @@ Expected: PASS.
 
 ---
 
-### Task 9: Add candidate scorer
+### Task 10: Add candidate scorer
 
 **Files:**
 
@@ -582,9 +680,9 @@ Expected: PASS.
 
 ---
 
-## Batch 5: Action Preview Contract Only
+## Batch 6: Action Preview Contract Only
 
-### Task 10: Add action gate resolver
+### Task 11: Add action gate resolver
 
 **Files:**
 

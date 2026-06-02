@@ -1,3 +1,17 @@
+## 中文阅读导引
+
+这份 tasks 是 Phase 3 的任务拆解。中文理解如下：
+
+- `1.x Observation`：先定义 BrowserObservation 和 stale reasons，让系统知道 capture 是否可信。
+- `2.x Capture Script`：后续统一 read-only capture script，避免 frontend/Rust extraction drift。
+- `3.x Evidence Inspector`：把 Browser Context 从单块详情改成可审查的 sectioned evidence。
+- `4.x Code Bridge`：给 workspace-local 页面生成可解释的本地代码候选。
+- `5.x Visual Evidence`：只做 opt-in gate，不默认发送截图/OCR/vision。
+- `6.x BrowserUserAnnotation`：用户标注 point/region/element/text，AI 默认看到结构化文字证据。
+- `7.x Action Preview`：动作先 preview/confirm/audit，click/type/submit 仍 blocked by default。
+- `8.x Cross-Surface`：Composer、messages、TaskRun、orchestration 状态保持一致。
+- `9.x Governance`：OpenSpec、Vitest、Rust tests、large-file gate。
+
 ## Linked Documents
 
 - Proposal: `openspec/changes/advance-browser-dock-trusted-observation-and-code-bridge/proposal.md`
@@ -46,26 +60,35 @@
 - [ ] 5.4 [P1][deps:5.1][input: user confirmation][output: visual model attachment confirmation UI][validation: component test confirms no visual binary is sent before confirmation] Enforce explicit opt-in.
 - [ ] 5.5 [P2][deps:5.3,5.4][input: visual evidence refs][output: AI payload fields distinguishing DOM text, OCR text, image metadata, and screenshot refs][validation: formatter tests assert source separation and privacy metadata] Avoid conflating visual and DOM facts.
 
-## 6. Authorized Browser Action Preview
+## 6. Browser User Annotation Contract
 
-- [ ] 6.1 [P0][input: existing runBrowserAgentAction skeleton][output: BrowserActionPreview v3 contract][validation: frontend/backend serialization tests cover navigate/reload/scroll/click/type/select/submit] Define preview-first action model.
-- [ ] 6.2 [P0][deps:6.1][input: settings and platform capability][output: action gate resolver][validation: tests assert click/type/select/submit blocked by default] Keep mutating actions disabled.
-- [ ] 6.3 [P1][deps:6.1,6.2][input: navigate/reload/scroll requests][output: confirm UI and backend execution path for enabled safe actions][validation: focused tests cover confirmation required and cancel/no-op behavior] Enable low-risk safe navigation actions.
-- [ ] 6.4 [P1][deps:6.3][input: confirmed safe action][output: before/after snapshot capture and comparison metadata][validation: tests cover success, after-capture failure, and degraded comparison] Make action effects auditable.
-- [ ] 6.5 [P1][deps:6.1][input: action preview/audit value fields][output: secret-redacted value previews][validation: privacy tests cover password/token/authorization/cookie-like values] Prevent action audit leakage.
-- [ ] 6.6 [P2][deps:6.4][input: action audit records][output: evidence UI for action history][validation: component tests cover blocked/confirmed/failed outcomes] Show user-visible audit trail.
+- [ ] 6.1 [P1][input: BrowserObservation, active viewport, user note][output: BrowserUserAnnotation contract for point/region/element/text anchors][validation: type/unit tests cover required fields, viewport metadata, and note sanitization] 定义 structured user annotation evidence，让用户标注能进入证据系统。
+- [ ] 6.2 [P1][deps:6.1][input: URL/title/scroll/DPR/session/workspace/TTL/DOM fingerprint][output: annotation stale reason reconciliation][validation: unit tests cover active tab, renderer, URL/title, scroll threshold, workspace, session, and TTL mismatch] 页面移动或变化后，annotation 必须变 stale/degraded，不能误导 AI。
+- [ ] 6.3 [P1][deps:6.1][input: nearby text and nearest element metadata][output: sanitized annotation evidence section][validation: privacy tests assert password/token/authorization/cookie-like values are redacted] 安全附加 nearby evidence，所有用户备注和附近文本都必须 sanitizer。
+- [ ] 6.4 [P2][deps:6.1,3.1][input: BrowserEvidenceViewModel][output: Evidence Inspector annotation section and compact badges][validation: component tests cover point/region/element/text annotation rendering and stale diagnostics] 在 Evidence Inspector 里展示用户标注和 stale diagnostics。
+- [ ] 6.5 [P2][deps:6.1,6.3][input: BrowserContextAttachment formatter/parser][output: AI-visible annotation payload as structured text evidence][validation: formatter/parser tests assert annotation note, anchor metadata, nearby evidence, and stale reasons round-trip without image binary] 让 AI 看到 annotation，但不发送 screenshot binary。
+- [ ] 6.6 [P2][deps:5.1,6.1][input: annotated visual evidence request][output: future-phase placeholder and blocked diagnostic][validation: tests assert annotated screenshot/image payload is opt-in/future and not sent by default] annotated screenshot 留给 visual phase，Phase 3 默认 blocked。
 
-## 7. Cross-Surface Integration
+## 7. Authorized Browser Action Preview
 
-- [ ] 7.1 [P0][deps:1.4,3.1][input: Composer send path][output: canonical browser observation attachment injected once][validation: send-path tests assert no duplicate structured+prompt injection] Preserve single AI payload path.
-- [ ] 7.2 [P0][deps:3.2,3.3][input: live optimistic, queued handoff, history restore][output: consistent Browser Evidence card across all user-message surfaces][validation: regression tests cover optimistic, queued, restored browser context metadata] Keep UI state consistent.
-- [ ] 7.3 [P1][deps:3.5][input: TaskRun and orchestration dispatch][output: browser observation/evidence state visible before and after task execution][validation: render tests cover fresh/stale/degraded/expired evidence] Extend evidence beyond chat.
-- [ ] 7.4 [P1][deps:4.5][input: code candidate open action][output: file navigation bridge reuse][validation: integration test or documented focused manual check] Avoid duplicate navigation implementation.
+- [ ] 7.1 [P0][input: existing runBrowserAgentAction skeleton][output: BrowserActionPreview v3 contract][validation: frontend/backend serialization tests cover navigate/reload/scroll/click/type/select/submit] Define preview-first action model.
+- [ ] 7.2 [P0][deps:7.1][input: settings and platform capability][output: action gate resolver][validation: tests assert click/type/select/submit blocked by default] Keep mutating actions disabled.
+- [ ] 7.3 [P1][deps:7.1,7.2][input: navigate/reload/scroll requests][output: confirm UI and backend execution path for enabled safe actions][validation: focused tests cover confirmation required and cancel/no-op behavior] Enable low-risk safe navigation actions.
+- [ ] 7.4 [P1][deps:7.3][input: confirmed safe action][output: before/after snapshot capture and comparison metadata][validation: tests cover success, after-capture failure, and degraded comparison] Make action effects auditable.
+- [ ] 7.5 [P1][deps:7.1][input: action preview/audit value fields][output: secret-redacted value previews][validation: privacy tests cover password/token/authorization/cookie-like values] Prevent action audit leakage.
+- [ ] 7.6 [P2][deps:7.4][input: action audit records][output: evidence UI for action history][validation: component tests cover blocked/confirmed/failed outcomes] Show user-visible audit trail.
 
-## 8. Governance And Validation
+## 8. Cross-Surface Integration
 
-- [ ] 8.1 [P0][input: completed OpenSpec artifacts][output: strict OpenSpec validation evidence][validation: `openspec validate advance-browser-dock-trusted-observation-and-code-bridge --strict --no-interactive`] Validate behavior artifacts.
-- [ ] 8.2 [P0][input: frontend observation/evidence/code-bridge changes][output: focused Vitest coverage][validation: run focused Browser Agent, Composer, Messages, TaskRun tests] Verify frontend behavior.
-- [ ] 8.3 [P0][input: Rust browser_agent changes][output: focused Rust tests][validation: `cargo test --manifest-path src-tauri/Cargo.toml browser_agent`] Verify backend behavior.
-- [ ] 8.4 [P0][input: new/changed large files][output: large-file governance evidence][validation: `npm run check:large-files:near-threshold && npm run check:large-files:gate`] Keep module boundaries healthy.
-- [ ] 8.5 [P1][input: macOS/Windows/Linux Browser Dock behavior][output: manual degraded-capability matrix][validation: matrix records WebView runtime, capture transport, visual evidence, and action preview behavior] Document cross-platform behavior.
+- [ ] 8.1 [P0][deps:1.4,3.1][input: Composer send path][output: canonical browser observation attachment injected once][validation: send-path tests assert no duplicate structured+prompt injection] Preserve single AI payload path.
+- [ ] 8.2 [P0][deps:3.2,3.3][input: live optimistic, queued handoff, history restore][output: consistent Browser Evidence card across all user-message surfaces][validation: regression tests cover optimistic, queued, restored browser context metadata] Keep UI state consistent.
+- [ ] 8.3 [P1][deps:3.5][input: TaskRun and orchestration dispatch][output: browser observation/evidence state visible before and after task execution][validation: render tests cover fresh/stale/degraded/expired evidence] Extend evidence beyond chat.
+- [ ] 8.4 [P1][deps:4.5][input: code candidate open action][output: file navigation bridge reuse][validation: integration test or documented focused manual check] Avoid duplicate navigation implementation.
+
+## 9. Governance And Validation
+
+- [ ] 9.1 [P0][input: completed OpenSpec artifacts][output: strict OpenSpec validation evidence][validation: `openspec validate advance-browser-dock-trusted-observation-and-code-bridge --strict --no-interactive`] Validate behavior artifacts.
+- [ ] 9.2 [P0][input: frontend observation/evidence/code-bridge changes][output: focused Vitest coverage][validation: run focused Browser Agent, Composer, Messages, TaskRun tests] Verify frontend behavior.
+- [ ] 9.3 [P0][input: Rust browser_agent changes][output: focused Rust tests][validation: `cargo test --manifest-path src-tauri/Cargo.toml browser_agent`] Verify backend behavior.
+- [ ] 9.4 [P0][input: new/changed large files][output: large-file governance evidence][validation: `npm run check:large-files:near-threshold && npm run check:large-files:gate`] Keep module boundaries healthy.
+- [ ] 9.5 [P1][input: macOS/Windows/Linux Browser Dock behavior][output: manual degraded-capability matrix][validation: matrix records WebView runtime, capture transport, visual evidence, annotation evidence, and action preview behavior] Document cross-platform behavior.

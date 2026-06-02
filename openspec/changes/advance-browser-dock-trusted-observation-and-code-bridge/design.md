@@ -1,3 +1,18 @@
+## 中文阅读导引
+
+这份 design 说明 Phase 3 的技术分层。中文理解可以按这条线看：
+
+```text
+BrowserDock 只管窗口/Tab/Renderer
+Observation Service 判断 capture 是否可信
+Evidence Builder 把证据整理成可审查 view model
+User Annotation 把用户标注变成结构化文字证据
+Code Bridge 给本地代码候选
+Action Preview 只做预览/确认/审计，不默认执行高风险动作
+```
+
+核心设计原则：`Snapshot` 描述“页面里有什么”，`BrowserObservation` 描述“这次观察能不能信”。`BrowserUserAnnotation` 必须绑定 observation，这样页面变化后 annotation 可以自动变成 stale/degraded。
+
 ## Context
 
 Browser Dock Phase 2 established the current baseline: a right-side companion Browser Dock with multi-tab UI, one native WebView renderer, active-tab-only capture, Snapshot v2, sanitizer, composer preview, live/history Browser Context cards, and a canonical engine-agnostic `<browser_context_v2>` injection path.
@@ -52,6 +67,10 @@ Code Bridge
 Visual Evidence
   owns: screenshot/OCR/vision opt-in references, budget, privacy confirmation
   returns: BrowserVisualEvidenceRef[]
+
+User Annotation
+  owns: user-created point/region/element/text anchors, notes, nearby evidence, stale reconciliation
+  returns: BrowserUserAnnotation[]
 
 Action Preview
   owns: proposed action, risk, confirmation, before/after snapshot refs, audit entry
@@ -131,6 +150,44 @@ Allowed reasons:
 - `test_id_match`
 - `component_symbol_match`
 
+### BrowserUserAnnotation
+
+`BrowserUserAnnotation` 是用户在当前 Browser Dock 页面上创建的结构化证据。Phase 3 发送的是 text evidence，不是 annotated image binary。
+
+也就是说，AI 默认看到类似这样的信息：
+
+```text
+User annotation:
+- note: "这里按钮文案不对"
+- anchor: region x=420 y=180 w=160 h=48
+- nearest element: button "Start"
+- nearby text: "Start your first task"
+- observation state: available
+```
+
+Required fields:
+
+- `annotationId`
+- `observationId`
+- `browserSessionId`
+- `workspaceId`
+- `createdAt`
+- `url`
+- `title`
+- `anchor`: `point | region | element | text_range`
+- `userNote`
+- `viewport`: width, height, scrollX, scrollY, devicePixelRatio
+- `region`: x, y, width, height for point/region anchors
+- `nearbyText`
+- `nearestElement`: role, label, placeholder, href origin, selector hint, sensitive flag
+- `privacy`: redacted kinds and omitted kinds
+- `staleReasons`
+- `diagnostics`
+
+Coordinate model MUST record viewport size、scroll offset、`devicePixelRatio`。只有 x/y 坐标是不够的，因为页面 scroll、zoom、DPR 变化后，同一个点可能已经不是同一个 UI 区域。
+
+Phase 3 MAY support element/text/region annotation contracts and Evidence Inspector rendering。Phase 4 才负责 annotated screenshot overlays、multimodal image injection、annotation-to-code diagnosis、annotation-guided browser actions。
+
 ### BrowserActionPreview
 
 All actions are preview-first:
@@ -194,6 +251,20 @@ Observation source says workspace-local URL
   -> open action delegates to existing file/code navigation
 ```
 
+### Create user annotation
+
+```text
+User marks a point/region/element/text in Browser Dock
+  -> annotation binds to the current BrowserObservation
+  -> annotation records viewport coordinates, scroll, DPR, URL/title, and session/workspace identity
+  -> nearest text and element metadata are extracted through sanitized evidence helpers
+  -> Evidence Builder attaches BrowserUserAnnotation to BrowserEvidenceViewModel
+  -> Composer preview and message card show the annotation as user-authored evidence
+  -> AI payload includes note + anchor metadata + nearby evidence, not screenshot binary
+```
+
+中文解释：用户画框/点选/选中文本后，系统先把这次标注绑定到当前 `BrowserObservation`。AI 看到“用户标注了哪里、说了什么、附近有什么文本和元素”，但默认不会收到截图或视觉二进制。
+
 ### Confirm safe browser action
 
 ```text
@@ -229,6 +300,10 @@ Browser Agent may generate candidates but must not own a separate file opening/n
 
 Action execution must be designed as an auditable workflow before mutating actions are enabled. Phase 3 only permits low-risk safe navigation actions when confirmed.
 
+### Decision 6: Annotations are text evidence before visual evidence
+
+User annotations 只要包含 user note、anchor type、coordinates、nearby text、nearest element metadata，就已经能让 AI 理解“用户指的是哪里”。带 overlay 的 rendered screenshot 更强，但 privacy、budget、stale-coordinate risk 都更高。因此 Phase 3 先定义和展示 annotation evidence；annotated screenshots 和 multimodal interpretation 留给后续 visual phase。
+
 ## Module Boundary
 
 Recommended frontend modules:
@@ -238,6 +313,7 @@ src/features/browser-agent/observation/
 src/features/browser-agent/evidence/
 src/features/browser-agent/code-bridge/
 src/features/browser-agent/visual-evidence/
+src/features/browser-agent/annotations/
 src/features/browser-agent/actions/
 ```
 
@@ -246,6 +322,7 @@ Recommended backend modules:
 ```text
 src-tauri/src/browser_agent/observation.rs
 src-tauri/src/browser_agent/evidence.rs
+src-tauri/src/browser_agent/annotations.rs
 src-tauri/src/browser_agent/actions.rs
 src-tauri/src/browser_agent/visual_evidence.rs
 ```
@@ -276,10 +353,14 @@ Stale reasons should be additive:
 
 UI must show the top reason in compact surfaces and all reasons in details.
 
+Annotations inherit the same stale reason model. A region or point annotation MUST become stale or degraded when its bound observation no longer matches the active tab, renderer, URL/title, scroll threshold, DOM fingerprint, session, workspace, or TTL policy.
+
 ## Privacy And Security
 
 - All AI-visible strings must pass sanitizer.
 - Screenshot/OCR/vision must be opt-in and budgeted.
+- Annotation notes and nearby evidence must pass sanitizer before preview, storage, or AI payload formatting.
+- Annotated screenshots, overlay images, and multimodal region payloads are not sent by default in Phase 3.
 - Hidden/password/token/authorization values remain omitted or redacted.
 - Evidence records store bounded references and summaries, not raw DOM or complete image payloads by default.
 - Private-network policy remains blocked by default except workspace-scoped local development targets.

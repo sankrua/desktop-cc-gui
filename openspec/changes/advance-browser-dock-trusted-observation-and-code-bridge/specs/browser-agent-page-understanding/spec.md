@@ -1,3 +1,15 @@
+## 中文阅读导引
+
+这份 spec delta 仍保留 OpenSpec 的 English contract 结构：`Requirement / Scenario / WHEN / THEN`。为了实现时不产生歧义，字段名和状态值保持 English；中文说明用于帮助阅读。
+
+本次新增的 `BrowserUserAnnotation` 要点：
+
+- 用户可以在 Browser Dock 页面上标注 point、region、element 或 text range。
+- Annotation 必须绑定 `BrowserObservation`，不能脱离 capture trust 独立存在。
+- AI 默认收到 structured text evidence：user note、anchor metadata、nearby evidence、stale reasons。
+- 默认不发送 annotated screenshot、overlay image 或 multimodal region payload。
+- AI 不能因为用户标注就自动 click/type/submit。
+
 ## Related Documents
 
 - Proposal: `openspec/changes/advance-browser-dock-trusted-observation-and-code-bridge/proposal.md`
@@ -84,6 +96,37 @@ Browser Agent Page Understanding SHALL treat screenshot, OCR, and multimodal vis
 #### Scenario: User authorizes visual model input
 - **WHEN** the user explicitly confirms screenshot/OCR/vision attachment
 - **THEN** the payload SHALL include budget, privacy, source, and redaction metadata for the visual evidence
+
+### Requirement: User annotations are structured browser evidence
+Browser Agent Page Understanding SHALL allow user-created annotations on the open Browser Dock page to be represented as structured evidence bound to a Browser Observation.
+
+中文说明：用户标注不是单纯 UI overlay，而是一条可审计 evidence record。它必须绑定 observation，并继承 stale/degraded diagnostics。
+
+#### Scenario: User annotates a visible region
+- **WHEN** the user marks a point or region in the active Browser Dock page and adds a note
+- **THEN** the annotation SHALL include observation identity, session identity, URL/title, viewport size, scroll offset, devicePixelRatio, region coordinates, user note, nearby sanitized text, nearest element metadata when available, and diagnostics
+
+#### Scenario: User annotates text or an element
+- **WHEN** the annotation can be anchored to selected text or an interactive element
+- **THEN** the annotation SHALL include anchor type, sanitized selected or nearby text, element role/label/placeholder/href-origin metadata when available, and privacy redaction metadata
+
+#### Scenario: Annotation becomes stale
+- **WHEN** the bound observation no longer matches the active tab, renderer, URL/title, scroll threshold, DOM fingerprint, session, workspace, or TTL policy
+- **THEN** the annotation SHALL expose stale or degraded diagnostics and SHALL NOT be represented as fresh evidence
+
+#### Scenario: Browser Context is attached with annotations
+- **WHEN** the user sends a message with Browser Context attached
+- **THEN** AI-visible browser evidence SHALL include annotation note, anchor metadata, nearby evidence, and stale reasons as structured text evidence
+
+#### Scenario: Annotation includes a visual region
+- **WHEN** an annotation references a point or region
+- **THEN** the default AI payload SHALL NOT include annotated screenshot binaries, overlay images, or multimodal region payloads unless a separate explicit opt-in visual flow is confirmed
+
+中文说明：region annotation 在 Phase 3 只进入 text payload，包含坐标和附近证据；带标注截图属于 Phase 4 或后续 opt-in visual flow。
+
+#### Scenario: AI attempts to act on an annotation
+- **WHEN** AI proposes click, type, select, submit, or another mutating action based on a user annotation in Phase 3
+- **THEN** the action SHALL remain blocked by default and SHALL require a later explicit behavior change before execution is allowed
 
 ### Requirement: Browser actions are preview-first and audited
 Browser Agent Page Understanding SHALL require browser actions to be previewed and confirmed before execution.
