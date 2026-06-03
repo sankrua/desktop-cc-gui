@@ -1295,3 +1295,71 @@ Project Map 应优先成为 Engineering Context Router，
 
 这意味着后续实现应该先做上下文、解释、影响分析、ignore/stale 策略，再考虑更大的图谱重构。
 
+
+## 2026-06-03 减法校正：从编排中心回到 Project Map 理解工具
+
+### 触发原因
+
+手工测试暴露出一个关键问题：当前 `AI 任务编排中心` 对开发者不可理解。`创建草案`、`已计划`、`准备派发`、`运行中`、`打开 Run`、`打开会话` 等概念混在一起，但真实 TaskRun / session 闭环没有完全打通，导致用户看到的是“点了没效果”“运行中卡住”“没有真实会话”。
+
+这说明实现方向偏离了 Understand-Anything 的核心启发。UA 的核心不是任务执行后台，而是让用户通过 graph、search、node inspector、file explorer、guided tour、path finder 去理解项目。
+
+### 新原则
+
+1. Project Map 负责理解、定位、证据和收纳，不负责伪装成完整 runtime。
+2. Task Center 负责执行，只有真实创建 TaskRun 后才进入执行态。
+3. 没有 linked run 的任务不得显示为运行中。
+4. 没有 linked session 的任务不得展示灰色“打开会话”假入口。
+5. UI 只暴露用户能理解的状态，不暴露 provider/candidate/planned/ready 等内部状态。
+
+### 简化后的用户态状态
+
+```text
+待处理 -> 已派发 -> 待验收 -> 已完成
+        \-> 已归档
+```
+
+内部状态映射：
+
+| 内部状态 | 用户态 |
+|---|---|
+| candidate / planned / ready | 待处理 |
+| running / waiting_input / blocked 且有 linkedRunIds | 已派发 |
+| running / waiting_input / blocked 但没有 linkedRunIds | 待处理，并提示未绑定 Run |
+| review_needed 或 needs_review | 待验收 |
+| completed | 已完成 |
+| archived | 已归档 |
+
+### 简化后的动作原则
+
+只显示真正可执行的动作：
+
+| 条件 | 显示动作 |
+|---|---|
+| 有可打开 source ref | 打开来源 |
+| 待处理且执行入口已接入 | 派发到 Task Center |
+| 有 linked run | 打开 Run |
+| 有 linked session | 打开会话 |
+| 待验收 | 接受结果 / 要求修改 / 创建后续任务 |
+| 非已派发态 | 归档 |
+
+被砍掉的 UI：
+
+- `配置派发` 面板
+- 空的 `验收`按钮
+- provider 写回按钮
+- 没有真实 linked target 的灰色 `打开 Run` / `打开会话`
+- provider / engine / source kind / risk 多维筛选
+
+### 后续方向
+
+下一步应优先回到 UA 的 graph interaction primitives：
+
+1. Project Map 节点搜索与聚焦。
+2. Evidence Files 聚合视图。
+3. Guided Tour 学习路径。
+4. Typed Relation Graph。
+5. Path Finder / Why related。
+6. Diff Impact Overlay。
+
+Orchestration 只保留轻量桥接：Project Map node 收纳为待处理项，派发到 Task Center 后通过真实 linked run 回跳。

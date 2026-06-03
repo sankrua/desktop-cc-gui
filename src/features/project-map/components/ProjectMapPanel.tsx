@@ -5,7 +5,6 @@ import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import ArrowDownRightFromCircle from "lucide-react/dist/esm/icons/arrow-down-right-from-circle";
 import ArrowUpLeftFromCircle from "lucide-react/dist/esm/icons/arrow-up-left-from-circle";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
-import ChevronLeft from "lucide-react/dist/esm/icons/chevron-left";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
 import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import Crosshair from "lucide-react/dist/esm/icons/crosshair";
@@ -13,29 +12,21 @@ import Folder from "lucide-react/dist/esm/icons/folder";
 import Globe2 from "lucide-react/dist/esm/icons/globe-2";
 import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
 import ListChecks from "lucide-react/dist/esm/icons/list-checks";
-import RefreshCcw from "lucide-react/dist/esm/icons/refresh-ccw";
 import Network from "lucide-react/dist/esm/icons/network";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Sparkles from "lucide-react/dist/esm/icons/sparkles";
-import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import ZoomIn from "lucide-react/dist/esm/icons/zoom-in";
 import ZoomOut from "lucide-react/dist/esm/icons/zoom-out";
 
-import {
-  AlertDialog,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogPopup,
-  AlertDialogTitle,
-} from "../../../components/ui/alert-dialog";
 import { cn } from "../../../lib/utils";
 import type { EngineType, ModelOption, WorkspaceInfo } from "../../../types";
-import { useProjectMapDataset } from "../hooks/useProjectMapDataset";
 import {
-  normalizeEngineType,
-  useProjectMapGenerationOptions,
-} from "../hooks/useProjectMapGenerationOptions";
+  buildProjectMapOrchestrationTaskDraft,
+  loadOrchestrationTaskStore,
+  saveOrchestrationTaskStore,
+  upsertOrchestrationTask,
+} from "../../agent-orchestration";
+import { useProjectMapDataset } from "../hooks/useProjectMapDataset";
 import type { ProjectMapDatasetController } from "../hooks/useProjectMapDataset";
 import {
   PROJECT_MAP_DEFAULT_FOCUS_ZOOM,
@@ -58,36 +49,57 @@ import {
   type ProjectMapGraphNodePosition,
   type ProjectMapGraphViewport,
 } from "../utils/interactiveLayout";
-import { PROJECT_MAP_UNASSIGNED_DISCOVERIES_NODE_ID } from "../utils/incrementalGeneration";
 import {
   formatProjectMapDateTime,
   getProjectMapGenerationQueue,
   getProjectMapRecentRuns,
   translateProjectMapNodeKind,
 } from "../utils/display";
+import { buildProjectMapExplainPack } from "../utils/contextBuilder";
+import { buildProjectMapEvidenceFileIndex } from "../utils/evidenceFileIndex";
+import { buildProjectMapImpactAnalysis } from "../utils/impactAnalysis";
+import {
+  getProjectMapNodeStaleReasons,
+  classifyProjectMapRefresh,
+} from "../utils/refreshClassifier";
+import {
+  repairProjectMapGraphIntegrity,
+  validateProjectMapGraphIntegrity,
+} from "../utils/graphIntegrity";
+import {
+  buildProjectMapGuidedTour,
+  buildProjectMapShortestPath,
+  searchProjectMapNodes,
+} from "../utils/navigation";
+import {
+  buildProjectMapRelationIndex,
+  filterProjectMapRelations,
+  type ProjectMapRelationDirectionFilter,
+} from "../utils/relationIndex";
 import { getProjectMapUnassignedDiscoveryChildren } from "../services/projectMapNodeOrganizer";
+import { type ProjectMapTraceTarget } from "./ProjectMapTraceChips";
 import {
-  ProjectMapArtifactChip,
-  ProjectMapDiagramChip,
-  ProjectMapSourceChip,
-  normalizeProjectMapArtifactForDisplay,
-  type ProjectMapTraceTarget,
-} from "./ProjectMapTraceChips";
-import {
-  ProjectMapGenerationQueueBanner,
   ProjectMapGenerationTaskDrawer,
 } from "./ProjectMapTaskDrawer";
+import {
+  DeleteNodeConfirmDialog,
+  DetailPanel,
+  GenerationConfirmationDialog,
+  ProjectMapEvidenceFilesPanel,
+  ProjectMapNavigationPanel,
+  ProjectMapRelationLegendPanel,
+  ProjectMapSettingsPanel,
+} from "./ProjectMapPanelSurfaces";
 import type {
   ProjectMapDataset,
-  ProjectMapGenerationRequest,
+  ProjectMapGraphRepairSummary,
   ProjectMapCandidate,
   ProjectMapLens,
   ProjectMapLayoutPreset,
   ProjectMapNode,
+  ProjectMapImpactSourceMetadata,
   ProjectMapPreferredLanguage,
   ProjectMapProfile,
-  ProjectMapRelatedArtifact,
-  ProjectMapStorageLocation,
 } from "../types";
 
 type ProjectMapPanelProps = {
@@ -98,7 +110,11 @@ type ProjectMapPanelProps = {
   models?: ModelOption[];
   dataset?: ProjectMapDataset;
   datasetController?: ProjectMapDatasetController;
+  changedFilePaths?: string[];
+  changedFileSource?: ProjectMapImpactSourceMetadata;
+  sourceFocusNodeId?: string | null;
   onOpenEvidenceFile?: (path: string, location?: { line: number; column: number }) => void;
+  onOpenOrchestrationTask?: (taskId: string) => void;
 };
 
 type GraphViewport = ProjectMapGraphViewport;
@@ -107,6 +123,22 @@ type GraphViewSnapshot = {
   focusNodeId: string | null;
   selectedNodeId: string | null;
 };
+
+type ProjectMapOrchestrationDraftState =
+  | { status: "idle" }
+  | {
+      status: "created";
+      nodeId: string;
+      taskId: string;
+      taskStatus: string;
+      evidenceCount: number;
+      riskCount: number;
+    }
+  | {
+      status: "failed";
+      nodeId: string;
+      reason: "missing-workspace" | "missing-node";
+    };
 
 type GraphNodeDragState = {
   pointerId: number;
@@ -123,6 +155,8 @@ const MINI_MAP_SIZE = { width: 180, height: 118 };
 const DETAIL_PANEL_FOCUS_OFFSET_MIN = 160;
 const DETAIL_PANEL_FOCUS_OFFSET_MAX = 240;
 const CANVAS_CONTROLS_COLLAPSED_STORAGE_KEY = "ccgui.projectMap.canvasControlsCollapsed";
+const PROJECT_MAP_EVIDENCE_SOURCE_KIND_ALL = "all";
+const PROJECT_MAP_RELATION_FILTER_ALL = "all";
 
 function readCanvasControlsCollapsedPreference(): boolean {
   if (typeof window === "undefined" || !window.localStorage) {
@@ -149,34 +183,29 @@ function writeCanvasControlsCollapsedPreference(collapsed: boolean): void {
   }
 }
 
-function normalizePathForComparing(value: string): string {
-  return value.replace(/[\\/]+$/g, "").replace(/\\/g, "/");
+function normalizeEvidenceSearchText(value: string): string {
+  return value.trim().toLowerCase();
 }
 
-function resolveGenerationWritePath(
-  workspacePath: string | null,
-  storageKey: string,
-  storageLocation: ProjectMapStorageLocation,
-  writePath: string,
-): string {
-  if (storageLocation === "project" && workspacePath) {
-    const pathSeparator = workspacePath.includes("\\") ? "\\" : "/";
-    const trimmedWorkspacePath = workspacePath.replace(/[\\/]+$/g, "");
-    return `${trimmedWorkspacePath}${pathSeparator}.ccgui${pathSeparator}project-map${pathSeparator}${storageKey}`;
-  }
-
-  if (storageLocation === "global" && workspacePath) {
-    const expected = normalizePathForComparing(
-      `${workspacePath.replace(/[\\/]+$/g, "")}/.ccgui/project-map/${storageKey}`,
-    );
-    const normalized = normalizePathForComparing(writePath);
-    const isCaseInsensitive = typeof process !== "undefined" && process.platform === "win32";
-    if (isCaseInsensitive ? normalized.toLowerCase() === expected.toLowerCase() : normalized === expected) {
-      return `.ccgui/project-map/${storageKey}`;
+function resolveProjectMapOrchestrationWorkspaceId(input: {
+  activeWorkspace: WorkspaceInfo | null;
+  dataset: ProjectMapDataset;
+  workspaceName?: string | null;
+}): string | null {
+  const ownedRunWorkspaceId =
+    input.dataset.runs.find((run) => run.ownership?.workspaceId)?.ownership?.workspaceId ?? null;
+  const candidates = [
+    input.activeWorkspace?.id,
+    ownedRunWorkspaceId,
+    input.dataset.manifest.storageKey,
+    input.workspaceName,
+  ];
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim().length > 0) {
+      return candidate.trim();
     }
   }
-
-  return writePath;
+  return null;
 }
 
 function resolveSelectedGenerationModel(
@@ -259,35 +288,14 @@ function getProfileSummary(profile: Partial<ProjectMapProfile> | null | undefine
   language: string;
   shapes: string;
 } {
-  const language =
-    typeof profile?.primaryLanguage === "string" && profile.primaryLanguage
-      ? profile.primaryLanguage
-      : "unknown";
-  const shapes =
-    Array.isArray(profile?.shapes) && profile.shapes.length > 0
-      ? profile.shapes.join(" / ")
-      : "unknown";
+  const language = profile?.primaryLanguage ?? "unknown";
+  const shapes = profile?.shapes?.length ? profile.shapes.join(" · ") : "unknown";
   return { language, shapes };
 }
-
 function resolveProjectMapPreferredLanguage(
   language: string | null | undefined,
 ): ProjectMapPreferredLanguage {
   return language?.toLowerCase().startsWith("zh") ? "zh" : "en";
-}
-
-function isCandidateAfterCompletedCalibration(
-  dataset: ProjectMapDataset,
-  node: ProjectMapNode,
-): boolean {
-  const generatedRun = dataset.runs.find((run) => run.id === node.generatedBy.runId);
-  return Boolean(
-    node.candidate &&
-      generatedRun?.status === "completed" &&
-      generatedRun.generationIntent === "calibrateNode" &&
-      generatedRun.requestScope?.kind === "node" &&
-      generatedRun.requestScope.nodeId === node.id,
-  );
 }
 
 export function ProjectMapPanel({
@@ -298,7 +306,11 @@ export function ProjectMapPanel({
   models,
   dataset: controlledDataset,
   datasetController: providedDatasetController,
+  changedFilePaths = [],
+  changedFileSource,
+  sourceFocusNodeId = null,
   onOpenEvidenceFile,
+  onOpenOrchestrationTask,
 }: ProjectMapPanelProps) {
   const { t, i18n } = useTranslation();
   const preferredLanguage = resolveProjectMapPreferredLanguage(
@@ -335,15 +347,39 @@ export function ProjectMapPanel({
   );
   const [deleteConfirmNodeId, setDeleteConfirmNodeId] = useState<string | null>(null);
   const [viewHistory, setViewHistory] = useState<GraphViewSnapshot[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [evidenceFileSearchQuery, setEvidenceFileSearchQuery] = useState("");
+  const [evidenceFileSourceKindFilter, setEvidenceFileSourceKindFilter] = useState(
+    PROJECT_MAP_EVIDENCE_SOURCE_KIND_ALL,
+  );
+  const [showSelectedNodeEvidenceOnly, setShowSelectedNodeEvidenceOnly] = useState(false);
+  const [selectedEvidenceFilePath, setSelectedEvidenceFilePath] = useState<string | null>(null);
+  const [isEvidenceFileHighlightActive, setIsEvidenceFileHighlightActive] = useState(false);
+  const [relationTypeFilter, setRelationTypeFilter] = useState(PROJECT_MAP_RELATION_FILTER_ALL);
+  const [relationSourceKindFilter, setRelationSourceKindFilter] = useState(PROJECT_MAP_RELATION_FILTER_ALL);
+  const [relationDirectionFilter, setRelationDirectionFilter] =
+    useState<ProjectMapRelationDirectionFilter>("all");
+  const [selectedRelationId, setSelectedRelationId] = useState<string | null>(null);
+  const [activeTourStepIndex, setActiveTourStepIndex] = useState(0);
+  const [pathSourceNodeId, setPathSourceNodeId] = useState<string | null>(null);
+  const [pathTargetNodeId, setPathTargetNodeId] = useState<string | null>(null);
   const [hoverNodeId, setHoverNodeId] = useState<string | null>(null);
   const [isLensStripCollapsed, setIsLensStripCollapsed] = useState(true);
   const [isProjectMapChromeCollapsed, setIsProjectMapChromeCollapsed] = useState(false);
+  const [isNavigationPanelExpanded, setIsNavigationPanelExpanded] = useState(false);
+  const [isEvidenceFilesPanelExpanded, setIsEvidenceFilesPanelExpanded] = useState(false);
+  const [isRelationPanelExpanded, setIsRelationPanelExpanded] = useState(false);
+  const [isGraphHealthExpanded, setIsGraphHealthExpanded] = useState(false);
   const [isCanvasControlsCollapsed, setIsCanvasControlsCollapsed] = useState(
     readCanvasControlsCollapsedPreference,
   );
   const [isDetailCollapsed, setIsDetailCollapsed] = useState(false);
   const [isTaskDrawerOpen, setIsTaskDrawerOpen] = useState(false);
   const [candidateBatchMessage, setCandidateBatchMessage] = useState<string | null>(null);
+  const [orchestrationDraftState, setOrchestrationDraftState] =
+    useState<ProjectMapOrchestrationDraftState>({ status: "idle" });
+  const [graphRepairSummary, setGraphRepairSummary] =
+    useState<ProjectMapGraphRepairSummary | null>(dataset.graphRepair ?? null);
   const [isConfirmingAllCandidates, setIsConfirmingAllCandidates] = useState(false);
   const [selectedGraphNodeIds, setSelectedGraphNodeIds] = useState<Set<string>>(new Set());
   const [dragPreviewPositions, setDragPreviewPositions] = useState<
@@ -364,6 +400,7 @@ export function ProjectMapPanel({
   const nodeDragRef = useRef<GraphNodeDragState | null>(null);
   const suppressNextNodeClickRef = useRef(false);
   const lastAutoFitGraphKeyRef = useRef<string | null>(null);
+  const lastSourceFocusNodeIdRef = useRef<string | null>(null);
   const visibleNodes = useMemo(
     () => resolveVisibleProjectMapNodes(dataset, focusNodeId),
     [dataset, focusNodeId],
@@ -394,6 +431,206 @@ export function ProjectMapPanel({
     (focusNodeId ? nodeIndex.get(focusNodeId) : rootNode) ??
     visibleNodes[0] ??
     null;
+  const selectedExplainPackNodeId = selectedNode?.id ?? null;
+  const selectedExplainPack = useMemo(
+    () =>
+      selectedExplainPackNodeId
+        ? buildProjectMapExplainPack({ dataset, nodeId: selectedExplainPackNodeId })
+        : null,
+    [dataset, selectedExplainPackNodeId],
+  );
+  const tourCopy = useMemo(
+    () => ({
+      onboarding: {
+        title: t("projectMap.navigation.tour.onboardingTitle"),
+        summary: t("projectMap.navigation.tour.onboardingSummary"),
+      },
+      "architecture-review": {
+        title: t("projectMap.navigation.tour.architectureTitle"),
+        summary: t("projectMap.navigation.tour.architectureSummary"),
+      },
+      "risk-review": {
+        title: t("projectMap.navigation.tour.riskTitle"),
+        summary: t("projectMap.navigation.tour.riskSummary"),
+      },
+      "task-planning": {
+        title: t("projectMap.navigation.tour.taskTitle"),
+        summary: t("projectMap.navigation.tour.taskSummary"),
+      },
+    }),
+    [t],
+  );
+  const guidedTourSteps = useMemo(
+    () => buildProjectMapGuidedTour({ dataset, copy: tourCopy }),
+    [dataset, tourCopy],
+  );
+  const activeTourStep = guidedTourSteps[activeTourStepIndex] ?? null;
+  const activeTourNodeIds = useMemo(
+    () => new Set(activeTourStep?.nodeIds ?? []),
+    [activeTourStep],
+  );
+  const searchResults = useMemo(
+    () => searchProjectMapNodes({ dataset, query: searchQuery, limit: 8 }),
+    [dataset, searchQuery],
+  );
+  const searchResultNodeIds = useMemo(
+    () => new Set(searchResults.map((result) => result.node.id)),
+    [searchResults],
+  );
+  const pathNodeOptions = useMemo(
+    () => [...projectionNodes].sort((left, right) => left.title.localeCompare(right.title)),
+    [projectionNodes],
+  );
+  const pathResult = useMemo(
+    () =>
+      buildProjectMapShortestPath({
+        dataset,
+        sourceNodeId: pathSourceNodeId,
+        targetNodeId: pathTargetNodeId,
+        emptyMessage: t("projectMap.navigation.path.empty"),
+        foundMessage: t("projectMap.navigation.path.found"),
+        notFoundMessage: t("projectMap.navigation.path.notFound"),
+      }),
+    [dataset, pathSourceNodeId, pathTargetNodeId, t],
+  );
+  const pathNodeIds = useMemo(
+    () => new Set(pathResult.steps.map((step) => step.node.id)),
+    [pathResult.steps],
+  );
+  const refreshSummary = useMemo(
+    () => classifyProjectMapRefresh({ dataset, changedFiles: changedFilePaths }),
+    [changedFilePaths, dataset],
+  );
+  const graphIntegrityIssues = useMemo(
+    () => validateProjectMapGraphIntegrity(dataset),
+    [dataset],
+  );
+  const activeGraphRepairSummary = graphRepairSummary ?? dataset.graphRepair ?? null;
+  const impactAnalysis = useMemo(
+    () => buildProjectMapImpactAnalysis({ dataset, changedFilePaths, source: changedFileSource }),
+    [changedFilePaths, changedFileSource, dataset],
+  );
+  const relationIndex = useMemo(
+    () => buildProjectMapRelationIndex(dataset),
+    [dataset],
+  );
+  const relationTypeOptions = useMemo(
+    () => relationIndex.typeCounts.map((item) => item.key),
+    [relationIndex.typeCounts],
+  );
+  const relationSourceKindOptions = useMemo(
+    () => relationIndex.sourceKindCounts.map((item) => item.key),
+    [relationIndex.sourceKindCounts],
+  );
+  const selectedNodeRelationBucket = selectedNode?.id
+    ? relationIndex.byNodeId.get(selectedNode.id) ?? null
+    : null;
+  const filteredRelations = useMemo(
+    () =>
+      filterProjectMapRelations({
+        relationIndex,
+        selectedNodeId: selectedNode?.id ?? null,
+        typeFilter: relationTypeFilter,
+        sourceKindFilter: relationSourceKindFilter,
+        directionFilter: relationDirectionFilter,
+      }),
+    [
+      relationDirectionFilter,
+      relationIndex,
+      relationSourceKindFilter,
+      relationTypeFilter,
+      selectedNode?.id,
+    ],
+  );
+  const selectedRelation = selectedRelationId
+    ? relationIndex.relations.find((item) => item.relation.id === selectedRelationId) ?? null
+    : null;
+  const relationFilteredNodeIds = useMemo(
+    () =>
+      new Set(
+        filteredRelations.flatMap((item) => [
+          item.relation.sourceNodeId,
+          item.relation.targetNodeId,
+        ]),
+      ),
+    [filteredRelations],
+  );
+  const selectedRelationNodeIds = useMemo(
+    () =>
+      new Set(
+        selectedRelation
+          ? [selectedRelation.relation.sourceNodeId, selectedRelation.relation.targetNodeId]
+          : [],
+      ),
+    [selectedRelation],
+  );
+  const evidenceFileIndex = useMemo(
+    () => buildProjectMapEvidenceFileIndex({ dataset }),
+    [dataset],
+  );
+  const evidenceFileSourceKindOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(evidenceFileIndex.files.flatMap((entry) => entry.sourceKinds)),
+      ).sort(),
+    [evidenceFileIndex.files],
+  );
+  const filteredEvidenceFiles = useMemo(() => {
+    const normalizedQuery = normalizeEvidenceSearchText(evidenceFileSearchQuery);
+    return evidenceFileIndex.files.filter((entry) => {
+      const matchesQuery =
+        !normalizedQuery ||
+        entry.path.toLowerCase().includes(normalizedQuery) ||
+        entry.nodeLinks.some((link) => link.title.toLowerCase().includes(normalizedQuery));
+      const matchesSourceKind =
+        evidenceFileSourceKindFilter === PROJECT_MAP_EVIDENCE_SOURCE_KIND_ALL ||
+        entry.sourceKinds.includes(evidenceFileSourceKindFilter);
+      const matchesSelectedNode =
+        !showSelectedNodeEvidenceOnly ||
+        Boolean(selectedNode?.id && entry.nodeLinks.some((link) => link.nodeId === selectedNode.id));
+      return matchesQuery && matchesSourceKind && matchesSelectedNode;
+    });
+  }, [
+    evidenceFileIndex.files,
+    evidenceFileSearchQuery,
+    evidenceFileSourceKindFilter,
+    selectedNode?.id,
+    showSelectedNodeEvidenceOnly,
+  ]);
+  const selectedEvidenceFileEntry =
+    (selectedEvidenceFilePath
+      ? evidenceFileIndex.files.find((entry) => entry.path === selectedEvidenceFilePath) ?? null
+      : null) ??
+    filteredEvidenceFiles[0] ??
+    null;
+  const evidenceFileNodeIds = useMemo(
+    () =>
+      new Set(
+        isEvidenceFileHighlightActive
+          ? selectedEvidenceFileEntry?.nodeLinks.map((link) => link.nodeId) ?? []
+          : [],
+      ),
+    [isEvidenceFileHighlightActive, selectedEvidenceFileEntry],
+  );
+  const impactChangedNodeIds = useMemo(
+    () => new Set(impactAnalysis.changedNodes.map((item) => item.node.id)),
+    [impactAnalysis.changedNodes],
+  );
+  const impactAffectedNodeIds = useMemo(
+    () => new Set(impactAnalysis.affectedNodes.map((item) => item.node.id)),
+    [impactAnalysis.affectedNodes],
+  );
+  const selectedNodeStaleReasons = useMemo(
+    () =>
+      selectedNode
+        ? getProjectMapNodeStaleReasons({
+            dataset,
+            nodeId: selectedNode.id,
+            refreshSummary,
+          })
+        : [],
+    [dataset, refreshSummary, selectedNode],
+  );
   const deleteConfirmNode = deleteConfirmNodeId ? nodeIndex.get(deleteConfirmNodeId) ?? null : null;
   const graphLayout = useMemo(
     () =>
@@ -423,6 +660,17 @@ export function ProjectMapPanel({
       edges,
     };
   }, [dragPreviewPositions, graphLayout]);
+  const relationRenderEdges = useMemo(() => {
+    const positionById = new Map(renderGraphLayout.positions.map((position) => [position.id, position]));
+    return filteredRelations.flatMap((indexedRelation) => {
+      const source = positionById.get(indexedRelation.relation.sourceNodeId);
+      const target = positionById.get(indexedRelation.relation.targetNodeId);
+      if (!source || !target) {
+        return [];
+      }
+      return [{ indexedRelation, source, target }];
+    });
+  }, [filteredRelations, renderGraphLayout.positions]);
   const miniMapProjection = useMemo(() => {
     if (!renderGraphLayout.rootNodeId) {
       return null;
@@ -681,6 +929,78 @@ export function ProjectMapPanel({
     });
   }, [visibleNodes]);
 
+  useEffect(() => {
+    setActiveTourStepIndex((current) => {
+      if (guidedTourSteps.length === 0) {
+        return 0;
+      }
+      return Math.min(current, guidedTourSteps.length - 1);
+    });
+  }, [guidedTourSteps.length]);
+
+  useEffect(() => {
+    if (
+      evidenceFileSourceKindFilter !== PROJECT_MAP_EVIDENCE_SOURCE_KIND_ALL &&
+      !evidenceFileSourceKindOptions.includes(evidenceFileSourceKindFilter)
+    ) {
+      setEvidenceFileSourceKindFilter(PROJECT_MAP_EVIDENCE_SOURCE_KIND_ALL);
+    }
+  }, [evidenceFileSourceKindFilter, evidenceFileSourceKindOptions]);
+
+  useEffect(() => {
+    if (
+      selectedEvidenceFilePath &&
+      !evidenceFileIndex.files.some((entry) => entry.path === selectedEvidenceFilePath)
+    ) {
+      setSelectedEvidenceFilePath(null);
+      setIsEvidenceFileHighlightActive(false);
+    }
+  }, [evidenceFileIndex.files, selectedEvidenceFilePath]);
+
+  useEffect(() => {
+    if (
+      relationTypeFilter !== PROJECT_MAP_RELATION_FILTER_ALL &&
+      !relationTypeOptions.includes(relationTypeFilter)
+    ) {
+      setRelationTypeFilter(PROJECT_MAP_RELATION_FILTER_ALL);
+    }
+  }, [relationTypeFilter, relationTypeOptions]);
+
+  useEffect(() => {
+    if (
+      relationSourceKindFilter !== PROJECT_MAP_RELATION_FILTER_ALL &&
+      !relationSourceKindOptions.includes(relationSourceKindFilter)
+    ) {
+      setRelationSourceKindFilter(PROJECT_MAP_RELATION_FILTER_ALL);
+    }
+  }, [relationSourceKindFilter, relationSourceKindOptions]);
+
+  useEffect(() => {
+    if (
+      selectedRelationId &&
+      !relationIndex.relations.some((item) => item.relation.id === selectedRelationId)
+    ) {
+      setSelectedRelationId(null);
+    }
+  }, [relationIndex.relations, selectedRelationId]);
+
+  useEffect(() => {
+    setGraphRepairSummary(dataset.graphRepair ?? null);
+  }, [dataset.graphRepair]);
+
+  useEffect(() => {
+    setPathSourceNodeId((current) =>
+      current && nodeIndex.has(current)
+        ? current
+        : rootNode?.id ?? pathNodeOptions[0]?.id ?? null,
+    );
+    setPathTargetNodeId((current) =>
+      current && nodeIndex.has(current)
+        ? current
+        : selectedNode?.id ?? pathNodeOptions.find((node) => node.id !== rootNode?.id)?.id ?? null,
+    );
+  }, [nodeIndex, pathNodeOptions, rootNode?.id, selectedNode?.id]);
+
   const handleNodeSelect = (node: ProjectMapNode) => {
     setHoverNodeId(null);
     setSelectedNodeId(node.id);
@@ -688,7 +1008,7 @@ export function ProjectMapPanel({
     setSelectedGraphNodeIds(new Set([node.id]));
   };
 
-  const rememberCurrentView = () => {
+  const rememberCurrentView = useCallback(() => {
     const snapshot: GraphViewSnapshot = {
       focusNodeId,
       selectedNodeId,
@@ -703,6 +1023,66 @@ export function ProjectMapPanel({
       }
       return [...current.slice(-7), snapshot];
     });
+  }, [focusNodeId, selectedNodeId]);
+
+  const focusNavigationNode = useCallback((nodeId: string | null) => {
+    if (!nodeId) {
+      return;
+    }
+    const targetNode = nodeIndex.get(nodeId);
+    if (!targetNode) {
+      return;
+    }
+    rememberCurrentView();
+    setHoverNodeId(null);
+    setSelectedNodeId(targetNode.id);
+    setFocusNodeId(
+      targetNode.parentId && targetNode.parentId !== rootNode?.id
+        ? targetNode.parentId
+        : null,
+    );
+    setIsDetailCollapsed(false);
+    setSelectedGraphNodeIds(new Set([targetNode.id]));
+  }, [nodeIndex, rememberCurrentView, rootNode?.id]);
+
+  useEffect(() => {
+    if (!sourceFocusNodeId || lastSourceFocusNodeIdRef.current === sourceFocusNodeId) {
+      return;
+    }
+
+    lastSourceFocusNodeIdRef.current = sourceFocusNodeId;
+    if (!nodeIndex.has(sourceFocusNodeId)) {
+      setFocusNodeId(null);
+      setSelectedNodeId(rootNode?.id ?? null);
+      setSelectedGraphNodeIds(new Set());
+      setSelectedEvidenceFilePath(null);
+      setSelectedRelationId(null);
+      return;
+    }
+
+    focusNavigationNode(sourceFocusNodeId);
+  }, [focusNavigationNode, nodeIndex, rootNode?.id, sourceFocusNodeId]);
+
+  const handleEvidenceFileSelect = (path: string) => {
+    setSelectedEvidenceFilePath(path);
+    setIsEvidenceFileHighlightActive(true);
+  };
+
+  const handleEvidenceFileNodeFocus = (nodeId: string) => {
+    setIsEvidenceFileHighlightActive(true);
+    focusNavigationNode(nodeId);
+  };
+
+  const handleClearEvidenceFileHighlight = () => {
+    setIsEvidenceFileHighlightActive(false);
+  };
+
+  const handleRelationFocusNode = (nodeId: string) => {
+    focusNavigationNode(nodeId);
+  };
+
+  const handleRelationSelect = (relationId: string) => {
+    setSelectedRelationId(relationId);
   };
 
   const handleDrillIn = (node: ProjectMapNode | null) => {
@@ -789,12 +1169,64 @@ export function ProjectMapPanel({
     }
   };
 
+  const handleRepairGraphIntegrity = async () => {
+    let latestSummary: ProjectMapGraphRepairSummary | null = null;
+    await datasetController.updateDataset((currentDataset) => {
+      const repaired = repairProjectMapGraphIntegrity({ dataset: currentDataset });
+      latestSummary = repaired.summary;
+      return repaired.dataset;
+    });
+    setGraphRepairSummary(latestSummary);
+  };
+
   const handleRequestDeleteSelectedNode = () => {
     if (!selectedNode) {
       return;
     }
     setDeleteConfirmNodeId(selectedNode.id);
   };
+
+  const handleCreateOrchestrationTaskDraft = useCallback(() => {
+    if (!selectedNode) {
+      return;
+    }
+    const workspaceId = resolveProjectMapOrchestrationWorkspaceId({
+      activeWorkspace,
+      dataset,
+      workspaceName,
+    });
+    if (!workspaceId) {
+      setOrchestrationDraftState({
+        status: "failed",
+        nodeId: selectedNode.id,
+        reason: "missing-workspace",
+      });
+      return;
+    }
+    const draft = buildProjectMapOrchestrationTaskDraft({
+      workspaceId,
+      dataset,
+      nodeId: selectedNode.id,
+    });
+    if (!draft) {
+      setOrchestrationDraftState({
+        status: "failed",
+        nodeId: selectedNode.id,
+        reason: "missing-node",
+      });
+      return;
+    }
+    saveOrchestrationTaskStore(upsertOrchestrationTask(loadOrchestrationTaskStore(), draft));
+    setOrchestrationDraftState({
+      status: "created",
+      nodeId: selectedNode.id,
+      taskId: draft.taskId,
+      taskStatus: draft.status,
+      evidenceCount: draft.evidenceRefs.length,
+      riskCount: draft.riskMarkers.length,
+    });
+    onOpenOrchestrationTask?.(draft.taskId);
+  }, [activeWorkspace, dataset, onOpenOrchestrationTask, selectedNode, workspaceName]);
 
   const handleConfirmDeleteNode = async () => {
     if (!deleteConfirmNode) {
@@ -1258,12 +1690,6 @@ export function ProjectMapPanel({
       </header>
 
       <main className="project-map-stage" aria-label={t("projectMap.stageAria")}>
-        {activeGenerationRun ? (
-          <ProjectMapGenerationQueueBanner
-            activeRun={activeGenerationRun}
-            queuedCount={queuedGenerationRuns.length}
-          />
-        ) : null}
         {!isProjectMapChromeCollapsed ? (
           <div className={cn("project-map-lens-shell", isLensStripCollapsed && "is-collapsed")}>
             <div className="project-map-stage-toolbar">
@@ -1285,6 +1711,25 @@ export function ProjectMapPanel({
                 <span>{t("projectMap.staleNodes", { count: staleCount })}</span>
                 <span>{t("projectMap.candidateNodes", { count: candidateCount })}</span>
                 <button
+                  className={cn(
+                    "project-map-health-chip",
+                    graphIntegrityIssues.length > 0 && "has-issues",
+                    isGraphHealthExpanded && "is-active",
+                  )}
+                  type="button"
+                  aria-expanded={isGraphHealthExpanded}
+                  onClick={() => {
+                    setIsGraphHealthExpanded((current) => !current);
+                    setIsDetailCollapsed(false);
+                  }}
+                >
+                  {t("projectMap.repair.title")}
+                  <strong>
+                    {graphIntegrityIssues.length}/
+                    {activeGraphRepairSummary?.actions.length ?? 0}
+                  </strong>
+                </button>
+                <button
                   className="project-map-lens-toggle"
                   type="button"
                   aria-expanded={!isLensStripCollapsed}
@@ -1295,6 +1740,63 @@ export function ProjectMapPanel({
                 </button>
               </div>
             </div>
+
+            <ProjectMapNavigationPanel
+              searchQuery={searchQuery}
+              searchResults={searchResults}
+              guidedTourSteps={guidedTourSteps}
+              activeTourStep={activeTourStep}
+              activeTourStepIndex={activeTourStepIndex}
+              expanded={isNavigationPanelExpanded}
+              pathNodeOptions={pathNodeOptions}
+              pathSourceNodeId={pathSourceNodeId}
+              pathTargetNodeId={pathTargetNodeId}
+              pathResult={pathResult}
+              onExpandedChange={setIsNavigationPanelExpanded}
+              onSearchQueryChange={setSearchQuery}
+              onFocusNode={focusNavigationNode}
+              onTourStepIndexChange={setActiveTourStepIndex}
+              onPathSourceNodeChange={setPathSourceNodeId}
+              onPathTargetNodeChange={setPathTargetNodeId}
+            />
+
+            <ProjectMapEvidenceFilesPanel
+              evidenceFileIndex={evidenceFileIndex}
+              filteredFiles={filteredEvidenceFiles}
+              selectedFile={selectedEvidenceFileEntry}
+              expanded={isEvidenceFilesPanelExpanded}
+              selectedNodeId={selectedNode?.id ?? null}
+              searchQuery={evidenceFileSearchQuery}
+              sourceKindFilter={evidenceFileSourceKindFilter}
+              sourceKindOptions={evidenceFileSourceKindOptions}
+              showSelectedNodeOnly={showSelectedNodeEvidenceOnly}
+              isHighlightActive={isEvidenceFileHighlightActive}
+              onExpandedChange={setIsEvidenceFilesPanelExpanded}
+              onSearchQueryChange={setEvidenceFileSearchQuery}
+              onSourceKindFilterChange={setEvidenceFileSourceKindFilter}
+              onSelectedNodeOnlyChange={setShowSelectedNodeEvidenceOnly}
+              onSelectFile={handleEvidenceFileSelect}
+              onFocusNode={handleEvidenceFileNodeFocus}
+              onClearHighlight={handleClearEvidenceFileHighlight}
+              onOpenTrace={onOpenEvidenceFile ? handleOpenTraceTarget : undefined}
+            />
+
+            <ProjectMapRelationLegendPanel
+              relationIndex={relationIndex}
+              filteredRelationCount={filteredRelations.length}
+              expanded={isRelationPanelExpanded}
+              typeFilter={relationTypeFilter}
+              sourceKindFilter={relationSourceKindFilter}
+              directionFilter={relationDirectionFilter}
+              typeOptions={relationTypeOptions}
+              sourceKindOptions={relationSourceKindOptions}
+              selectedNodeId={selectedNode?.id ?? null}
+              onExpandedChange={setIsRelationPanelExpanded}
+              onTypeFilterChange={setRelationTypeFilter}
+              onSourceKindFilterChange={setRelationSourceKindFilter}
+              onDirectionFilterChange={setRelationDirectionFilter}
+              onClearSelectedRelation={() => setSelectedRelationId(null)}
+            />
 
             {!isLensStripCollapsed ? (
               <div className="project-map-domain-strip" aria-label={t("projectMap.domainStrip")}>
@@ -1463,6 +1965,7 @@ export function ProjectMapPanel({
                   const isFocused =
                     neighborNodeIds.has(edge.source.id) &&
                     neighborNodeIds.has(edge.target.id);
+                  const isPathEdge = pathResult.edgeKeys.has(`${edge.source.id}::${edge.target.id}`);
                   return (
                     <line
                       key={edge.id}
@@ -1470,7 +1973,29 @@ export function ProjectMapPanel({
                       y1={edge.source.y}
                       x2={edge.target.x}
                       y2={edge.target.y}
-                      className={cn("project-map-edge", isFocused && "is-focused")}
+                      className={cn(
+                        "project-map-edge",
+                        isFocused && "is-focused",
+                        isPathEdge && "is-path-edge",
+                      )}
+                    />
+                  );
+                })}
+                {relationRenderEdges.map(({ indexedRelation, source, target }) => {
+                  const isSelectedRelation = selectedRelationId === indexedRelation.relation.id;
+                  return (
+                    <line
+                      key={`relation:${indexedRelation.relation.id}:${source.id}:${target.id}`}
+                      x1={source.x}
+                      y1={source.y}
+                      x2={target.x}
+                      y2={target.y}
+                      className={cn(
+                        "project-map-edge",
+                        "is-relation-edge",
+                        indexedRelation.degraded && "is-degraded",
+                        isSelectedRelation && "is-selected-relation",
+                      )}
                     />
                   );
                 })}
@@ -1484,6 +2009,21 @@ export function ProjectMapPanel({
                 const isGroupSelected = selectedGraphNodeIds.has(node.id);
                 const isFocused = neighborNodeIds.has(node.id);
                 const isHub = node.parentId === rootNode?.id;
+                const isImpactChanged = impactChangedNodeIds.has(node.id);
+                const isImpactAffected = impactAffectedNodeIds.has(node.id);
+                const isSearchMatch = searchResultNodeIds.has(node.id);
+                const isTourNode = activeTourNodeIds.has(node.id);
+                const isPathNode = pathNodeIds.has(node.id);
+                const isEvidenceFileNode = evidenceFileNodeIds.has(node.id);
+                const isRelationFilteredNode = relationFilteredNodeIds.has(node.id);
+                const isSelectedRelationNode = selectedRelationNodeIds.has(node.id);
+                const isNavigationHighlighted =
+                  isSearchMatch ||
+                  isTourNode ||
+                  isPathNode ||
+                  isEvidenceFileNode ||
+                  isRelationFilteredNode ||
+                  isSelectedRelationNode;
                 const descendantStats = getDescendantStats(node, nodeIndex);
                 return (
                   <div
@@ -1495,10 +2035,18 @@ export function ProjectMapPanel({
                       `confidence-${node.confidence}`,
                       node.stale && "is-stale",
                       node.candidate && "is-candidate",
+                      isImpactChanged && "is-impact-changed",
+                      isImpactAffected && "is-impact-affected",
+                      isSearchMatch && "is-search-match",
+                      isTourNode && "is-tour-node",
+                      isPathNode && "is-path-node",
+                      isEvidenceFileNode && "is-evidence-file-node",
+                      isRelationFilteredNode && "is-relation-filtered-node",
+                      isSelectedRelationNode && "is-selected-relation-node",
                       isSelected && "is-selected",
                       isGroupSelected && "is-group-selected",
                       position.pinned && "is-pinned",
-                      !isFocused && "is-dimmed",
+                      !isFocused && !isNavigationHighlighted && "is-dimmed",
                     )}
                     role="button"
                     tabIndex={0}
@@ -1524,6 +2072,32 @@ export function ProjectMapPanel({
                       {node.stale ? t("projectMap.status.stale") : t("projectMap.status.current")}
                       {" · "}
                       {t(`projectMap.confidence.${node.confidence}`)}
+                      {isImpactChanged || isImpactAffected ? (
+                        <>
+                          {" · "}
+                          {isImpactChanged
+                            ? t("projectMap.impact.changed", { defaultValue: "Changed" })
+                            : t("projectMap.impact.affected", { defaultValue: "Affected" })}
+                        </>
+                      ) : null}
+                      {isSearchMatch ||
+                      isTourNode ||
+                      isPathNode ||
+                      isEvidenceFileNode ||
+                      isSelectedRelationNode ? (
+                        <>
+                          {" · "}
+                          {isSelectedRelationNode
+                            ? t("projectMap.relations.badge")
+                            : isEvidenceFileNode
+                            ? t("projectMap.evidenceFiles.badge")
+                            : isPathNode
+                            ? t("projectMap.navigation.path.badge")
+                            : isTourNode
+                              ? t("projectMap.navigation.tour.badge")
+                              : t("projectMap.navigation.search.badge")}
+                        </>
+                      ) : null}
                     </span>
                     {descendantStats.count > 0 ? (
                       <span className="project-map-node-counts">
@@ -1614,6 +2188,16 @@ export function ProjectMapPanel({
                 selectedNode ? pendingCandidateByNodeId.get(selectedNode.id) ?? null : null
               }
               lens={selectedNode ? lensIndex.get(selectedNode.lensId) ?? null : null}
+              explainPack={selectedExplainPack}
+              relationBucket={selectedNodeRelationBucket}
+              selectedRelationId={selectedRelationId}
+              impactAnalysis={impactAnalysis}
+              refreshSummary={refreshSummary}
+              nodeStaleReasons={selectedNodeStaleReasons}
+              graphIntegrityIssues={graphIntegrityIssues}
+              graphRepairSummary={activeGraphRepairSummary}
+              isGraphHealthExpanded={isGraphHealthExpanded}
+              orchestrationDraftState={orchestrationDraftState}
               staleCount={staleCount}
               unassignedDiscoveryCount={unassignedDiscoveryCount}
               pendingReviewCandidateCount={(dataset.candidates ?? []).filter((candidate) => candidate.status === "pending").length}
@@ -1626,6 +2210,7 @@ export function ProjectMapPanel({
               onDrill={() => handleDrillIn(selectedNode)}
               onCompleteNode={() => selectedNode ? datasetController.openNodeGeneration("node", selectedNode) : undefined}
               onCalibrateNode={() => selectedNode ? datasetController.openNodeGeneration("calibrate", selectedNode) : undefined}
+              onCreateOrchestrationTask={handleCreateOrchestrationTaskDraft}
               onOrganizeUnassigned={datasetController.openUnassignedOrganizer}
               onConfirmCandidate={(candidateId) => {
                 void datasetController.confirmCandidate(candidateId);
@@ -1641,6 +2226,10 @@ export function ProjectMapPanel({
               }}
               onDeleteNode={selectedNode ? handleRequestDeleteSelectedNode : null}
               onOpenTrace={onOpenEvidenceFile ? handleOpenTraceTarget : undefined}
+              onFocusRelationNode={handleRelationFocusNode}
+              onSelectRelation={handleRelationSelect}
+              onGraphHealthExpandedChange={setIsGraphHealthExpanded}
+              onRepairGraph={handleRepairGraphIntegrity}
             />
           </div>
         )}
@@ -1677,919 +2266,5 @@ export function ProjectMapPanel({
         />
       ) : null}
     </section>
-  );
-}
-
-function DetailPanel({
-  node,
-  dataset,
-  pendingCandidate,
-  lens,
-  staleCount,
-  unassignedDiscoveryCount,
-  pendingReviewCandidateCount,
-  canDrill,
-  collapsed,
-  onCollapsedChange,
-  onBack,
-  onBackToPrevious,
-  backToPreviousLabel,
-  onDrill,
-  onCompleteNode,
-  onCalibrateNode,
-  onOrganizeUnassigned,
-  onConfirmCandidate,
-  onRejectCandidate,
-  onConfirmNodeCandidate,
-  onRejectNodeCandidate,
-  onDeleteNode,
-  onOpenTrace,
-}: {
-  node: ProjectMapNode | null;
-  dataset: ProjectMapDataset;
-  pendingCandidate: ProjectMapCandidate | null;
-  lens: ProjectMapLens | null;
-  staleCount: number;
-  unassignedDiscoveryCount: number;
-  pendingReviewCandidateCount: number;
-  canDrill: boolean;
-  collapsed: boolean;
-  onCollapsedChange: (collapsed: boolean) => void;
-  onBack: (() => void) | null;
-  onBackToPrevious: (() => void) | null;
-  backToPreviousLabel: string;
-  onDrill: () => void;
-  onCompleteNode: () => void;
-  onCalibrateNode: () => void;
-  onOrganizeUnassigned: () => void;
-  onConfirmCandidate: (candidateId: string) => void;
-  onRejectCandidate: (candidateId: string) => void;
-  onConfirmNodeCandidate: (nodeId: string) => void;
-  onRejectNodeCandidate: (nodeId: string) => void;
-  onDeleteNode: (() => void) | null;
-  onOpenTrace?: (target: ProjectMapTraceTarget) => void;
-}) {
-  const { t } = useTranslation();
-  const isCalibratedCandidate = node
-    ? isCandidateAfterCompletedCalibration(dataset, node)
-    : false;
-  const moveSuggestedParent = pendingCandidate?.move?.suggestedParentId
-    ? dataset.nodes.find((candidateNode) => candidateNode.id === pendingCandidate.move?.suggestedParentId) ?? null
-    : null;
-  const isUnassignedDiscoveriesNode = node?.id === PROJECT_MAP_UNASSIGNED_DISCOVERIES_NODE_ID;
-
-  return (
-    <aside
-      className={cn("project-map-detail-panel", collapsed && "is-collapsed")}
-      aria-label={t("projectMap.detailPanel")}
-    >
-      <div
-        className="project-map-detail-control-group"
-        role="group"
-        aria-label={t("projectMap.viewNavigation")}
-      >
-        <button
-          className="project-map-detail-toggle"
-          type="button"
-          aria-expanded={!collapsed}
-          onClick={() => onCollapsedChange(!collapsed)}
-        >
-          {collapsed ? <ChevronLeft aria-hidden /> : <ChevronRight aria-hidden />}
-          <span>
-            {collapsed
-              ? t("projectMap.expandDetail")
-              : t("projectMap.collapseDetail")}
-          </span>
-        </button>
-        {!collapsed && onBackToPrevious ? (
-          <button
-            className="project-map-back-button is-previous"
-            type="button"
-            onClick={onBackToPrevious}
-          >
-            <ArrowLeft aria-hidden />
-            <span>{backToPreviousLabel}</span>
-          </button>
-        ) : null}
-        {!collapsed && onBack ? (
-          <button className="project-map-back-button" type="button" onClick={onBack}>
-            <Network aria-hidden />
-            <span>{t("projectMap.backToOverview")}</span>
-          </button>
-        ) : null}
-      </div>
-      {collapsed ? (
-        <div className="project-map-detail-peek">
-          <span className="project-map-node-kind">
-            {node ? translateProjectMapNodeKind(t, node.nodeKind) : t("projectMap.inspector")}
-          </span>
-          <strong>{node?.title ?? t("projectMap.emptyInspector")}</strong>
-        </div>
-      ) : null}
-      {!collapsed ? (
-        <>
-          {node ? (
-            <>
-          <div className="project-map-inspector-heading">
-            <span className="project-map-node-kind">{translateProjectMapNodeKind(t, node.nodeKind)}</span>
-            <h3>{node.title}</h3>
-            <p>{node.summary}</p>
-            <div className="project-map-inspector-badges">
-              {lens ? <span>{lens.title}</span> : null}
-              {lens ? <span>{t(`projectMap.lensStatus.${lens.status}`)}</span> : null}
-              <span className={`confidence-${node.confidence}`}>
-                {t(`projectMap.confidence.${node.confidence}`)}
-              </span>
-              {node.stale ? <span>{t("projectMap.status.stale")}</span> : null}
-              {node.candidate ? <span>{t("projectMap.status.candidate")}</span> : null}
-            </div>
-          </div>
-          {node.candidate || pendingCandidate ? (
-            <section className="project-map-candidate-notice">
-              <h4>
-                {t(
-                  isCalibratedCandidate
-                    ? "projectMap.candidateNotice.calibratedTitle"
-                    : "projectMap.candidateNotice.title",
-                )}
-              </h4>
-              <p>
-                {pendingCandidate?.kind === "parentMove" && moveSuggestedParent
-                  ? t("projectMap.candidateNotice.parentMoveBody", {
-                      parent: moveSuggestedParent.title,
-                      reason: pendingCandidate.move?.reason ?? "-",
-                    })
-                  : t(
-                      isCalibratedCandidate
-                        ? "projectMap.candidateNotice.calibratedBody"
-                        : "projectMap.candidateNotice.body",
-                    )}
-              </p>
-              <div className="project-map-candidate-actions">
-                <button
-                  type="button"
-                  className="is-primary"
-                  onClick={() =>
-                    pendingCandidate
-                      ? onConfirmCandidate(pendingCandidate.id)
-                      : onConfirmNodeCandidate(node.id)
-                  }
-                >
-                  {t("projectMap.candidateNotice.confirm")}
-                </button>
-                <button
-                  type="button"
-                  onClick={() =>
-                    pendingCandidate
-                      ? onRejectCandidate(pendingCandidate.id)
-                      : onRejectNodeCandidate(node.id)
-                  }
-                >
-                  {t("projectMap.candidateNotice.reject")}
-                </button>
-              </div>
-            </section>
-          ) : null}
-          {isUnassignedDiscoveriesNode ? (
-            <section className="project-map-candidate-notice">
-              <h4>{t("projectMap.unassignedOrganizer.title")}</h4>
-              <p>
-                {t("projectMap.unassignedOrganizer.body", {
-                  count: unassignedDiscoveryCount,
-                  candidates: pendingReviewCandidateCount,
-                })}
-              </p>
-              <div className="project-map-candidate-actions">
-                <button
-                  type="button"
-                  className="is-primary"
-                  disabled={unassignedDiscoveryCount === 0}
-                  onClick={onOrganizeUnassigned}
-                >
-                  {t("projectMap.unassignedOrganizer.organize")}
-                </button>
-              </div>
-            </section>
-          ) : null}
-
-          <section>
-            <h4>{t("projectMap.detail.coreDescription")}</h4>
-            <p>{node.detail.coreDescription}</p>
-          </section>
-          <InspectorList
-            title={t("projectMap.detail.keyFacts")}
-            items={node.detail.keyFacts}
-          />
-          <InspectorList
-            title={t("projectMap.detail.keyLogic")}
-            items={node.detail.keyLogic}
-          />
-          <InspectorList
-            title={t("projectMap.detail.riskSignals")}
-            items={node.detail.riskSignals}
-            emptyLabel={t("projectMap.none")}
-          />
-          {(node.detail.diagramArtifacts ?? []).length > 0 ? (
-            <section>
-              <h4>{t("projectMap.detail.diagrams")}</h4>
-              <div className="project-map-artifact-list">
-                {(node.detail.diagramArtifacts ?? []).map((diagram) => (
-                  <ProjectMapDiagramChip
-                    key={`${diagram.id}-${diagram.path}`}
-                    diagram={diagram}
-                    onOpenTrace={onOpenTrace}
-                  />
-                ))}
-              </div>
-            </section>
-          ) : null}
-          <section>
-            <h4>{t("projectMap.detail.relatedArtifacts")}</h4>
-            <div className="project-map-artifact-list">
-              {node.detail.relatedArtifacts
-                .map(normalizeProjectMapArtifactForDisplay)
-                .filter((artifact): artifact is ProjectMapRelatedArtifact => Boolean(artifact))
-                .map((artifact) => (
-                  <ProjectMapArtifactChip
-                    key={`${artifact.type}-${artifact.label}-${artifact.path ?? artifact.ref ?? ""}`}
-                    artifact={artifact}
-                    onOpenTrace={onOpenTrace}
-                  />
-                ))}
-            </div>
-          </section>
-          <section>
-            <h4>{t("projectMap.evidenceTitle")}</h4>
-            <div className="project-map-source-list">
-              {node.sources.map((source) => (
-                <ProjectMapSourceChip
-                  key={`${source.type}-${source.label}-${source.path ?? source.hash ?? ""}`}
-                  source={source}
-                  onOpenTrace={onOpenTrace}
-                />
-              ))}
-            </div>
-          </section>
-          <section>
-            <h4>{t("projectMap.detail.generation")}</h4>
-            <dl className="project-map-definition-grid">
-              <div>
-                <dt>{t("projectMap.detail.lastGeneratedAt")}</dt>
-                <dd>{formatProjectMapDateTime(node.lastGeneratedAt)}</dd>
-              </div>
-              <div>
-                <dt>{t("projectMap.detail.generatedBy")}</dt>
-                <dd>
-                  {node.generatedBy.engine} / {node.generatedBy.model}
-                </dd>
-              </div>
-              <div>
-                <dt>{t("projectMap.runLogTitle")}</dt>
-                <dd>
-                  {t("projectMap.runLogSummary", {
-                    runId: dataset.runs[0]?.id ?? "-",
-                    stale: staleCount,
-                  })}
-                </dd>
-              </div>
-            </dl>
-          </section>
-          <div className="project-map-node-actions">
-            {canDrill ? (
-              <button type="button" onClick={onDrill}>
-                {t("projectMap.drillIn")}
-              </button>
-            ) : null}
-            <button type="button" onClick={onCompleteNode}>{t("projectMap.completeNode")}</button>
-            <button type="button" onClick={onCalibrateNode}>{t("projectMap.calibrateNode")}</button>
-            {onDeleteNode ? (
-              <button className="is-danger" type="button" onClick={onDeleteNode}>
-                <Trash2 aria-hidden />
-                {t("projectMap.deleteNode")}
-              </button>
-            ) : null}
-          </div>
-        </>
-      ) : (
-        <p>{t("projectMap.emptyInspector")}</p>
-      )}
-      </>
-      ) : null}
-    </aside>
-  );
-}
-
-function InspectorList({
-  title,
-  items,
-  emptyLabel,
-}: {
-  title: string;
-  items: string[];
-  emptyLabel?: string;
-}) {
-  return (
-    <section>
-      <h4>{title}</h4>
-      {items.length > 0 ? (
-        <ul>
-          {items.map((item) => (
-            <li key={item}>{item}</li>
-          ))}
-        </ul>
-      ) : (
-        <p>{emptyLabel}</p>
-      )}
-    </section>
-  );
-}
-
-function ProjectMapSettingsPanel({
-  activeWorkspace,
-  dataset,
-  disabled,
-  onUpdate,
-}: {
-  activeWorkspace: WorkspaceInfo | null;
-  dataset: ProjectMapDataset;
-  disabled: boolean;
-  onUpdate: (updater: (dataset: ProjectMapDataset) => ProjectMapDataset) => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const settings = dataset.autoIngestionSettings;
-  const [isConfiguratorOpen, setIsConfiguratorOpen] = useState(false);
-  const [isSavingEnablement, setIsSavingEnablement] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<EngineType>(() =>
-    normalizeEngineType(settings.engine),
-  );
-  const [selectedModel, setSelectedModel] = useState(settings.model);
-  const generationOptions = useProjectMapGenerationOptions({
-    workspace: activeWorkspace,
-    selectedEngine,
-  });
-
-  useEffect(() => {
-    if (isConfiguratorOpen) {
-      return;
-    }
-    setSelectedEngine(normalizeEngineType(settings.engine));
-    setSelectedModel(settings.model);
-  }, [isConfiguratorOpen, settings.engine, settings.model]);
-
-  useEffect(() => {
-    if (!isConfiguratorOpen || generationOptions.modelsLoading) {
-      return;
-    }
-    if (generationOptions.models.length === 0) {
-      setSelectedModel("");
-      return;
-    }
-    const selectedModelStillExists = generationOptions.models.some(
-      (model) => model.model === selectedModel || model.id === selectedModel,
-    );
-    if (selectedModelStillExists) {
-      return;
-    }
-    const defaultModel =
-      generationOptions.models.find((model) => model.isDefault) ?? generationOptions.models[0];
-    setSelectedModel(defaultModel?.model ?? "");
-  }, [generationOptions.models, generationOptions.modelsLoading, isConfiguratorOpen, selectedModel]);
-
-  const selectedModelOption =
-    generationOptions.models.find((model) => model.model === selectedModel) ??
-    generationOptions.models.find((model) => model.id === selectedModel) ??
-    null;
-  const canEnableAutoIngestion =
-    !disabled &&
-    !isSavingEnablement &&
-    !generationOptions.modelsLoading &&
-    generationOptions.models.length > 0 &&
-    Boolean(selectedModelOption);
-
-  const closeConfigurator = () => {
-    setIsConfiguratorOpen(false);
-    setSelectedEngine(normalizeEngineType(settings.engine));
-    setSelectedModel(settings.model);
-  };
-
-  return (
-    <section className="project-map-settings" aria-label={t("projectMap.settings.title")}>
-      <div>
-        <strong>{t("projectMap.settings.title")}</strong>
-        <span>{t("projectMap.settings.subtitle")}</span>
-      </div>
-      <label>
-        <input
-          type="checkbox"
-          checked={settings.enabled}
-          disabled={disabled}
-          onChange={(event) => {
-            const enabled = event.currentTarget.checked;
-            if (enabled) {
-              setSelectedEngine(normalizeEngineType(settings.engine));
-              setSelectedModel(settings.model);
-              setIsConfiguratorOpen(true);
-              return;
-            }
-            void onUpdate((current) => ({
-              ...current,
-              autoIngestionSettings: {
-                ...current.autoIngestionSettings,
-                enabled: false,
-              },
-            }));
-          }}
-        />
-        {t("projectMap.settings.autoIngestion")}
-      </label>
-      <label>
-        {t("projectMap.settings.threshold")}
-        <input
-          type="number"
-          aria-label={t("projectMap.settings.threshold")}
-          min={1}
-          max={50}
-          value={settings.newSessionThreshold}
-          disabled={disabled}
-          onChange={(event) => {
-            const nextThreshold = Math.max(1, Math.min(50, Number(event.currentTarget.value) || 5));
-            void onUpdate((current) => ({
-              ...current,
-              autoIngestionSettings: {
-                ...current.autoIngestionSettings,
-                newSessionThreshold: nextThreshold,
-              },
-            }));
-          }}
-        />
-        <span className="project-map-settings-unit" aria-hidden>
-          {t("projectMap.settings.thresholdUnit")}
-        </span>
-      </label>
-      <label>
-        {t("projectMap.settings.interval")}
-        <input
-          type="number"
-          aria-label={t("projectMap.settings.interval")}
-          min={5}
-          max={1440}
-          value={settings.checkIntervalMinutes}
-          disabled={disabled}
-          onChange={(event) => {
-            const nextInterval = Math.max(5, Math.min(1440, Number(event.currentTarget.value) || 30));
-            void onUpdate((current) => ({
-              ...current,
-              autoIngestionSettings: {
-                ...current.autoIngestionSettings,
-                checkIntervalMinutes: nextInterval,
-              },
-            }));
-          }}
-        />
-        <span className="project-map-settings-unit" aria-hidden>
-          {t("projectMap.settings.intervalUnit")}
-        </span>
-      </label>
-      <label>
-        {t("projectMap.settings.applyMode")}
-        <select
-          value={settings.applyMode}
-          disabled={disabled}
-          onChange={(event) => {
-            const applyMode =
-              event.currentTarget.value === "autoApplyEvidenceBacked"
-                ? "autoApplyEvidenceBacked"
-                : "createCandidate";
-            void onUpdate((current) => ({
-              ...current,
-              autoIngestionSettings: {
-                ...current.autoIngestionSettings,
-                applyMode,
-              },
-            }));
-          }}
-        >
-          <option value="createCandidate">{t("projectMap.settings.createCandidate")}</option>
-          <option value="autoApplyEvidenceBacked">{t("projectMap.settings.autoApplyEvidenceBacked")}</option>
-        </select>
-      </label>
-      {isConfiguratorOpen ? (
-        <div className="project-map-auto-ingestion-popover" role="presentation">
-          <section
-            className="project-map-auto-ingestion-dialog"
-            role="dialog"
-            aria-label={t("projectMap.settings.configureAutoIngestion")}
-          >
-            <header>
-              <h3>{t("projectMap.settings.configureAutoIngestion")}</h3>
-              <p>{t("projectMap.settings.configureAutoIngestionSubtitle")}</p>
-            </header>
-            <div className="project-map-auto-ingestion-fields">
-              <div className="project-map-auto-ingestion-field">
-                <label htmlFor="project-map-auto-ingestion-engine">
-                  {t("projectMap.settings.engine")}
-                </label>
-                <div className="project-map-auto-ingestion-control">
-                  <select
-                    id="project-map-auto-ingestion-engine"
-                    className="project-map-dialog-control"
-                    value={selectedEngine}
-                    aria-label={t("projectMap.settings.engine")}
-                    onChange={(event) => setSelectedEngine(normalizeEngineType(event.currentTarget.value))}
-                  >
-                    {generationOptions.engines.map((engine) => (
-                      <option key={engine.id} value={engine.id} disabled={!engine.installed}>
-                        {engine.label}
-                      </option>
-                    ))}
-                  </select>
-                  {generationOptions.enginesLoading ? (
-                    <span className="project-map-dialog-hint">{t("projectMap.confirmation.loadingEngines")}</span>
-                  ) : null}
-                  {generationOptions.enginesError ? (
-                    <span className="project-map-dialog-warning">{generationOptions.enginesError}</span>
-                  ) : null}
-                </div>
-              </div>
-              <div className="project-map-auto-ingestion-field">
-                <label htmlFor="project-map-auto-ingestion-model">
-                  {t("projectMap.settings.model")}
-                </label>
-                <div className="project-map-auto-ingestion-control project-map-auto-ingestion-model-control">
-                  <div className="project-map-auto-ingestion-model-row">
-                    <select
-                      id="project-map-auto-ingestion-model"
-                      className="project-map-dialog-control"
-                      value={selectedModel}
-                      aria-label={t("projectMap.settings.model")}
-                      onChange={(event) => setSelectedModel(event.currentTarget.value)}
-                      disabled={generationOptions.modelsLoading || generationOptions.models.length === 0}
-                    >
-                      {generationOptions.models.map((model) => (
-                        <option key={`${model.id}-${model.model}`} value={model.model}>
-                          {model.displayName}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="project-map-dialog-refresh"
-                      type="button"
-                      onClick={() => void generationOptions.refreshModels()}
-                      disabled={generationOptions.modelsLoading}
-                    >
-                      <RefreshCcw aria-hidden />
-                      {t("projectMap.confirmation.refreshModels")}
-                    </button>
-                  </div>
-                  {generationOptions.modelsLoading ? (
-                    <span className="project-map-dialog-hint">{t("projectMap.confirmation.loadingModels")}</span>
-                  ) : null}
-                  {!generationOptions.modelsLoading && generationOptions.models.length === 0 ? (
-                    <span className="project-map-dialog-warning">
-                      {generationOptions.modelsError ?? t("projectMap.confirmation.noModels")}
-                    </span>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-            <footer>
-              <button type="button" onClick={closeConfigurator} disabled={isSavingEnablement}>
-                {t("projectMap.settings.cancelEnable")}
-              </button>
-              <button
-                className="project-map-primary-button"
-                type="button"
-                disabled={!canEnableAutoIngestion}
-                onClick={() => {
-                  const resolvedModel = selectedModelOption?.model ?? selectedModel.trim();
-                  setIsSavingEnablement(true);
-                  void onUpdate((current) => ({
-                    ...current,
-                    autoIngestionSettings: {
-                      ...current.autoIngestionSettings,
-                      enabled: true,
-                      engine: selectedEngine,
-                      model: resolvedModel,
-                    },
-                  }))
-                    .then(() => setIsConfiguratorOpen(false))
-                    .finally(() => setIsSavingEnablement(false));
-                }}
-              >
-                <Sparkles aria-hidden />
-                {isSavingEnablement
-                  ? t("projectMap.settings.enablingAutoIngestion")
-                  : t("projectMap.settings.confirmEnable")}
-              </button>
-            </footer>
-          </section>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function DeleteNodeConfirmDialog({
-  node,
-  onCancel,
-  onConfirm,
-}: {
-  node: ProjectMapNode | null;
-  onCancel: () => void;
-  onConfirm: () => void;
-}) {
-  const { t } = useTranslation();
-  const isOpen = Boolean(node);
-
-  return (
-    <AlertDialog
-      open={isOpen}
-      onOpenChange={(open) => {
-        if (!open) {
-          onCancel();
-        }
-      }}
-    >
-      <AlertDialogPopup className="project-map-delete-dialog" bottomStickOnMobile={false}>
-        <AlertDialogHeader>
-          <AlertDialogTitle>{t("projectMap.confirmDeleteNodeTitle")}</AlertDialogTitle>
-          <AlertDialogDescription>
-            {t("projectMap.confirmDeleteNode", { title: node?.title ?? "" })}
-          </AlertDialogDescription>
-          <p className="project-map-delete-dialog-warning">
-            {t("projectMap.confirmDeleteNodeWarning")}
-          </p>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="project-map-delete-dialog-footer">
-          <button className="project-map-delete-dialog-secondary" type="button" onClick={onCancel}>
-            {t("projectMap.confirmDeleteNodeCancel")}
-          </button>
-          <button className="project-map-delete-dialog-danger" type="button" onClick={onConfirm}>
-            <Trash2 aria-hidden />
-            {t("projectMap.confirmDeleteNodeConfirm")}
-          </button>
-        </AlertDialogFooter>
-      </AlertDialogPopup>
-    </AlertDialog>
-  );
-}
-
-function GenerationConfirmationDialog({
-  activeWorkspace,
-  request,
-  storageKey,
-  onCancel,
-  onConfirm,
-}: {
-  activeWorkspace: WorkspaceInfo | null;
-  request: ProjectMapGenerationRequest | null;
-  storageKey: string;
-  onCancel: () => void;
-  onConfirm: (requestOverride?: ProjectMapGenerationRequest) => Promise<void>;
-}) {
-  const { t } = useTranslation();
-  const [isConfirming, setIsConfirming] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<EngineType>(() =>
-    normalizeEngineType(request?.engine),
-  );
-  const [selectedModel, setSelectedModel] = useState(request?.model ?? "default");
-  const [selectedStorageLocation, setSelectedStorageLocation] =
-    useState<ProjectMapStorageLocation>(() => request?.storageLocation ?? "global");
-  const generationOptions = useProjectMapGenerationOptions({
-    workspace: activeWorkspace,
-    selectedEngine,
-  });
-  const isOrganizerRequest = request?.generationIntent === "organizeUnassigned";
-
-  useEffect(() => {
-    if (!request) {
-      return;
-    }
-    setSelectedEngine(normalizeEngineType(request.engine));
-    setSelectedModel(request.model);
-    setSelectedStorageLocation(request.storageLocation);
-    setIsConfirming(false);
-  }, [request]);
-
-  useEffect(() => {
-    if (!request || generationOptions.modelsLoading) {
-      return;
-    }
-    if (generationOptions.models.length === 0) {
-      setSelectedModel("");
-      return;
-    }
-    const selectedModelStillExists = generationOptions.models.some(
-      (model) => model.model === selectedModel || model.id === selectedModel,
-    );
-    if (selectedModelStillExists) {
-      return;
-    }
-    const defaultModel =
-      generationOptions.models.find((model) => model.isDefault) ?? generationOptions.models[0];
-    setSelectedModel(defaultModel?.model ?? "");
-  }, [generationOptions.models, generationOptions.modelsLoading, request, selectedModel]);
-
-  if (!request) {
-    return null;
-  }
-
-  const selectedModelOption =
-    generationOptions.models.find((model) => model.model === selectedModel) ??
-    generationOptions.models.find((model) => model.id === selectedModel) ??
-    null;
-  const resolvedWritePath = request
-    ? resolveGenerationWritePath(
-        activeWorkspace?.path ?? null,
-        storageKey,
-        selectedStorageLocation,
-        request.writePath,
-      )
-    : "";
-  const canConfirm =
-    !isConfirming &&
-    !generationOptions.modelsLoading &&
-    generationOptions.models.length > 0 &&
-    Boolean(selectedModelOption);
-  const confirmedRequest: ProjectMapGenerationRequest = {
-    ...request,
-    engine: selectedEngine,
-    model: selectedModelOption?.model ?? selectedModel.trim(),
-    storageLocation: selectedStorageLocation,
-    writePath: resolvedWritePath,
-  };
-
-  return (
-    <div className="project-map-dialog-backdrop" role="presentation">
-      <section
-        className="project-map-dialog project-map-confirmation-dialog"
-        role="dialog"
-        aria-modal="true"
-        aria-label={t("projectMap.confirmation.title")}
-      >
-        <header>
-          <h3>
-            {t(
-              isOrganizerRequest
-                ? "projectMap.confirmation.organizerTitle"
-                : "projectMap.confirmation.title",
-            )}
-          </h3>
-          <p>
-            {t(
-              isOrganizerRequest
-                ? "projectMap.confirmation.organizerSubtitle"
-                : "projectMap.confirmation.subtitle",
-            )}
-          </p>
-        </header>
-        <dl className="project-map-definition-grid project-map-confirmation-grid">
-          <div className="project-map-confirmation-row">
-            <dt>{t("projectMap.confirmation.engine")}</dt>
-            <dd>
-              <select
-                className="project-map-dialog-control"
-                value={selectedEngine}
-                aria-label={t("projectMap.confirmation.engine")}
-                onChange={(event) => setSelectedEngine(normalizeEngineType(event.currentTarget.value))}
-              >
-                {generationOptions.engines.map((engine) => (
-                  <option key={engine.id} value={engine.id} disabled={!engine.installed}>
-                    {engine.label}
-                  </option>
-                ))}
-              </select>
-              {generationOptions.enginesLoading ? (
-                <span className="project-map-dialog-hint">{t("projectMap.confirmation.loadingEngines")}</span>
-              ) : null}
-              {generationOptions.enginesError ? (
-                <span className="project-map-dialog-warning">{generationOptions.enginesError}</span>
-              ) : null}
-            </dd>
-          </div>
-          <div className="project-map-confirmation-row">
-            <dt>{t("projectMap.confirmation.model")}</dt>
-            <dd>
-              <div className="project-map-confirmation-model-row">
-                <select
-                  className="project-map-dialog-control"
-                  value={selectedModel}
-                  aria-label={t("projectMap.confirmation.model")}
-                  onChange={(event) => setSelectedModel(event.currentTarget.value)}
-                  disabled={generationOptions.modelsLoading || generationOptions.models.length === 0}
-                >
-                  {generationOptions.models.map((model) => (
-                    <option key={`${model.id}-${model.model}`} value={model.model}>
-                      {model.displayName}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  className="project-map-dialog-refresh project-map-dialog-refresh-inline"
-                  type="button"
-                  onClick={() => void generationOptions.refreshModels()}
-                  disabled={generationOptions.modelsLoading}
-                >
-                  <RefreshCcw aria-hidden />
-                  <span>{t("projectMap.confirmation.refreshModels")}</span>
-                </button>
-              </div>
-              {generationOptions.modelsLoading ? (
-                <span className="project-map-dialog-hint">{t("projectMap.confirmation.loadingModels")}</span>
-              ) : null}
-              {!generationOptions.modelsLoading && generationOptions.models.length === 0 ? (
-                <span className="project-map-dialog-warning">
-                  {generationOptions.modelsError ?? t("projectMap.confirmation.noModels")}
-                </span>
-              ) : null}
-            </dd>
-          </div>
-          <div className="project-map-confirmation-row">
-            <dt>{t("projectMap.confirmation.scope")}</dt>
-            <dd>
-              {request.scope.kind === "organizer"
-                ? t("projectMap.confirmation.organizerScope", {
-                    count: request.scope.unassignedCount,
-                  })
-                : request.scope.kind}
-            </dd>
-          </div>
-          <div className="project-map-confirmation-row">
-            <dt>{t("projectMap.confirmation.storageLocation")}</dt>
-            <dd className="project-map-confirmation-radio-group">
-              <label>
-                <input
-                  type="radio"
-                  name="projectMapStorageLocation"
-                  value="global"
-                  checked={selectedStorageLocation === "global"}
-                  onChange={() => setSelectedStorageLocation("global")}
-                />
-                {t("projectMap.confirmation.storageLocationGlobal")}
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="projectMapStorageLocation"
-                  value="project"
-                  checked={selectedStorageLocation === "project"}
-                  onChange={() => setSelectedStorageLocation("project")}
-                />
-                {t("projectMap.confirmation.storageLocationProject")}
-              </label>
-            </dd>
-          </div>
-          <div className="project-map-confirmation-row">
-            <dt>{t("projectMap.confirmation.writePath")}</dt>
-            <dd>
-              <code className="project-map-confirmation-path">{resolvedWritePath}</code>
-            </dd>
-          </div>
-        </dl>
-        <section className="project-map-confirmation-sources">
-          <h4>{t("projectMap.confirmation.readSources")}</h4>
-          <div className="project-map-source-list">
-            {request.readSources.slice(0, 8).map((source) => (
-              <ProjectMapSourceChip
-                key={`${source.type}-${source.label}-${source.path ?? source.hash ?? ""}`}
-                source={source}
-              />
-            ))}
-            {request.readSources.length === 0 ? (
-              <span className="project-map-dialog-hint">
-                {t("projectMap.confirmation.noReadSources")}
-              </span>
-            ) : null}
-          </div>
-        </section>
-        <footer>
-          <button type="button" onClick={onCancel} disabled={isConfirming}>
-            {t("projectMap.confirmation.cancel")}
-          </button>
-          <button
-            className="project-map-primary-button"
-            type="button"
-            disabled={!canConfirm}
-            onClick={() => {
-              setIsConfirming(true);
-              void onConfirm(confirmedRequest).finally(() => setIsConfirming(false));
-            }}
-          >
-            <Sparkles aria-hidden />
-            {isConfirming
-              ? t(
-                  isOrganizerRequest
-                    ? "projectMap.confirmation.organizerConfirming"
-                    : "projectMap.confirmation.confirming",
-                )
-              : t(
-                  isOrganizerRequest
-                    ? "projectMap.confirmation.organizerConfirm"
-                    : "projectMap.confirmation.confirm",
-                )}
-          </button>
-        </footer>
-      </section>
-    </div>
   );
 }

@@ -1129,6 +1129,11 @@ vi.mock("../services/clientStorage", () => {
     getClientStoreFullSync: vi.fn((store: string) => {
       return cache[store];
     }),
+    resetClientStorageForTests: vi.fn(() => {
+      Object.keys(cache).forEach((store) => {
+        delete cache[store];
+      });
+    }),
     writeClientStoreValue: vi.fn((store: string, key: string, value: unknown) => {
       if (!cache[store]) cache[store] = {};
       cache[store][key] = value;
