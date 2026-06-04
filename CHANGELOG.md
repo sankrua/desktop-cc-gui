@@ -2,6 +2,42 @@
 
 ---
 
+##### **2026年6月5日（v0.5.6）**
+
+中文：
+
+✨ Features
+- 新增 Project Map 查询关联工作台，支持统一查询、近期活动、Advisor Hints、关联解释、快速过滤和本地历史，让结构图保持主舞台的同时可以折叠查看证据与活动上下文
+- 新增工作区会话拉取模式切换，支持在默认相关会话模式与当前工作区模式之间选择，让会话列表可以按更窄范围拉取和分页
+
+🔧 Improvements
+- 优化运行时交互性能，收紧会话列表、工作区目录、Composer 适配层和状态面板的数据流，降低长列表、恢复和多会话场景下的卡顿
+- 优化 Project Map 路径、行号、结果数量和证据 chip 的边界处理，避免异常路径、极值输入和同名异目录证据造成错误匹配或折叠
+- 补齐 v0.5.6 性能基线与运行时证据门禁记录，让交互性能变化具备可追踪的发布证据
+- 升级应用版本号到 `0.5.6`，同步前端包配置与 Tauri 配置
+
+🐛 Fixes
+- 修复 WebView2 下消息时间线图片造成的内存压力问题，通过消息媒体块与时间线虚拟化边界降低大量图片场景的内存占用和滚动风险
+- 修复 Claude 启动时提示词进入命令行参数的问题，降低 shell escaping 异常和敏感提示词暴露风险
+
+English:
+
+✨ Features
+- Add a Project Map query and association workbench with unified search, recent activity, Advisor Hints, association explanations, quick filters, and local history while keeping the structure graph as the main workspace
+- Add a workspace session attribution mode setting so session lists can switch between the default related-session scope and a narrower current-workspace scope
+
+🔧 Improvements
+- Improve runtime interaction performance by tightening data flow across the thread list, workspace catalog, Composer adapter, and status panel, reducing jank in long-list, recovery, and multi-session scenarios
+- Improve Project Map boundary handling for paths, line numbers, result limits, and evidence chips so unsupported paths, extreme inputs, and same-name files in different folders are not matched or folded incorrectly
+- Add v0.5.6 performance baselines and runtime evidence-gate records so interaction-performance changes remain traceable for release review
+- Bump app version to `0.5.6` across frontend package metadata and Tauri configuration
+
+🐛 Fixes
+- Fix WebView2 message-timeline image memory pressure by tightening media-block and timeline virtualization boundaries for image-heavy conversations
+- Fix Claude launch prompts leaking into command-line arguments, reducing shell-escaping failures and sensitive prompt exposure risk
+
+---
+
 ##### **2026年6月3日（v0.5.5）**
 
 中文：
