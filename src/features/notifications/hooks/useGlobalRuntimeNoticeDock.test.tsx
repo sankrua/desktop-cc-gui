@@ -431,7 +431,7 @@ describe("useGlobalRuntimeNoticeDock", () => {
         workspaceScope: { workspaceId: "ws-1" },
         lifecycleState: "failed",
         durationMs: 45.6,
-        fallbackReason: "boom",
+        fallbackReason: "failure",
         cancellationMode: null,
         commandLabel: "list_threads",
       });
@@ -494,7 +494,7 @@ describe("useGlobalRuntimeNoticeDock", () => {
             task: "Load active workspace threads",
             workspace: "Moss X",
             durationMs: 46,
-            reason: "boom",
+            reason: "failure",
           },
         }),
         expect.objectContaining({
@@ -649,7 +649,7 @@ describe("useGlobalRuntimeNoticeDock", () => {
     ).toHaveLength(1);
 
     firstRender.unmount();
-    const secondRender = renderHook(() => useGlobalRuntimeNoticeDock([workspace]));
+    renderHook(() => useGlobalRuntimeNoticeDock([workspace]));
 
     await act(async () => {
       await tauriMocks.getRuntimePoolSnapshot.mock.results[1]?.value;
