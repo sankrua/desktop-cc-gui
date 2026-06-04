@@ -1734,3 +1734,36 @@ Validation performed before commit:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 689: 增加工作区会话拉取模式切换
+
+**Date**: 2026-06-04
+**Task**: 增加工作区会话拉取模式切换
+**Branch**: `feature/v0.5.6`
+
+### Summary
+
+新增项目会话归因模式设置，保留默认相关会话模式，并提供当前工作区窄拉取模式；补齐后端扫描、前端设置、线程列表、分页加载、投影摘要和测试门禁。
+
+### Main Changes
+
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `649ef387` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
