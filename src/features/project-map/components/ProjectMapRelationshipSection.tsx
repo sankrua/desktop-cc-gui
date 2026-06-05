@@ -1379,15 +1379,6 @@ export function ProjectMapRelationshipSection({
                             onPointerMove={handleRelationshipGraphPointerMove}
                             onPointerUp={handleRelationshipGraphPointerEnd}
                             onPointerCancel={handleRelationshipGraphPointerEnd}
-                            onWheel={(event) => {
-                              if (event.deltaY === 0) {
-                                return;
-                              }
-                              event.preventDefault();
-                              setRelationshipGraphZoom((current) => (
-                                Number(Math.min(1.8, Math.max(0.7, current + (event.deltaY < 0 ? 0.1 : -0.1))).toFixed(2))
-                              ));
-                            }}
                           >
                             <header className="project-map-relationship-graph-canvas-header">
                               <div>
@@ -1928,15 +1919,6 @@ export function ProjectMapRelationshipSection({
                               `is-layout-${relationshipDashboardLayoutPreset}`,
                             )}
                             style={{ "--relationship-files-scale": relationshipFilesZoom } as CSSProperties}
-                            onWheel={(event) => {
-                              if (event.deltaY === 0) {
-                                return;
-                              }
-                              event.preventDefault();
-                              setRelationshipFilesZoom((current) => (
-                                Number(Math.min(1.8, Math.max(0.7, current + (event.deltaY < 0 ? 0.1 : -0.1))).toFixed(2))
-                              ));
-                            }}
                           >
                             <div className="project-map-relationship-file-tree-zoom">
                               {relationshipDashboardFileTreeGroups.length ? (

@@ -1938,11 +1938,14 @@ button.project-map-relationship-edge-row {
 .project-map-relationship-file-workspace {
   display: grid;
   gap: 10px;
+  min-height: 0;
 }
 
 .project-map-relationship-file-tree {
   display: grid;
-  max-height: min(66vh, 720px);
+  height: clamp(440px, calc(100vh - 390px), 680px);
+  max-height: clamp(440px, calc(100vh - 390px), 680px);
+  min-height: 440px;
   overflow: auto;
   padding-right: 4px;
   scrollbar-width: thin;
@@ -1951,6 +1954,7 @@ button.project-map-relationship-edge-row {
 
 .project-map-relationship-file-tree-zoom {
   display: grid;
+  align-content: start;
   width: calc(100% / var(--relationship-files-scale, 1));
   gap: 10px;
   transform: scale(var(--relationship-files-scale, 1));
@@ -1959,6 +1963,7 @@ button.project-map-relationship-edge-row {
 
 .project-map-relationship-file-tree-group {
   display: grid;
+  align-content: start;
   gap: 7px;
   border: 1px solid color-mix(in srgb, var(--project-map-border) 70%, transparent);
   border-radius: 12px;
@@ -1996,6 +2001,7 @@ button.project-map-relationship-edge-row {
 .project-map-relationship-file-tree-list {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  align-items: start;
   gap: 7px;
 }
 
@@ -2023,10 +2029,11 @@ button.project-map-relationship-edge-row {
 
 .project-map-relationship-file-tree-row {
   display: grid;
+  height: 76px;
   min-width: 0;
   grid-template-columns: 4px minmax(0, 1fr);
   gap: 8px;
-  align-items: start;
+  align-items: center;
   border: 1px solid color-mix(in srgb, var(--project-map-border) 68%, transparent);
   border-radius: 10px;
   padding: 9px;
