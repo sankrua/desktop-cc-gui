@@ -280,3 +280,54 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 700: 归档 Codex 创建会话竞态
+
+**Date**: 2026-06-05
+**Task**: 归档 Codex 创建会话竞态
+**Branch**: `feature/v0.5.6`
+
+### Summary
+
+归档 Codex create-session shutdown race OpenSpec change，确认 existing bounded retry tests 通过。
+
+### Main Changes
+
+本轮完成 `fix-codex-session-create-shutdown-race` OpenSpec 收口：
+
+- 基于 Trellis task `04-22-fix-codex-session-create-shutdown-race` 创建 OpenSpec change。
+- 确认生产实现已存在，无需新增代码：
+  - `src-tauri/src/codex/start_thread_retry.rs` 已实现 app path one-shot stopping-runtime retry。
+  - `src-tauri/src/codex/session_runtime.rs` 已提供 stopping-runtime classifier 与 `[SESSION_CREATE_RUNTIME_RECOVERING]` stable error。
+  - `src-tauri/src/bin/cc_gui_daemon/daemon_state.rs` 已保持 daemon `start_thread` bounded retry parity。
+- 归档到：`openspec/changes/archive/2026-06-05-fix-codex-session-create-shutdown-race/`。
+- 同步主 spec：`openspec/specs/codex-stale-thread-binding-recovery/spec.md`。
+
+验证证据：
+
+- `cargo test --manifest-path src-tauri/Cargo.toml start_thread_retry`：4 passed。
+- `npm run typecheck`：passed。
+- `openspec validate fix-codex-session-create-shutdown-race --strict --no-interactive`：passed。
+- `openspec validate --all --strict --no-interactive`：archive 前 310 passed / 0 failed，archive 后 309 passed / 0 failed。
+
+关联提交：`dfa9d799 chore(openspec): 归档 Codex 创建会话竞态提案`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dfa9d799` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
