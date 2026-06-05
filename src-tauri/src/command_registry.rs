@@ -293,6 +293,10 @@ pub(crate) fn invoke_handler(
         crate::project_memory::commands::project_memory_capture_auto,
         crate::project_map::project_map_read,
         crate::project_map::project_map_write_snapshot,
+        crate::project_map_relations::project_map_relationship_scan,
+        crate::project_map_relations::project_map_relationship_read,
+        crate::project_map_relations::project_map_relationship_write_snapshot,
+        crate::project_map_relations::project_map_relationship_clear,
         // Terminal
         crate::terminal::terminal_open,
         crate::terminal::terminal_write,

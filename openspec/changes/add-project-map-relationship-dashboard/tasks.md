@@ -12,6 +12,32 @@
 - 优先级：优先保证关系事实稳定性与 storage 边界。
 - Delivery mode：可分批交付，但不缩减总需求。
 
+## OpenSpec 执行任务清单
+
+- [x] Task 0：修正 OpenSpec strict validation 兼容性，确保 requirement 使用 `SHALL/MUST` 规范性措辞。
+- [x] Task 1：建立 Project Map Relationship TypeContract，定义 manifest、file、relation、index、repair、impact、Agent Read Plan 类型。
+- [x] Task 2：实现后端 `project-map-relations` storage root 解析，默认落点为 `~/.ccgui/project-map-relations/<storage-key>/`。
+- [x] Task 3：实现 relationship storage path safety，复用/对齐 Project Map 现有路径白名单、保留名和 ownership 校验策略。
+- [x] Task 4：实现 relationship snapshot persistence，支持分层 artifact、atomic write、read summary、clear API。
+- [x] Task 5：实现 workspace scanner 输入层，覆盖 active workspace resolve、ignore policy、walker、ignored metadata。
+- [x] Task 6：实现 file classifier，生成 language、layer、role、fingerprint、parseStatus。
+- [x] Task 7：实现 TS/JS import/export parser，生成 deterministic imports/exports relation evidence。
+- [x] Task 8：实现 Rust use/mod parser，生成 backend/module relation evidence。
+- [x] Task 9：实现 relation builder，覆盖 tested_by、styled_by、specified_by、documents、configures、contains、bridges_to、related。
+- [x] Task 10：实现 validation/repair/quarantine，处理 dangling、duplicate、direction、parse-failed 关系问题。
+- [x] Task 11：实现 relationship read API 与 frontend service/hook，读取 manifest、indexes、repair、context-packs。
+- [x] Task 12：在 Project Map 视图加入 `Scan Relationships` action、empty CTA、running/success/failure 状态。
+- [x] Task 12A：架构纠偏为 Universal Project Relationship Core，确保未知项目先进入 inventory，manifest/config/docs/convention 先生成通用关系，语言 extractor 只作为增强层。
+- [x] Task 13：实现 Relationship Dashboard MVP，覆盖 file/module tree、selected neighborhood、relation filters/search。
+- [x] Task 13A：推进 Relationship Dashboard IA polish，覆盖默认降噪、角色过滤、关系优先级排序、短句化邻域 relation row。
+- [x] Task 13B：固化并实现多视图 Dashboard，支持 UA-like Board / List / Neighborhood 三种 scan snapshot 展示方式。
+- [x] Task 14：实现 impact overlay 与 hotspot panel，覆盖 changed/direct/affected/unmapped/risk flags。
+- [x] Task 15：实现 Agent Read Plan 与 `context-packs/latest.json` 生成/读取。
+- [ ] Task 16：实现 stale detection 与 incremental refresh UX，覆盖 git commit、fingerprint、refresh suggestion。
+- [ ] Task 17：实现 UA-style actions 的 mossx 内化入口，覆盖 explain/diff/guided read/ask/domain 的 context pack 基础。
+- [ ] Task 18：打通 Composer/Agent resource discovery 对 Project Map relationship context-pack 的消费。
+- [ ] Task 19：完成 focused validation，更新 specs/tasks 状态，准备 verify/sync/archive。
+
 ## 里程碑与任务
 
 ## Phase 0：准备与契约预热（P0）

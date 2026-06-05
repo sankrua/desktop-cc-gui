@@ -51,6 +51,48 @@ Selected file neighborhood SHALL show deterministic relations.
 - **WHEN** selected file has no known relation
 - **THEN** UI SHALL show explicit empty-state text and suggestion to rescan or inspect ignore scope
 
+### Requirement: relationship scan dashboard remains visually isolated
+The scanned relationship dashboard SHALL remain visually and behaviorally separate from the existing Project Map semantic graph.
+
+#### Scenario: scan data is available
+- **WHEN** latest relationship scan artifacts contain files and relations
+- **THEN** the panel SHALL render them in a dedicated scan snapshot dashboard
+- **AND** it SHALL NOT automatically inject scanned edges into the Project Map canvas, hierarchy relation index, or semantic dataset
+- **AND** existing Project Map semantic relations SHALL remain visually isolated from the scan snapshot
+
+#### Scenario: large relationship set
+- **WHEN** relation count is large
+- **THEN** UI SHALL render capped lists, indexed summaries, or virtualized surfaces
+- **AND** it SHALL NOT force all relationship edges into the graph layout by default
+
+#### Scenario: semantic graph relation section is available
+- **WHEN** scan snapshot and semantic graph relations are both shown
+- **THEN** they SHALL use separate investigation entries instead of one vertically stacked relation view
+- **AND** the scan snapshot SHALL keep independent filters and selection state
+
+#### Scenario: file relationship entry is selected
+- **WHEN** the user selects `File Relations`
+- **THEN** the UI SHALL show deterministic scan snapshot content from `project-map-relations`
+- **AND** it SHALL NOT render existing Project Map semantic relation filters in the same view
+
+#### Scenario: inspect relations entry is selected
+- **WHEN** the user selects `Inspect Relations`
+- **THEN** the UI SHALL show existing Project Map semantic graph relations
+- **AND** it SHALL NOT render scan snapshot dashboard content in the same view
+
+### Requirement: relationship dashboard supports multiple views
+The relationship dashboard SHALL support multiple complementary views over the same scan snapshot.
+
+#### Scenario: default board view
+- **WHEN** scan data is available
+- **THEN** dashboard SHALL provide a board-style file tile view grouped by role or node type
+- **AND** each tile SHOULD show file identity, role, language, and relation density
+
+#### Scenario: analyst switches view
+- **WHEN** user switches between board, list, and neighborhood views
+- **THEN** filters and selected file context SHALL remain stable
+- **AND** the system SHALL NOT trigger a new scan or mutate the semantic Project Map graph
+
 ### Requirement: relationship filtering and search
 The panel SHALL support query and filtering.
 
@@ -83,6 +125,11 @@ The panel SHALL compute and show impact for changed files.
 #### Scenario: unmapped changed files
 - **WHEN** changed file is absent from latest scan
 - **THEN** it SHALL be listed as unmapped with remediation hint
+
+#### Scenario: impact summary card is shown
+- **WHEN** impact artifact is available
+- **THEN** UI SHALL show changed, direct, transitive, unmapped, and risk flag counts as capped summary
+- **AND** it SHALL NOT render impacted edges directly on the main Project Map canvas
 
 ### Requirement: stale and repair visibility
 The panel SHALL surface stale reasons and repair summaries.
@@ -127,4 +174,3 @@ The panel SHALL provide actions corresponding to explain/diff/onboard/chat/domai
 - impact overlay / 影响叠加层
 - repair summary / 修复摘要
 - explanation pack / 解释包
-

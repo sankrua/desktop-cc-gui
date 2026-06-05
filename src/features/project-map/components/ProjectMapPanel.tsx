@@ -87,6 +87,10 @@ import {
   type ProjectMapRelationDirectionFilter,
 } from "../utils/relationIndex";
 import { getProjectMapUnassignedDiscoveryChildren } from "../services/projectMapNodeOrganizer";
+import {
+  readProjectMapRelationships,
+  scanProjectMapRelationships,
+} from "../services/projectMapPersistence";
 import { type ProjectMapTraceTarget } from "./ProjectMapTraceChips";
 import {
   ProjectMapGenerationTaskDrawer,
@@ -118,6 +122,15 @@ import type {
   ProjectMapLayoutPreset,
   ProjectMapNode,
   ProjectMapImpactSourceMetadata,
+  ProjectMapFileRelation,
+  ProjectMapRelationshipReadResponse,
+  ProjectMapRelationshipModuleSummary,
+  ProjectMapRelationshipRepairIssue,
+  ProjectMapRelationshipScanResponse,
+  ProjectMapRelationshipHotspot,
+  ProjectMapRelationshipImpactSummary,
+  ProjectMapRelationshipAgentReadPlan,
+  ProjectMapScannedFile,
   ProjectMapPreferredLanguage,
   ProjectMapProfile,
   ProjectMapQuickFilterId,
@@ -168,6 +181,7 @@ type ProjectMapVisibleSectionState = {
   query: boolean;
   activity: boolean;
   evidence: boolean;
+  fileRelations: boolean;
   relations: boolean;
   advisor: boolean;
   health: boolean;
@@ -183,13 +197,66 @@ type GraphNodeDragState = {
   didMove: boolean;
 };
 
+type ProjectMapRelationshipScanState =
+  | { status: "idle" }
+  | { status: "running" }
+  | { status: "success"; summary: ProjectMapRelationshipScanResponse }
+  | { status: "failed"; message: string };
+
+type ProjectMapRelationshipDashboardData = {
+  files: ProjectMapScannedFile[];
+  relations: ProjectMapFileRelation[];
+  modules: ProjectMapRelationshipModuleSummary[];
+  hotspots: ProjectMapRelationshipHotspot[];
+  impactSummary: ProjectMapRelationshipImpactSummary | null;
+  contextPack: ProjectMapRelationshipAgentReadPlan | null;
+  repairIssues: ProjectMapRelationshipRepairIssue[];
+  readErrors: Array<{ path: string; message: string }>;
+};
+
+type ProjectMapRelationshipDashboardViewMode = "board" | "list" | "neighborhood";
+
 const ZOOM_STEP = 0.1;
 const MINI_MAP_SIZE = { width: 180, height: 118 };
 const DETAIL_PANEL_FOCUS_OFFSET_MIN = 160;
 const DETAIL_PANEL_FOCUS_OFFSET_MAX = 240;
 const CANVAS_CONTROLS_COLLAPSED_STORAGE_KEY = "ccgui.projectMap.canvasControlsCollapsed";
 const PROJECT_MAP_RELATION_FILTER_ALL = "all";
+const PROJECT_MAP_RELATIONSHIP_LIST_LIMIT = 120;
+const PROJECT_MAP_RELATIONSHIP_EDGE_LIMIT = 80;
 const PROJECT_MAP_LOCAL_HISTORY_LIMIT = 6;
+const PROJECT_MAP_RELATIONSHIP_ROLE_PRIORITY: Record<string, number> = {
+  controller: 10,
+  route: 15,
+  service: 20,
+  repository: 30,
+  entity: 35,
+  component: 40,
+  hook: 45,
+  command: 50,
+  module: 55,
+  type: 60,
+  test: 70,
+  manifest: 80,
+  config: 90,
+  document: 100,
+  infra: 110,
+  migration: 120,
+  style: 130,
+  unknown: 140,
+};
+const PROJECT_MAP_RELATIONSHIP_TYPE_PRIORITY: Record<string, number> = {
+  imports: 10,
+  bridges_to: 20,
+  tested_by: 30,
+  specified_by: 40,
+  documents: 50,
+  configures: 60,
+  styled_by: 70,
+  contains: 80,
+  exports: 90,
+  related: 100,
+};
 const PROJECT_MAP_QUICK_FILTERS: ProjectMapQuickFilterId[] = [
   "changed",
   "affected",
@@ -354,6 +421,432 @@ function resolveProjectMapPreferredLanguage(
   return language?.toLowerCase().startsWith("zh") ? "zh" : "en";
 }
 
+function normalizeProjectMapRelationshipError(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return "Unknown relationship scan failure.";
+}
+
+function isProjectMapRelationshipRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readProjectMapRelationshipString(
+  value: Record<string, unknown>,
+  key: string,
+): string | null {
+  const field = value[key];
+  return typeof field === "string" && field.trim() ? field : null;
+}
+
+function readProjectMapRelationshipNumber(
+  value: Record<string, unknown>,
+  key: string,
+): number {
+  const field = value[key];
+  return typeof field === "number" && Number.isFinite(field) ? field : 0;
+}
+
+function normalizeProjectMapRelationshipReadSummary(
+  response: ProjectMapRelationshipReadResponse,
+): ProjectMapRelationshipScanResponse | null {
+  const manifest = response.manifest;
+  if (!response.exists || !isProjectMapRelationshipRecord(manifest)) {
+    return null;
+  }
+  const scanRunId = readProjectMapRelationshipString(manifest, "scanRunId");
+  const generatedAt = readProjectMapRelationshipString(manifest, "generatedAt");
+  if (!scanRunId || !generatedAt) {
+    return null;
+  }
+
+  return {
+    storageKey:
+      readProjectMapRelationshipString(manifest, "storageKey") ?? response.storageKey,
+    storageDir: response.storageDir,
+    scanRunId,
+    generatedAt,
+    scannedRoot: readProjectMapRelationshipString(manifest, "scannedRoot") ?? "",
+    fileCount: readProjectMapRelationshipNumber(manifest, "fileCount"),
+    relationCount: readProjectMapRelationshipNumber(manifest, "relationCount"),
+    ignoredCount: readProjectMapRelationshipNumber(manifest, "ignoredCount"),
+    repairIssueCount: readProjectMapRelationshipNumber(manifest, "repairIssueCount"),
+  };
+}
+
+function readProjectMapRelationshipStringArray(
+  value: Record<string, unknown>,
+  key: string,
+): string[] {
+  const field = value[key];
+  if (!Array.isArray(field)) {
+    return [];
+  }
+  return field.filter((item): item is string => typeof item === "string");
+}
+
+function normalizeProjectMapRelationshipConfidence(
+  value: unknown,
+): ProjectMapFileRelation["confidence"] {
+  return value === "high" || value === "medium" || value === "low" ? value : "low";
+}
+
+function normalizeProjectMapRelationshipType(value: unknown): ProjectMapFileRelation["type"] {
+  const normalized = typeof value === "string" ? value : "related";
+  switch (normalized) {
+    case "imports":
+    case "exports":
+    case "contains":
+    case "tested_by":
+    case "styled_by":
+    case "specified_by":
+    case "documents":
+    case "configures":
+    case "bridges_to":
+    case "related":
+      return normalized;
+    default:
+      return "related";
+  }
+}
+
+function normalizeProjectMapScannedFiles(value: unknown): ProjectMapScannedFile[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const path = readProjectMapRelationshipString(item, "path");
+    if (!id || !path) {
+      return [];
+    }
+    return [{
+      id,
+      path,
+      basename: readProjectMapRelationshipString(item, "basename") ?? path.split("/").pop() ?? path,
+      extension: readProjectMapRelationshipString(item, "extension") ?? "",
+      language: (readProjectMapRelationshipString(item, "language") ?? "unknown") as ProjectMapScannedFile["language"],
+      layer: (readProjectMapRelationshipString(item, "layer") ?? "unknown") as ProjectMapScannedFile["layer"],
+      role: (readProjectMapRelationshipString(item, "role") ?? "unknown") as ProjectMapScannedFile["role"],
+      sizeBytes: readProjectMapRelationshipNumber(item, "sizeBytes"),
+      lineCount: readProjectMapRelationshipNumber(item, "lineCount"),
+      contentHash: readProjectMapRelationshipString(item, "contentHash") ?? "",
+      parseStatus: (readProjectMapRelationshipString(item, "parseStatus") ?? "skipped") as ProjectMapScannedFile["parseStatus"],
+    }];
+  });
+}
+
+function normalizeProjectMapFileRelations(value: unknown): ProjectMapFileRelation[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const sourceFileId = readProjectMapRelationshipString(item, "sourceFileId");
+    const targetFileId = readProjectMapRelationshipString(item, "targetFileId");
+    if (!id || !sourceFileId || !targetFileId) {
+      return [];
+    }
+    const relationType = item.type ?? item.relationType;
+    const evidence = Array.isArray(item.evidence)
+      ? item.evidence.flatMap((entry) => {
+          if (!isProjectMapRelationshipRecord(entry)) {
+            return [];
+          }
+          const path = readProjectMapRelationshipString(entry, "path");
+          if (!path) {
+            return [];
+          }
+          return [{
+            path,
+            line: readProjectMapRelationshipNumber(entry, "line") || undefined,
+            excerpt: readProjectMapRelationshipString(entry, "excerpt") ?? undefined,
+            extractorVersion:
+              readProjectMapRelationshipString(entry, "extractorVersion") ?? undefined,
+            observedAt: readProjectMapRelationshipString(entry, "observedAt") ?? undefined,
+          }];
+        })
+      : [];
+
+    return [{
+      id,
+      sourceFileId,
+      targetFileId,
+      type: normalizeProjectMapRelationshipType(relationType),
+      direction: "forward",
+      confidence: normalizeProjectMapRelationshipConfidence(item.confidence),
+      sourceKind: "deterministic",
+      evidence,
+      fingerprint: readProjectMapRelationshipString(item, "fingerprint") ?? undefined,
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipModules(
+  value: unknown,
+): ProjectMapRelationshipModuleSummary[] {
+  if (!isProjectMapRelationshipRecord(value) || !Array.isArray(value.modules)) {
+    return [];
+  }
+  return value.modules.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const label = readProjectMapRelationshipString(item, "label");
+    if (!id || !label) {
+      return [];
+    }
+    return [{
+      id,
+      label,
+      fileIds: readProjectMapRelationshipStringArray(item, "fileIds"),
+      fileCount: readProjectMapRelationshipNumber(item, "fileCount"),
+      relationCount: readProjectMapRelationshipNumber(item, "relationCount"),
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipHotspotReason(
+  value: string,
+): ProjectMapRelationshipHotspot["reason"] {
+  switch (value) {
+    case "many-dependents":
+    case "cross-layer-hub":
+    case "missing-test":
+    case "stale":
+    case "large-file":
+      return value;
+    default:
+      return "many-dependents";
+  }
+}
+
+function normalizeProjectMapRelationshipHotspots(value: unknown): ProjectMapRelationshipHotspot[] {
+  if (!isProjectMapRelationshipRecord(value) || !Array.isArray(value.hotspots)) {
+    return [];
+  }
+  return value.hotspots.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const fileId = readProjectMapRelationshipString(item, "fileId");
+    const reason = readProjectMapRelationshipString(item, "reason");
+    if (!fileId || !reason) {
+      return [];
+    }
+    return [{
+      fileId,
+      reason: normalizeProjectMapRelationshipHotspotReason(reason),
+      score: readProjectMapRelationshipNumber(item, "score"),
+      rationale: readProjectMapRelationshipString(item, "rationale") ?? undefined,
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipRiskFlags(
+  value: unknown,
+): ProjectMapRelationshipImpactSummary["riskFlags"] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const label = readProjectMapRelationshipString(item, "label");
+    if (!id || !label) {
+      return [];
+    }
+    const severity = readProjectMapRelationshipString(item, "severity");
+    return [{
+      id,
+      label,
+      severity: severity === "critical" || severity === "warning" ? severity : "info",
+      nodeId: readProjectMapRelationshipString(item, "nodeId")
+        ?? readProjectMapRelationshipString(item, "fileId")
+        ?? undefined,
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipImpactSummary(
+  value: unknown,
+): ProjectMapRelationshipImpactSummary | null {
+  if (!isProjectMapRelationshipRecord(value)) {
+    return null;
+  }
+  const generatedAt = readProjectMapRelationshipString(value, "generatedAt");
+  if (!generatedAt) {
+    return null;
+  }
+  return {
+    schemaVersion: 1,
+    generatedAt,
+    inputFiles: readProjectMapRelationshipStringArray(value, "inputFiles"),
+    changedFiles: readProjectMapRelationshipStringArray(value, "changedFiles"),
+    directlyAffectedFiles: readProjectMapRelationshipStringArray(value, "directlyAffectedFiles"),
+    transitivelyAffectedFiles: readProjectMapRelationshipStringArray(value, "transitivelyAffectedFiles"),
+    unmappedFiles: readProjectMapRelationshipStringArray(value, "unmappedFiles"),
+    ignoredFiles: readProjectMapRelationshipStringArray(value, "ignoredFiles"),
+    riskFlags: normalizeProjectMapRelationshipRiskFlags(value.riskFlags),
+  };
+}
+
+function normalizeProjectMapRelationshipContextPack(
+  value: unknown,
+): ProjectMapRelationshipAgentReadPlan | null {
+  if (!isProjectMapRelationshipRecord(value)) {
+    return null;
+  }
+  const generatedAt = readProjectMapRelationshipString(value, "generatedAt");
+  const provenance = isProjectMapRelationshipRecord(value.provenance) ? value.provenance : null;
+  const scanRunId = provenance
+    ? readProjectMapRelationshipString(provenance, "scanRunId")
+    : null;
+  if (!generatedAt || !scanRunId) {
+    return null;
+  }
+  return {
+    schemaVersion: 1,
+    generatedAt,
+    mustReadFiles: readProjectMapRelationshipStringArray(value, "mustReadFiles"),
+    relatedFiles: readProjectMapRelationshipStringArray(value, "relatedFiles"),
+    testTargets: readProjectMapRelationshipStringArray(value, "testTargets"),
+    contracts: readProjectMapRelationshipStringArray(value, "contracts"),
+    riskFlags: normalizeProjectMapRelationshipRiskFlags(value.riskFlags),
+    staleReason: readProjectMapRelationshipString(value, "staleReason") ?? undefined,
+    provenance: {
+      scanRunId,
+      relationIds: provenance ? readProjectMapRelationshipStringArray(provenance, "relationIds") : [],
+      fileIds: provenance ? readProjectMapRelationshipStringArray(provenance, "fileIds") : [],
+    },
+  };
+}
+
+function normalizeProjectMapRelationshipRepairIssues(
+  value: unknown,
+): ProjectMapRelationshipRepairIssue[] {
+  if (!isProjectMapRelationshipRecord(value) || !Array.isArray(value.issues)) {
+    return [];
+  }
+  return value.issues.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const message = readProjectMapRelationshipString(item, "message");
+    if (!id || !message) {
+      return [];
+    }
+    return [{
+      id,
+      kind: (readProjectMapRelationshipString(item, "kind") ?? "unresolved-target") as ProjectMapRelationshipRepairIssue["kind"],
+      severity: (readProjectMapRelationshipString(item, "severity") ?? "warning") as ProjectMapRelationshipRepairIssue["severity"],
+      message,
+      fileId: readProjectMapRelationshipString(item, "fileId") ?? undefined,
+      relationId: readProjectMapRelationshipString(item, "relationId") ?? undefined,
+      path: readProjectMapRelationshipString(item, "path") ?? undefined,
+      action: (readProjectMapRelationshipString(item, "action") ?? "ignored") as ProjectMapRelationshipRepairIssue["action"],
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipDashboardData(
+  response: ProjectMapRelationshipReadResponse,
+): ProjectMapRelationshipDashboardData {
+  return {
+    files: normalizeProjectMapScannedFiles(response.files),
+    relations: normalizeProjectMapFileRelations(response.relations),
+    modules: normalizeProjectMapRelationshipModules(response.modules),
+    hotspots: normalizeProjectMapRelationshipHotspots(response.modules),
+    impactSummary: normalizeProjectMapRelationshipImpactSummary(response.impact),
+    contextPack: normalizeProjectMapRelationshipContextPack(response.contextPack),
+    repairIssues: normalizeProjectMapRelationshipRepairIssues(response.repair),
+    readErrors: response.readErrors ?? [],
+  };
+}
+
+function getProjectMapRelationshipRoleRank(role: string): number {
+  return PROJECT_MAP_RELATIONSHIP_ROLE_PRIORITY[role] ?? 150;
+}
+
+function getProjectMapRelationshipTypeRank(type: string): number {
+  return PROJECT_MAP_RELATIONSHIP_TYPE_PRIORITY[type] ?? 120;
+}
+
+function getProjectMapRelationshipConfidenceRank(confidence: ProjectMapFileRelation["confidence"]): number {
+  switch (confidence) {
+    case "high":
+      return 10;
+    case "medium":
+      return 20;
+    default:
+      return 30;
+  }
+}
+
+function isProjectMapRelationshipNoiseFile(file: ProjectMapScannedFile): boolean {
+  const path = file.path.toLowerCase();
+  if (
+    path.startsWith(".agents/")
+    || path.startsWith(".codex/")
+    || path.startsWith(".claude/")
+    || path.startsWith(".trellis/")
+    || path.startsWith("openspec/")
+    || path.startsWith("docs/")
+  ) {
+    return true;
+  }
+  return file.parseStatus === "skipped"
+    || file.role === "document"
+    || file.role === "infra"
+    || file.role === "style"
+    || file.role === "unknown";
+}
+
+function buildProjectMapRelationshipSentence(input: {
+  relation: ProjectMapFileRelation;
+  sourceFile?: ProjectMapScannedFile;
+  targetFile?: ProjectMapScannedFile;
+}): string {
+  const source = input.sourceFile?.basename ?? input.relation.sourceFileId;
+  const target = input.targetFile?.basename ?? input.relation.targetFileId;
+  switch (input.relation.type) {
+    case "imports":
+      return `${source} imports ${target}`;
+    case "bridges_to":
+      return `${source} calls command in ${target}`;
+    case "tested_by":
+      return `${source} is tested by ${target}`;
+    case "documents":
+      return `${source} documents ${target}`;
+    case "configures":
+      return `${source} configures ${target}`;
+    case "styled_by":
+      return `${source} is styled by ${target}`;
+    case "specified_by":
+      return `${source} is specified by ${target}`;
+    case "contains":
+      return `${source} contains ${target}`;
+    case "exports":
+      return `${source} exports symbols`;
+    default:
+      return `${source} relates to ${target}`;
+  }
+}
+
 export function ProjectMapPanel({
   activeWorkspace = null,
   workspaceName,
@@ -418,6 +911,7 @@ export function ProjectMapPanel({
   const [isNavigationPanelExpanded, setIsNavigationPanelExpanded] = useState(false);
   const [isQueryPanelExpanded, setIsQueryPanelExpanded] = useState(false);
   const [isActivityPanelExpanded, setIsActivityPanelExpanded] = useState(false);
+  const [isFileRelationPanelExpanded, setIsFileRelationPanelExpanded] = useState(false);
   const [isRelationPanelExpanded, setIsRelationPanelExpanded] = useState(false);
   const [isAdvisorPanelExpanded, setIsAdvisorPanelExpanded] = useState(false);
   const [isGraphHealthExpanded, setIsGraphHealthExpanded] = useState(false);
@@ -437,6 +931,19 @@ export function ProjectMapPanel({
   const [selectedAdvisorHintId, setSelectedAdvisorHintId] = useState<string | null>(null);
   const [queryHistory, setQueryHistory] = useState<string[]>([]);
   const [navigationHistory, setNavigationHistory] = useState<ProjectMapNavigationHistoryItem[]>([]);
+  const [relationshipScanState, setRelationshipScanState] =
+    useState<ProjectMapRelationshipScanState>({ status: "idle" });
+  const [relationshipDashboardData, setRelationshipDashboardData] =
+    useState<ProjectMapRelationshipDashboardData | null>(null);
+  const [relationshipDashboardQuery, setRelationshipDashboardQuery] = useState("");
+  const [relationshipDashboardTypeFilter, setRelationshipDashboardTypeFilter] =
+    useState<string>(PROJECT_MAP_RELATION_FILTER_ALL);
+  const [relationshipDashboardRoleFilter, setRelationshipDashboardRoleFilter] =
+    useState<string>(PROJECT_MAP_RELATION_FILTER_ALL);
+  const [showRelationshipNoiseFiles, setShowRelationshipNoiseFiles] = useState(false);
+  const [relationshipDashboardViewMode, setRelationshipDashboardViewMode] =
+    useState<ProjectMapRelationshipDashboardViewMode>("board");
+  const [selectedRelationshipFileId, setSelectedRelationshipFileId] = useState<string | null>(null);
   const [dragPreviewPositions, setDragPreviewPositions] = useState<
     Record<string, ProjectMapGraphNodePosition>
   >({});
@@ -699,6 +1206,7 @@ export function ProjectMapPanel({
       query: isQueryPanelExpanded,
       activity: isActivityPanelExpanded,
       evidence: false,
+      fileRelations: isFileRelationPanelExpanded,
       relations: isRelationPanelExpanded,
       advisor: isAdvisorPanelExpanded,
       health: isGraphHealthExpanded,
@@ -706,6 +1214,7 @@ export function ProjectMapPanel({
     [
       isActivityPanelExpanded,
       isAdvisorPanelExpanded,
+      isFileRelationPanelExpanded,
       isGraphHealthExpanded,
       isNavigationPanelExpanded,
       isQueryPanelExpanded,
@@ -1735,6 +2244,312 @@ export function ProjectMapPanel({
     }));
   };
 
+  const handleRelationshipScanClick = useCallback(() => {
+    if (!activeWorkspace?.id || relationshipScanState.status === "running") {
+      return;
+    }
+
+    setRelationshipScanState({ status: "running" });
+    void scanProjectMapRelationships({
+      workspaceId: activeWorkspace.id,
+      options: {
+        maxFiles: 10_000,
+        includeIgnoredHints: true,
+        changedFiles: changedFilePaths.length ? changedFilePaths : undefined,
+      },
+      storageLocation: datasetController.activeReadLocation,
+    })
+      .then(async (summary) => {
+        setRelationshipScanState({ status: "success", summary });
+        setIsFileRelationPanelExpanded(true);
+        try {
+          const response = await readProjectMapRelationships({
+            workspaceId: activeWorkspace.id,
+            storageLocation: datasetController.activeReadLocation,
+          });
+          setRelationshipDashboardData(normalizeProjectMapRelationshipDashboardData(response));
+          setSelectedRelationshipFileId(null);
+        } catch {
+          setRelationshipDashboardData(null);
+        }
+      })
+      .catch((error) => {
+        setRelationshipScanState({
+          status: "failed",
+          message: normalizeProjectMapRelationshipError(error),
+        });
+      });
+  }, [
+    activeWorkspace?.id,
+    changedFilePaths,
+    datasetController.activeReadLocation,
+    relationshipScanState.status,
+  ]);
+
+  useEffect(() => {
+    if (!activeWorkspace?.id) {
+      setRelationshipScanState({ status: "idle" });
+      setRelationshipDashboardData(null);
+      setSelectedRelationshipFileId(null);
+      return;
+    }
+
+    let cancelled = false;
+    void readProjectMapRelationships({
+      workspaceId: activeWorkspace.id,
+      storageLocation: datasetController.activeReadLocation,
+    })
+      .then((response) => {
+        if (cancelled) {
+          return;
+        }
+        const summary = normalizeProjectMapRelationshipReadSummary(response);
+        const dashboardData = normalizeProjectMapRelationshipDashboardData(response);
+        setRelationshipDashboardData(summary ? dashboardData : null);
+        setRelationshipScanState((current) => {
+          if (current.status === "running") {
+            return current;
+          }
+          if (!summary) {
+            return { status: "idle" };
+          }
+          if (current.status === "success" && current.summary.scanRunId === summary.scanRunId) {
+            return current;
+          }
+          return { status: "success", summary };
+        });
+      })
+      .catch((error) => {
+        if (cancelled) {
+          return;
+        }
+        const message = normalizeProjectMapRelationshipError(error);
+        setRelationshipDashboardData(null);
+        setRelationshipScanState((current) =>
+          current.status === "running" ? current : { status: "failed", message },
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [activeWorkspace?.id, datasetController.activeReadLocation]);
+
+  const relationshipDashboardFileIndex = useMemo(() => {
+    const index = new Map<string, ProjectMapScannedFile>();
+    relationshipDashboardData?.files.forEach((file) => {
+      index.set(file.id, file);
+    });
+    return index;
+  }, [relationshipDashboardData]);
+
+  const relationshipDashboardModuleByFileId = useMemo(() => {
+    const index = new Map<string, string>();
+    relationshipDashboardData?.modules.forEach((module) => {
+      module.fileIds.forEach((fileId) => {
+        index.set(fileId, module.label);
+      });
+    });
+    return index;
+  }, [relationshipDashboardData]);
+
+  const relationshipDashboardTypeOptions = useMemo(() => {
+    const types = new Set<string>();
+    relationshipDashboardData?.relations.forEach((relation) => {
+      types.add(relation.type);
+    });
+    return Array.from(types).sort((left, right) => (
+      getProjectMapRelationshipTypeRank(left) - getProjectMapRelationshipTypeRank(right)
+      || left.localeCompare(right)
+    ));
+  }, [relationshipDashboardData]);
+
+  const relationshipDashboardRelationCountByFile = useMemo(() => {
+    const counts = new Map<string, number>();
+    relationshipDashboardData?.relations.forEach((relation) => {
+      counts.set(relation.sourceFileId, (counts.get(relation.sourceFileId) ?? 0) + 1);
+      counts.set(relation.targetFileId, (counts.get(relation.targetFileId) ?? 0) + 1);
+    });
+    return counts;
+  }, [relationshipDashboardData]);
+
+  const relationshipDashboardDirectionCountByFile = useMemo(() => {
+    const counts = new Map<string, { incoming: number; outgoing: number }>();
+    relationshipDashboardData?.relations.forEach((relation) => {
+      const sourceCount = counts.get(relation.sourceFileId) ?? { incoming: 0, outgoing: 0 };
+      sourceCount.outgoing += 1;
+      counts.set(relation.sourceFileId, sourceCount);
+      const targetCount = counts.get(relation.targetFileId) ?? { incoming: 0, outgoing: 0 };
+      targetCount.incoming += 1;
+      counts.set(relation.targetFileId, targetCount);
+    });
+    return counts;
+  }, [relationshipDashboardData]);
+
+  const relationshipDashboardRoleOptions = useMemo(() => {
+    if (!relationshipDashboardData) {
+      return [];
+    }
+    const roles = new Set<string>();
+    relationshipDashboardData.files.forEach((file) => {
+      if (showRelationshipNoiseFiles || !isProjectMapRelationshipNoiseFile(file)) {
+        roles.add(file.role);
+      }
+    });
+    return Array.from(roles).sort((left, right) => (
+      getProjectMapRelationshipRoleRank(left) - getProjectMapRelationshipRoleRank(right)
+      || left.localeCompare(right)
+    ));
+  }, [relationshipDashboardData, showRelationshipNoiseFiles]);
+
+  const relationshipDashboardFilteredFiles = useMemo(() => {
+    if (!relationshipDashboardData) {
+      return [];
+    }
+    const query = relationshipDashboardQuery.trim().toLowerCase();
+    const filtered = relationshipDashboardData.files
+      .filter((file) => showRelationshipNoiseFiles || !isProjectMapRelationshipNoiseFile(file))
+      .filter((file) => (
+        relationshipDashboardRoleFilter === PROJECT_MAP_RELATION_FILTER_ALL
+        || file.role === relationshipDashboardRoleFilter
+      ))
+      .filter((file) => {
+        if (!query) {
+          return true;
+        }
+          const moduleLabel = relationshipDashboardModuleByFileId.get(file.id) ?? "";
+          return [
+            file.path,
+            file.basename,
+            file.language,
+            file.layer,
+            file.role,
+            moduleLabel,
+          ].some((value) => value.toLowerCase().includes(query));
+      })
+      .sort((left, right) => {
+        const leftRank = getProjectMapRelationshipRoleRank(left.role);
+        const rightRank = getProjectMapRelationshipRoleRank(right.role);
+        if (leftRank !== rightRank) {
+          return leftRank - rightRank;
+        }
+        const leftCount = relationshipDashboardRelationCountByFile.get(left.id) ?? 0;
+        const rightCount = relationshipDashboardRelationCountByFile.get(right.id) ?? 0;
+        if (leftCount !== rightCount) {
+          return rightCount - leftCount;
+        }
+        return left.path.localeCompare(right.path);
+      });
+    return filtered.slice(0, PROJECT_MAP_RELATIONSHIP_LIST_LIMIT);
+  }, [
+    relationshipDashboardData,
+    relationshipDashboardModuleByFileId,
+    relationshipDashboardQuery,
+    relationshipDashboardRelationCountByFile,
+    relationshipDashboardRoleFilter,
+    showRelationshipNoiseFiles,
+  ]);
+
+  const relationshipDashboardVisibleFileTotal = useMemo(() => {
+    if (!relationshipDashboardData) {
+      return 0;
+    }
+    const query = relationshipDashboardQuery.trim().toLowerCase();
+    return relationshipDashboardData.files
+      .filter((file) => showRelationshipNoiseFiles || !isProjectMapRelationshipNoiseFile(file))
+      .filter((file) => (
+        relationshipDashboardRoleFilter === PROJECT_MAP_RELATION_FILTER_ALL
+        || file.role === relationshipDashboardRoleFilter
+      ))
+      .filter((file) => {
+        if (!query) {
+          return true;
+        }
+        const moduleLabel = relationshipDashboardModuleByFileId.get(file.id) ?? "";
+        return [
+          file.path,
+          file.basename,
+          file.language,
+          file.layer,
+          file.role,
+          moduleLabel,
+        ].some((value) => value.toLowerCase().includes(query));
+      }).length;
+  }, [
+    relationshipDashboardData,
+    relationshipDashboardModuleByFileId,
+    relationshipDashboardQuery,
+    relationshipDashboardRoleFilter,
+    showRelationshipNoiseFiles,
+  ]);
+
+  const selectedRelationshipFile = useMemo(() => {
+    if (!relationshipDashboardData?.files.length) {
+      return null;
+    }
+    if (selectedRelationshipFileId) {
+      const selectedFile = relationshipDashboardFileIndex.get(selectedRelationshipFileId);
+      if (selectedFile) {
+        return selectedFile;
+      }
+    }
+    return relationshipDashboardFilteredFiles[0] ?? relationshipDashboardData.files[0] ?? null;
+  }, [
+    relationshipDashboardData,
+    relationshipDashboardFileIndex,
+    relationshipDashboardFilteredFiles,
+    selectedRelationshipFileId,
+  ]);
+
+  const relationshipDashboardBoardGroups = useMemo(() => {
+    const groups = new Map<string, ProjectMapScannedFile[]>();
+    relationshipDashboardFilteredFiles.forEach((file) => {
+      const roleGroup = file.role || "unknown";
+      const files = groups.get(roleGroup) ?? [];
+      files.push(file);
+      groups.set(roleGroup, files);
+    });
+    return Array.from(groups.entries())
+      .sort(([left], [right]) => (
+        getProjectMapRelationshipRoleRank(left) - getProjectMapRelationshipRoleRank(right)
+        || left.localeCompare(right)
+      ))
+      .slice(0, 8)
+      .map(([role, files]) => ({
+        role,
+        files: files.slice(0, 18),
+        total: files.length,
+      }));
+  }, [relationshipDashboardFilteredFiles]);
+
+  const selectedRelationshipRelations = useMemo(() => {
+    if (!relationshipDashboardData || !selectedRelationshipFile) {
+      return [];
+    }
+    return relationshipDashboardData.relations
+      .filter((relation) => {
+        const isSelectedEdge =
+          relation.sourceFileId === selectedRelationshipFile.id
+          || relation.targetFileId === selectedRelationshipFile.id;
+        const typeMatches =
+          relationshipDashboardTypeFilter === PROJECT_MAP_RELATION_FILTER_ALL
+          || relation.type === relationshipDashboardTypeFilter;
+        return isSelectedEdge && typeMatches;
+      })
+      .sort((left, right) => (
+        getProjectMapRelationshipTypeRank(left.type) - getProjectMapRelationshipTypeRank(right.type)
+        || getProjectMapRelationshipConfidenceRank(left.confidence) - getProjectMapRelationshipConfidenceRank(right.confidence)
+        || left.id.localeCompare(right.id)
+      ))
+      .slice(0, PROJECT_MAP_RELATIONSHIP_EDGE_LIMIT);
+  }, [relationshipDashboardData, relationshipDashboardTypeFilter, selectedRelationshipFile]);
+
+  const relationshipDashboardTopHotspots = useMemo(() => (
+    [...(relationshipDashboardData?.hotspots ?? [])]
+      .sort((left, right) => right.score - left.score || left.fileId.localeCompare(right.fileId))
+      .slice(0, 5)
+  ), [relationshipDashboardData]);
+
   const handleNodeDrillClick = (
     event: MouseEvent<HTMLButtonElement>,
     node: ProjectMapNode,
@@ -1864,6 +2679,22 @@ export function ProjectMapPanel({
                 </>
               ) : null}
               <button
+                className="project-map-toolbar-action project-map-profile-action"
+                type="button"
+                onClick={handleRelationshipScanClick}
+                disabled={!activeWorkspace?.id || relationshipScanState.status === "running"}
+                title={
+                  activeWorkspace?.id
+                    ? t("projectMap.relationship.scanHint")
+                    : t("projectMap.relationship.disabledNoWorkspace")
+                }
+              >
+                <RefreshCw aria-hidden />
+                {relationshipScanState.status === "running"
+                  ? t("projectMap.relationship.scanning")
+                  : t("projectMap.relationship.scan")}
+              </button>
+              <button
                 className={cn(
                   "project-map-toolbar-action project-map-task-button",
                   generationQueue.length > 0 && "has-active-task",
@@ -1922,6 +2753,22 @@ export function ProjectMapPanel({
                 <span>{t("projectMap.lensStats", { detected: detectedLensCount, candidate: candidateLensCount })}</span>
                 <span>{t("projectMap.staleNodes", { count: staleCount })}</span>
                 <span>{t("projectMap.candidateNodes", { count: candidateCount })}</span>
+                {relationshipScanState.status === "success" ? (
+                  <span>
+                    {t("projectMap.relationship.summary", {
+                      files: relationshipScanState.summary.fileCount,
+                      relations: relationshipScanState.summary.relationCount,
+                      ignored: relationshipScanState.summary.ignoredCount,
+                    })}
+                  </span>
+                ) : null}
+                {relationshipScanState.status === "failed" ? (
+                  <span className="project-map-inline-status is-error">
+                    {t("projectMap.relationship.failed", {
+                      message: relationshipScanState.message,
+                    })}
+                  </span>
+                ) : null}
                 <button
                   className={cn(
                     "project-map-health-chip",
@@ -1987,6 +2834,18 @@ export function ProjectMapPanel({
                     <RadioTower aria-hidden />
                     <span><strong>{t("projectMap.viewIa.activityMode")}</strong></span>
                     <b>{activityItemCount}</b>
+                  </button>
+                  <button
+                    className={cn("project-map-investigation-mode", visibleSectionState.fileRelations && "is-active")}
+                    type="button"
+                    aria-label={t("projectMap.viewIa.fileRelationsMode")}
+                    aria-pressed={visibleSectionState.fileRelations}
+                    aria-expanded={visibleSectionState.fileRelations}
+                    onClick={() => setIsFileRelationPanelExpanded((current) => !current)}
+                  >
+                    <Network aria-hidden />
+                    <span><strong>{t("projectMap.viewIa.fileRelationsMode")}</strong></span>
+                    <b>{relationshipScanState.status === "success" ? relationshipScanState.summary.relationCount : 0}</b>
                   </button>
                   <button
                     className={cn("project-map-investigation-mode", visibleSectionState.relations && "is-active")}
@@ -2076,24 +2935,443 @@ export function ProjectMapPanel({
               />
             ) : null}
 
+            {visibleSectionState.fileRelations ? (
+                <section className="project-map-relationship-scan-panel">
+                  <header>
+                    <Network aria-hidden />
+                    <div>
+                      <h4>{t("projectMap.relationship.dashboardTitle")}</h4>
+                      <p>
+                        {relationshipScanState.status === "success"
+                          ? t("projectMap.relationship.dashboardReady", {
+                              runId: relationshipScanState.summary.scanRunId,
+                            })
+                          : t("projectMap.relationship.dashboardEmpty")}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      className="project-map-toolbar-action"
+                      onClick={handleRelationshipScanClick}
+                      disabled={!activeWorkspace?.id || relationshipScanState.status === "running"}
+                    >
+                      <RefreshCw aria-hidden />
+                      {relationshipScanState.status === "running"
+                        ? t("projectMap.relationship.scanning")
+                        : t("projectMap.relationship.scan")}
+                    </button>
+                  </header>
+                  {relationshipScanState.status === "success" ? (
+                    <div className="project-map-relationship-scan-metrics">
+                      <span>
+                        <strong>{relationshipScanState.summary.fileCount}</strong>
+                        {t("projectMap.relationship.metricFiles")}
+                      </span>
+                      <span>
+                        <strong>{relationshipScanState.summary.relationCount}</strong>
+                        {t("projectMap.relationship.metricRelations")}
+                      </span>
+                      <span>
+                        <strong>{relationshipScanState.summary.ignoredCount}</strong>
+                        {t("projectMap.relationship.metricIgnored")}
+                      </span>
+                      <span>
+                        <strong>{relationshipScanState.summary.repairIssueCount}</strong>
+                        {t("projectMap.relationship.metricRepair")}
+                      </span>
+                    </div>
+                  ) : null}
+                  {relationshipDashboardData ? (
+                    <div className="project-map-relationship-dashboard">
+                      <div className="project-map-relationship-dashboard-rule">
+                        <strong>{t("projectMap.relationship.snapshotLabel")}</strong>
+                        <span>{t("projectMap.relationship.snapshotRule")}</span>
+                      </div>
+                      <div className="project-map-relationship-dashboard-controls">
+                        <label>
+                          <span>{t("projectMap.relationship.searchLabel")}</span>
+                          <input
+                            value={relationshipDashboardQuery}
+                            onChange={(event) => setRelationshipDashboardQuery(event.target.value)}
+                            placeholder={t("projectMap.relationship.searchPlaceholder")}
+                          />
+                        </label>
+                        <label>
+                          <span>{t("projectMap.relationship.typeFilterLabel")}</span>
+                          <select
+                            value={relationshipDashboardTypeFilter}
+                            onChange={(event) => setRelationshipDashboardTypeFilter(event.target.value)}
+                          >
+                            <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
+                              {t("projectMap.relationship.allTypes")}
+                            </option>
+                            {relationshipDashboardTypeOptions.map((type) => (
+                              <option key={type} value={type}>{type}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <label>
+                          <span>{t("projectMap.relationship.roleFilterLabel")}</span>
+                          <select
+                            value={relationshipDashboardRoleFilter}
+                            onChange={(event) => setRelationshipDashboardRoleFilter(event.target.value)}
+                          >
+                            <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
+                              {t("projectMap.relationship.allRoles")}
+                            </option>
+                            {relationshipDashboardRoleOptions.map((role) => (
+                              <option key={role} value={role}>{role}</option>
+                            ))}
+                          </select>
+                        </label>
+                        <button
+                          type="button"
+                          className={cn(
+                            "project-map-relationship-noise-toggle",
+                            showRelationshipNoiseFiles && "is-active",
+                          )}
+                          onClick={() => {
+                            setRelationshipDashboardRoleFilter(PROJECT_MAP_RELATION_FILTER_ALL);
+                            setShowRelationshipNoiseFiles((current) => !current);
+                          }}
+                        >
+                          {showRelationshipNoiseFiles
+                            ? t("projectMap.relationship.hideNoise")
+                            : t("projectMap.relationship.showNoise")}
+                        </button>
+                      </div>
+                      <div className="project-map-relationship-view-switch">
+                        {(["board", "list", "neighborhood"] as ProjectMapRelationshipDashboardViewMode[]).map((mode) => (
+                          <button
+                            key={mode}
+                            type="button"
+                            className={cn(relationshipDashboardViewMode === mode && "is-active")}
+                            onClick={() => setRelationshipDashboardViewMode(mode)}
+                          >
+                            {t(`projectMap.relationship.view.${mode}`)}
+                          </button>
+                        ))}
+                      </div>
+                      {relationshipDashboardData.impactSummary
+                        || relationshipDashboardTopHotspots.length
+                        || relationshipDashboardData.contextPack ? (
+                          <div className="project-map-relationship-insight-grid">
+                            <section className="project-map-relationship-insight-card">
+                              <h5>{t("projectMap.relationship.impactTitle")}</h5>
+                              {relationshipDashboardData.impactSummary ? (
+                                <>
+                                  <div className="project-map-relationship-insight-metrics">
+                                    <span>
+                                      <strong>{relationshipDashboardData.impactSummary.changedFiles.length}</strong>
+                                      {t("projectMap.relationship.impactChanged")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.impactSummary.directlyAffectedFiles.length}</strong>
+                                      {t("projectMap.relationship.impactDirect")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.impactSummary.transitivelyAffectedFiles.length}</strong>
+                                      {t("projectMap.relationship.impactTransitive")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.impactSummary.unmappedFiles.length}</strong>
+                                      {t("projectMap.relationship.impactUnmapped")}
+                                    </span>
+                                  </div>
+                                  {relationshipDashboardData.impactSummary.riskFlags.length ? (
+                                    <div className="project-map-relationship-chip-list">
+                                      {relationshipDashboardData.impactSummary.riskFlags.slice(0, 3).map((flag) => (
+                                        <span key={flag.id}>
+                                          {flag.severity} · {flag.label}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  ) : null}
+                                </>
+                              ) : (
+                                <p>{t("projectMap.relationship.impactEmpty")}</p>
+                              )}
+                            </section>
+                            <section className="project-map-relationship-insight-card">
+                              <h5>{t("projectMap.relationship.hotspotTitle")}</h5>
+                              {relationshipDashboardTopHotspots.length ? (
+                                <div className="project-map-relationship-chip-list">
+                                  {relationshipDashboardTopHotspots.map((hotspot) => {
+                                    const file = relationshipDashboardFileIndex.get(hotspot.fileId);
+                                    return (
+                                      <span key={`${hotspot.fileId}:${hotspot.reason}`}>
+                                        {hotspot.reason} · {hotspot.score} · {file?.basename ?? hotspot.fileId}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <p>{t("projectMap.relationship.hotspotEmpty")}</p>
+                              )}
+                            </section>
+                            <section className="project-map-relationship-insight-card">
+                              <h5>{t("projectMap.relationship.readPlanTitle")}</h5>
+                              {relationshipDashboardData.contextPack ? (
+                                <>
+                                  <div className="project-map-relationship-insight-metrics">
+                                    <span>
+                                      <strong>{relationshipDashboardData.contextPack.mustReadFiles.length}</strong>
+                                      {t("projectMap.relationship.readPlanMustRead")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.contextPack.relatedFiles.length}</strong>
+                                      {t("projectMap.relationship.readPlanRelated")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.contextPack.testTargets.length}</strong>
+                                      {t("projectMap.relationship.readPlanTests")}
+                                    </span>
+                                    <span>
+                                      <strong>{relationshipDashboardData.contextPack.contracts.length}</strong>
+                                      {t("projectMap.relationship.readPlanContracts")}
+                                    </span>
+                                  </div>
+                                  <div className="project-map-relationship-chip-list">
+                                    {relationshipDashboardData.contextPack.mustReadFiles.slice(0, 3).map((path) => (
+                                      <span key={path}>{path}</span>
+                                    ))}
+                                  </div>
+                                </>
+                              ) : (
+                                <p>{t("projectMap.relationship.readPlanEmpty")}</p>
+                              )}
+                            </section>
+                          </div>
+                        ) : null}
+                      {relationshipDashboardViewMode === "board" ? (
+                        <div className="project-map-relationship-tile-board">
+                          {relationshipDashboardBoardGroups.map((group) => (
+                            <section key={group.role} className="project-map-relationship-tile-lane">
+                              <header>
+                                <strong>{group.role}</strong>
+                                <span>{t("projectMap.relationship.laneStats", {
+                                  visible: group.files.length,
+                                  total: group.total,
+                                })}</span>
+                              </header>
+                              <div className="project-map-relationship-tile-grid">
+                                {group.files.map((file) => {
+                                  const directionCount =
+                                    relationshipDashboardDirectionCountByFile.get(file.id)
+                                    ?? { incoming: 0, outgoing: 0 };
+                                  return (
+                                    <button
+                                      key={file.id}
+                                      type="button"
+                                      className={cn(
+                                        "project-map-relationship-file-tile",
+                                        selectedRelationshipFile?.id === file.id && "is-active",
+                                      )}
+                                      onClick={() => {
+                                        setSelectedRelationshipFileId(file.id);
+                                        setRelationshipDashboardViewMode("neighborhood");
+                                      }}
+                                    >
+                                      <span>{file.role}</span>
+                                      <strong>{file.basename}</strong>
+                                      <em>{file.language} · {file.layer}</em>
+                                      <small>
+                                        {t("projectMap.relationship.tileStats", {
+                                          incoming: directionCount.incoming,
+                                          outgoing: directionCount.outgoing,
+                                          total: relationshipDashboardRelationCountByFile.get(file.id) ?? 0,
+                                        })}
+                                      </small>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </section>
+                          ))}
+                        </div>
+                      ) : null}
+                      <div
+                        className={cn(
+                          "project-map-relationship-dashboard-grid",
+                          relationshipDashboardViewMode === "board" && "is-hidden",
+                          relationshipDashboardViewMode === "neighborhood" && "is-neighborhood-mode",
+                        )}
+                      >
+                        <div className="project-map-relationship-dashboard-column">
+                          <h5>{t("projectMap.relationship.filesTitle")}</h5>
+                          <div className="project-map-relationship-role-strip">
+                            {relationshipDashboardRoleOptions.slice(0, 8).map((role) => (
+                              <button
+                                key={role}
+                                type="button"
+                                className={cn(
+                                  relationshipDashboardRoleFilter === role && "is-active",
+                                )}
+                                onClick={() => setRelationshipDashboardRoleFilter(role)}
+                              >
+                                {role}
+                              </button>
+                            ))}
+                          </div>
+                          <div className="project-map-relationship-module-strip">
+                            {relationshipDashboardData.modules.slice(0, 6).map((module) => (
+                              <span key={module.id}>
+                                <strong>{module.label}</strong>
+                                {t("projectMap.relationship.moduleStats", {
+                                  files: module.fileCount,
+                                  relations: module.relationCount,
+                                })}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="project-map-relationship-file-list">
+                            {relationshipDashboardFilteredFiles.map((file) => (
+                              <button
+                                key={file.id}
+                                type="button"
+                                className={cn(
+                                  "project-map-relationship-file-row",
+                                  selectedRelationshipFile?.id === file.id && "is-active",
+                                )}
+                                onClick={() => setSelectedRelationshipFileId(file.id)}
+                              >
+                                <strong>{file.basename}</strong>
+                                <span>{file.path}</span>
+                                <em>
+                                  {file.language} · {file.role} · {file.parseStatus} · {t("projectMap.relationship.edgeCount", {
+                                    count: relationshipDashboardRelationCountByFile.get(file.id) ?? 0,
+                                  })}
+                                </em>
+                              </button>
+                            ))}
+                            {relationshipDashboardVisibleFileTotal > relationshipDashboardFilteredFiles.length ? (
+                              <p className="project-map-relationship-list-cap">
+                                {t("projectMap.relationship.listCap", {
+                                  visible: relationshipDashboardFilteredFiles.length,
+                                  total: relationshipDashboardVisibleFileTotal,
+                                })}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                        <div className="project-map-relationship-dashboard-column">
+                          <h5>{t("projectMap.relationship.neighborhoodTitle")}</h5>
+                          {selectedRelationshipFile ? (
+                            <div className="project-map-relationship-selected-file">
+                              <strong>{selectedRelationshipFile.path}</strong>
+                              <span>
+                                {selectedRelationshipFile.role} · {selectedRelationshipFile.language} · {relationshipDashboardModuleByFileId.get(selectedRelationshipFile.id) ?? selectedRelationshipFile.layer} · {t("projectMap.relationship.edgeCount", {
+                                  count: relationshipDashboardRelationCountByFile.get(selectedRelationshipFile.id) ?? 0,
+                                })}
+                              </span>
+                            </div>
+                          ) : null}
+                          <div className="project-map-relationship-edge-list">
+                            {selectedRelationshipRelations.length ? (
+                              selectedRelationshipRelations.map((relation) => {
+                                const sourceFile = relationshipDashboardFileIndex.get(relation.sourceFileId);
+                                const targetFile = relationshipDashboardFileIndex.get(relation.targetFileId);
+                                const directionLabel =
+                                  relation.sourceFileId === selectedRelationshipFile?.id
+                                    ? t("projectMap.relationship.outgoing")
+                                    : t("projectMap.relationship.incoming");
+                                const evidence = relation.evidence[0];
+                                const relationSentence = buildProjectMapRelationshipSentence({
+                                  relation,
+                                  sourceFile,
+                                  targetFile,
+                                });
+                                return (
+                                  <article key={relation.id} className="project-map-relationship-edge-row">
+                                    <header>
+                                      <span>{relation.type}</span>
+                                      <em>{directionLabel} · {relation.confidence}</em>
+                                    </header>
+                                    <p>{relationSentence}</p>
+                                    <small>
+                                      {sourceFile?.path ?? relation.sourceFileId}
+                                      {" -> "}
+                                      {targetFile?.path ?? relation.targetFileId}
+                                    </small>
+                                    {evidence ? (
+                                      <small>
+                                        {evidence.path}
+                                        {evidence.line ? `:${evidence.line}` : ""}
+                                        {evidence.excerpt ? ` · ${evidence.excerpt}` : ""}
+                                      </small>
+                                    ) : null}
+                                  </article>
+                                );
+                              })
+                            ) : (
+                              <p className="project-map-relationship-empty">
+                                {t("projectMap.relationship.noNeighborhood")}
+                              </p>
+                            )}
+                            {selectedRelationshipRelations.length >= PROJECT_MAP_RELATIONSHIP_EDGE_LIMIT ? (
+                              <p className="project-map-relationship-list-cap">
+                                {t("projectMap.relationship.edgeCap", {
+                                  limit: PROJECT_MAP_RELATIONSHIP_EDGE_LIMIT,
+                                })}
+                              </p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </div>
+                      {relationshipDashboardData.repairIssues.length || relationshipDashboardData.readErrors.length ? (
+                        <div className="project-map-relationship-repair-strip">
+                          <strong>{t("projectMap.relationship.repairTitle")}</strong>
+                          {relationshipDashboardData.repairIssues.slice(0, 4).map((issue) => (
+                            <span key={issue.id}>
+                              {issue.severity} · {issue.kind} · {issue.path ?? issue.message}
+                            </span>
+                          ))}
+                          {relationshipDashboardData.readErrors.slice(0, 2).map((error) => (
+                            <span key={error.path}>
+                              read-error · {error.path} · {error.message}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                  {relationshipScanState.status === "failed" ? (
+                    <p className="project-map-relationship-scan-error">
+                      {t("projectMap.relationship.failed", {
+                        message: relationshipScanState.message,
+                      })}
+                    </p>
+                  ) : null}
+                </section>
+            ) : null}
+
             {visibleSectionState.relations ? (
-              <ProjectMapRelationLegendPanel
-                relationIndex={relationIndex}
-                hierarchyRelations={filteredHierarchyRelations}
-                hierarchyRelationTotalCount={filteredHierarchyRelations.length}
-                expanded={visibleSectionState.relations}
-                typeFilter={relationTypeFilter}
-                sourceKindFilter={relationSourceKindFilter}
-                directionFilter={relationDirectionFilter}
-                typeOptions={relationTypeOptions}
-                sourceKindOptions={relationSourceKindOptions}
-                selectedNodeId={selectedNode?.id ?? null}
-                onTypeFilterChange={setRelationTypeFilter}
-                onSourceKindFilterChange={setRelationSourceKindFilter}
-                onDirectionFilterChange={setRelationDirectionFilter}
-                onClearSelectedRelation={() => setSelectedRelationId(null)}
-                onFocusNode={focusNavigationNode}
-              />
+                <section className="project-map-semantic-relations-panel">
+                  <header className="project-map-semantic-relations-header">
+                    <div>
+                      <strong>{t("projectMap.relationship.semanticTitle")}</strong>
+                      <p>{t("projectMap.relationship.semanticDescription")}</p>
+                    </div>
+                    <span>{t("projectMap.relationship.semanticBadge")}</span>
+                  </header>
+                  <ProjectMapRelationLegendPanel
+                    relationIndex={relationIndex}
+                    hierarchyRelations={filteredHierarchyRelations}
+                    hierarchyRelationTotalCount={filteredHierarchyRelations.length}
+                    expanded={visibleSectionState.relations}
+                    typeFilter={relationTypeFilter}
+                    sourceKindFilter={relationSourceKindFilter}
+                    directionFilter={relationDirectionFilter}
+                    typeOptions={relationTypeOptions}
+                    sourceKindOptions={relationSourceKindOptions}
+                    selectedNodeId={selectedNode?.id ?? null}
+                    onTypeFilterChange={setRelationTypeFilter}
+                    onSourceKindFilterChange={setRelationSourceKindFilter}
+                    onDirectionFilterChange={setRelationDirectionFilter}
+                    onClearSelectedRelation={() => setSelectedRelationId(null)}
+                    onFocusNode={focusNavigationNode}
+                  />
+                </section>
             ) : null}
 
             {visibleSectionState.advisor ? (

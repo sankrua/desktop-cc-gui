@@ -92,7 +92,7 @@ The relationship layer SHALL not serialize or depend on Understand-Anything sche
 - **AND** no third-party graph persistence type is mandatory
 
 ### Requirement: Repair artifacts are first-class
-Repair issues shall be persisted under `repair/latest.json` and surfaced by consumers.
+Repair issues SHALL be persisted under `repair/latest.json` and surfaced by consumers.
 
 #### Scenario: invalid relation discovered
 - **WHEN** repair detects dangling / duplicate / invalid direction
@@ -117,4 +117,3 @@ The scan metadata SHALL support stale and incremental decisions.
 - stale / 过期
 - run-id / 运行 ID
 - provenance / 来源追踪
-

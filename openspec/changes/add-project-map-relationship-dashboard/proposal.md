@@ -106,6 +106,67 @@
 - 这不是 MVP 裁剪版。虽然可分 batch 并行推进，但 scope 保持完整。
 - 文档层面同步后，下一步可直接进入 implementation。
 
+## 阶段性评估 / Stage Assessment（2026-06-05）
+
+### 中文导读
+
+本节记录当前 implementation 与原 proposal/design/tasks 的对齐校准。
+结论：当前方向没有跑偏，仍然围绕 `scan -> persist -> dashboard -> impact/read-plan -> consume` 主链路推进。
+但当前仍属于 `Alpha closure candidate`，不是最终验收完成态；剩余风险主要集中在 stale、UA-style actions、Composer consumption 与 validation。
+
+### 当前完成度 / Current progress
+
+- OpenSpec task progress：`19 / 23`。
+- 已完成主链路：
+  - `Scan Relationships` action 已进入 Project Map 视图。
+  - deterministic scan artifacts 已落盘到 `project-map-relations/<storage-key>/`。
+  - storage artifact 已覆盖 `manifest/profile/runs/scans/files/relations/modules/impact/context-packs/repair`。
+  - Relationship Dashboard 已支持 `Board / List / Neighborhood` 多视图。
+  - Scan Snapshot 与现有 Project Map Semantic Relations 已视觉隔离；Semantic Relations 默认收起，避免把两个 source layer 混成一套关系图。
+  - Impact summary、Hotspots、Agent Read Plan 已以 capped scan snapshot cards 方式展示。
+  - `context-packs/latest.json` 已从占位 artifact 推进为 conservative Agent Read Plan artifact。
+
+### 对齐确认 / Alignment check
+
+| Proposal target | Current status | Calibration |
+|---|---|---|
+| 一键扫描 active workspace | 已实现 | 对齐。按钮、running/success/failure 基本状态已具备。 |
+| deterministic scan pipeline | 已实现 Alpha | 对齐。已覆盖通用 inventory、manifest/config/docs/convention 关系和多语言增强 extractor。 |
+| layered local storage | 已实现 | 对齐。仍保持 mossx-native schema，不引入 UA schema。 |
+| dashboard selected neighborhood + filters | 已实现 | 对齐。并补充 UA-like board/list/neighborhood 多视图。 |
+| impact overlay | 已实现 Alpha | 对齐但需注明：当前是 summary card + one-hop/transitive artifact，不是 canvas overlay。 |
+| Agent Read Plan | 已实现 Alpha | 对齐但需注明：当前是 conservative context-pack artifact，还未接入 Composer/Agent 自动消费。 |
+| stale/repair visibility | 部分实现 | repair/read issues 已显示；stale detection 仍在 Task 16。 |
+| UA lessons 内化 | 部分实现 | dashboard/diff/read-plan 已借鉴；explain/guided read/ask/domain 仍在 Task 17。 |
+| Composer resource discovery | 未完成 | Task 18 保持待办，不应提前标记 closed。 |
+
+### 校准发现 / Calibration findings
+
+- 未跑偏：没有把 scan result 自动注入现有 Project Map semantic graph，符合“不污染主图谱、不制造性能噪音”的边界。
+- 未跑偏：没有引入 Understand-Anything schema，也没有引入第三方 graph storage。
+- 已补充：`changedFiles` override contract 已校准为 `None -> git status fallback`，`Some([]) -> explicit empty scope`，避免 optional collection 语义漂移。
+- 已补充：扫描结果不再挂在 `Inspect Relations / 检查关系` 里上下平铺；`File Relations / 文件关系` 承载 deterministic scan snapshot，`Inspect Relations / 检查关系` 回归现有 Project Map semantic graph。
+- 需要保留为风险：large scan confirmation、扫描阶段 progress、错误类型细分目前仍不完整，不能作为最终验收完成项。
+- 需要保留为风险：hotspot 当前以 `many-dependents` 为主，`cross-layer-hub / missing-test / stale / large-file` 还未完整成为 hotspot reason；其中 `missing-test` 已先进入 risk flag。
+- 需要保留为风险：module summary 当前偏 `fileCount/relationCount`，尚未完整覆盖 `cross-module count / stale flag / relation density`。
+- 需要保留为风险：当前未执行 focused validation；Task 19 仍必须保留。
+
+### 当前阶段判断 / Phase judgement
+
+当前实现可定义为：
+
+`MVP-1.5 Alpha: deterministic scan snapshot + relationship dashboard + impact/read-plan artifacts`
+
+它已经满足“用户可以扫描、读取、选择文件、查看关系、看到 impact/read-plan 摘要”的阶段目标；
+但还没有达到“完整闭环归档”的标准，因为 context-pack 尚未被 Composer/Agent consumption path 消费，stale/incremental UX 尚未完成，UA-style actions 尚未全部内化。
+
+### 下一阶段建议 / Next calibrated batch
+
+1. Task 16：实现 stale detection 与 incremental refresh UX。
+2. Task 17：实现 UA-style actions 的 mossx 内化入口，优先 `Explain selected file` 与 `Guided read tour`。
+3. Task 18：打通 Composer/Agent resource discovery 对 `context-packs/latest.json` 的消费。
+4. Task 19：执行 focused validation，并把 validation evidence 写入 change artifacts 后再考虑 verify/sync/archive。
+
 
 ## 中文+English 术语对照（Proposal Glossary）
 
@@ -120,4 +181,3 @@
 - Fresh / 最新可用
 - Stale / 过期
 - Incremental Generation / 增量生成
-

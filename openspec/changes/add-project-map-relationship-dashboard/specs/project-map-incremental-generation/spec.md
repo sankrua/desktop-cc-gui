@@ -30,7 +30,7 @@ The generation system SHALL never overwrite deterministic relation artifacts.
 - **THEN** it SHALL write only semantic overlays or suggestions, not modify `relations/*.json` directly
 
 ### Requirement: stale context awareness in generation
-Generation shall reflect stale state in prompts and confidence.
+Generation SHALL reflect stale state in prompts and confidence.
 
 #### Scenario: stale scan
 - **WHEN** scan is stale by commit/fingerprint
@@ -59,4 +59,3 @@ Calibrations and candidates SHALL keep source links to relationship artifacts.
 - stale context / 过期上下文
 - provenance / 源头追踪
 - calibration / 标定
-

@@ -26,7 +26,7 @@ Composer SHALL avoid launching another broad file scan for resource ranking when
 - **THEN** composer SHALL skip re-scan and use existing context data
 
 ### Requirement: fallback behavior
-If Project Map context is missing, composition remains backward compatible.
+Composer SHALL remain backward compatible when Project Map context is missing.
 
 #### Scenario: no relationship data
 - **WHEN** no fresh context pack exists
@@ -47,4 +47,3 @@ Composer SHALL require stable fields from context packs.
 - stale suggestions / 陈旧建议
 - fallback mode / 回退模式
 - deterministic source / 确定性来源
-
