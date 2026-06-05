@@ -1203,3 +1203,52 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 720: 优化文件关系聚焦视图
+
+**Date**: 2026-06-05
+**Task**: 优化文件关系聚焦视图
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| Code commit | `9a8cd685 fix(project-map): 优化文件关系聚焦视图` |
+| Scope | 收尾 Project Map 文件关系面板 UI 聚焦态、信息层级和文案压缩 |
+| Layout | 展开文件关系时隐藏旧 Knowledge Map 主画布；补齐文件关系聚焦态高度链路；修复上方菜单被撑高的问题 |
+| Dashboard | 合并扫描摘要标题行；将角色过滤提升到外层控制区；新增全部角色入口 |
+| Copy | 精简关系图谱标题、副标题和聚焦提示，降低说明条视觉噪音 |
+| Files | 更新 `ProjectMapPanel.tsx`、`ProjectMapRelationshipSection.tsx`、project-map 样式与中英文 i18n 文案 |
+
+**Updated Files**:
+- `src/features/project-map/components/ProjectMapPanel.tsx`
+- `src/features/project-map/components/ProjectMapRelationshipSection.tsx`
+- `src/i18n/locales/en.part5.ts`
+- `src/i18n/locales/zh.part5.ts`
+- `src/styles/project-map.css`
+- `src/styles/project-map.relationship.css`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9a8cd685` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
