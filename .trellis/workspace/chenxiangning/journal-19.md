@@ -1094,3 +1094,56 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 718: Project Map 文件关系上下文闭环
+
+**Date**: 2026-06-05
+**Task**: Project Map 文件关系上下文闭环
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Session Summary
+
+本轮完成 Project Map Relationship Dashboard 的上下文闭环阶段提交。
+
+主要内容：
+- 后端 `project_map_relations` 增加 relationship read stale summary，支持 git commit drift、changed path、fingerprint mismatch、unmapped changed file、read failure 等动态 stale reason。
+- Project Map dataset controller 暴露 relationship context-pack 与 stale summary，并支持重新加载 relationship context。
+- File Relations UI 增加 stale banner、scoped refresh，以及 UA-style actions：Explain、Diff Impact、Guided Read、Ask Map、Domain Lens。
+- Agent orchestration provider 消费 relationship context-pack，生成 `project_map_context_pack` task draft 和 relationship risk marker。
+- 更新 Project Map relationship 类型定义、i18n、CSS 和相关 tests mock。
+- OpenSpec `add-project-map-relationship-dashboard` proposal/design/tasks 回写阶段状态，任务进度更新为 23/23。
+
+验证结果：
+- `openspec validate add-project-map-relationship-dashboard --strict --no-interactive` passed。
+- `npm run typecheck` passed。
+- `cargo check --manifest-path src-tauri/Cargo.toml` passed。
+
+剩余风险：
+- 真实 UI smoke test 仍需要用户在实际项目中确认交互手感与视觉噪音。
+- 完整 `npm run test` 未执行；当前只完成 typecheck、cargo check 与 OpenSpec strict validate。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `104417eb01fb08235439a76f47884f1e278cb1e6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
