@@ -784,3 +784,50 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 711: 收口实时提问吸顶任务
+
+**Date**: 2026-06-05
+**Task**: 收口实时提问吸顶任务
+**Branch**: `feature/v0.5.6`
+
+### Summary
+
+将 pin-live-user-question-bubble Trellis task 从 planning 收口为 completed，关联既有实现 commit、OpenSpec archives、主 spec、消息区实现/测试文件与完成说明。
+
+### Main Changes
+
+本次继续清理 Trellis/OpenSpec 残留债，只处理 pin-live-user-question-bubble 的任务 metadata。
+
+已完成：
+- 确认 PRD Acceptance Criteria 已全部勾选。
+- 将 .trellis/tasks/04-21-pin-live-user-question-bubble/task.json 的 status 更新为 completed。
+- 补齐 completedAt=2026-06-05、current_phase=6。
+- 关联原始实现 commit 3f6157fc66198ebbeedde4d1dbe34983b5236851。
+- 关联 2026-04-21 原始 OpenSpec archive、2026-06-05 continuity archive、conversation-live-user-bubble-pinning 主 spec、conversation-render-surface-stability 主 spec。
+- 关联 Messages、MessagesTimeline、messagesLiveWindow、messagesUserPresentation、测试与样式文件。
+- notes 记录实时用户提问吸顶、bounded live-window 保留 latest ordinary user question、恢复历史排除、shared sticky header 对齐和 display-only contract 边界。
+
+边界：
+- 未修改生产代码。
+- 未触碰另一个 AI 正在处理的 harden-windows-ask-user-question-resume 相关 dirty 文件。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `89641455d8ce32180c47020494f8e63b9f62b2c6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
