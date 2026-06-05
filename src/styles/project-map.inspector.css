@@ -630,13 +630,13 @@ button.project-map-trace-chip {
 }
 
 .project-map-node-actions button.is-danger {
-  border-color: color-mix(in srgb, #dc2626 38%, transparent);
-  background: color-mix(in srgb, #dc2626 8%, var(--project-map-surface));
-  color: #b91c1c;
+  border-color: color-mix(in srgb, var(--project-map-error) 38%, transparent);
+  background: color-mix(in srgb, var(--project-map-error) 8%, var(--project-map-surface));
+  color: var(--project-map-error);
 }
 
 .project-map-node-actions button.is-danger:hover {
-  background: color-mix(in srgb, #dc2626 13%, var(--project-map-surface));
+  background: color-mix(in srgb, var(--project-map-error) 13%, var(--project-map-surface));
 }
 
 .project-map-node-actions button.is-primary {
@@ -783,7 +783,7 @@ button.project-map-trace-chip {
 
 .project-map-node.is-selected-relation-node {
   border-color: var(--project-map-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--project-map-accent) 20%, transparent), 0 20px 42px rgb(37 99 235 / 18%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--project-map-accent) 20%, transparent), 0 20px 42px color-mix(in srgb, var(--project-map-core) 18%, transparent);
 }
 
 .project-map-relation-group {

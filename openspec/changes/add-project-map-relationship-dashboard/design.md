@@ -258,6 +258,58 @@ File Relationship Explorer
 - `Board` is an auxiliary node overview inspired by UA-style tile lanes; it MUST NOT dominate the default reasoning path.
 - The Chain center column MUST prioritize `calls` and show method/function candidate when the scanner has evidence.
 - The Evidence Inspector MUST show source file, target file, call candidate, and evidence line/excerpt.
+
+## Corrective design note：UA-like File Relationship Workspace（2026-06-05）
+
+### 中文导读
+
+真实 UI 对比显示：当前实现虽然有 Graph，但整体仍是 dashboard chrome + 多 tab 列表，和 UA 的“图谱工作台”差距较大。
+本设计更新将关系面板重心从 `Dashboard / Chain` 迁移到 `Workspace / Graph + Files + Read`。
+
+### Interaction architecture
+
+```text
+File Relationship Workspace
+  Header: compact scan status + metrics + rescan
+  Controls: optional collapsed search/filter chrome
+  Main switch: Graph / Files / Read
+
+  Graph:
+    left rail: high-signal file navigation
+    center canvas: selected one-hop relationship graph
+    right inspector: selected node/edge details
+
+  Files:
+    path/module tree with all filtered files
+    each file row shows role/language/in/out/all counts
+    click selects file and returns to Graph
+
+  Read:
+    selected file profile
+    current calls/outgoing/incoming summary
+    context-pack must-read/related/tests/contracts
+    impact and risk flags
+```
+
+### State contract
+
+- `relationshipDashboardViewMode` SHOULD narrow to `graph | files | read`.
+- `selectedRelationshipFileId` remains the single selection source for all three views.
+- `selectedRelationshipRelationId` remains the edge selection source and feeds Inspector.
+- Search, role filter, type filter, and noise toggle MUST affect Graph rail, Files tree, and Read context consistently.
+
+### Rendering contract
+
+- Graph view MUST NOT render old Project Map canvas underneath when file relations are expanded.
+- Files view MUST NOT cap by role lane; it MAY cap very large folder groups with explicit count copy, but the page itself should scroll.
+- Read view MUST treat `contextPack` as first-class content, not hidden action output.
+- Inspector MAY keep action buttons, but those actions are secondary to persistent Info/Read content.
+
+### Accessibility / i18n
+
+- New view labels and section headings MUST be translated in `zh.part5.ts` and `en.part5.ts`.
+- File tree buttons MUST expose full path through `title`.
+- Empty states MUST describe whether the cause is filter/search/no snapshot.
 - Metrics SHALL be compact status chips, not large dashboard cards, to reduce visual noise and preserve reading space.
 
 ### Product boundary
@@ -426,3 +478,108 @@ Graph-first 不是把图谱塞进一个固定面板，而是让图谱成为主�
 - Graph toolbar SHALL provide zoom in, zoom out, and reset view actions.
 - User zoom SHALL multiply the responsive auto-fit scale instead of replacing it.
 - Reset view SHALL restore pan and user zoom while keeping the current selected file.
+
+## 13H corrective design：Explorer Chrome / Navigation Intent Split / Editor Line Feedback（2026-06-06）
+
+### 中文导读
+
+13G 解决了 Graph workspace 空间问题，但真实使用中又暴露出更细的交互契约问题：顶部 chrome 仍混杂 semantic Project Map 与 file relationship snapshot，节点点击语义过载，源码打开缺少 target definition 定位和视觉确认。
+
+13H 的设计原则是：`File Relationship Explorer` 是 deterministic scan snapshot 的工作区。用户进入这个工作区后，chrome、graph、inspector、editor feedback 都必须服务于“看懂文件/方法关系”这一条主线。
+
+### Header and chrome contract
+
+- Project Map relationship active state SHALL replace the left primary breadcrumb/summary slot with `File Relations / 文件关系 Explorer`.
+- In relationship-focused mode, old semantic-map counters such as nodes, Lens, and candidates SHALL be hidden from the same header row.
+- Relationship inline summary SHALL be rendered as compact status content, not a bordered card.
+- Relationship inline summary SHALL NOT duplicate the global `Scan Relationships` action.
+- The global/top scan action remains the canonical scan/recovery entry.
+- The relationship header summary MAY show scan run id, file count, relation count, ignored count, repair count, and freshness state as metadata.
+- Header compaction MUST NOT remove stale/failure recovery affordance from the global toolbar.
+
+### View switch icon contract
+
+- The `Graph 图谱` switch SHOULD use a relationship/graph glyph.
+- The glyph MUST NOT look like an unselected radio indicator, because the active state already has underline/selected styles.
+- The icon is visual affordance only and MUST NOT introduce a separate selected-state model.
+
+### Node interaction contract
+
+- A graph file node has two distinct interaction targets:
+  - node body: inspect file details
+  - node jump icon: navigate graph focus / relationship chain
+- Node body click SHALL set the inspected file shown in the right Inspector.
+- Node body click SHALL NOT change graph focus, selected relationship, or relationship chain by itself.
+- Node jump icon click SHALL:
+  - stop propagation from node body click
+  - set selected graph focus to the clicked file
+  - set inspected file to the clicked file
+  - clear selected relationship edge
+- Node keyboard handling SHOULD preserve inspect behavior for Enter/Space on the node body.
+- Jump icon SHOULD remain a real button with accessible title/label semantics.
+
+### Edge direction contract
+
+- Relationship edges SHALL preserve the existing SVG line renderer.
+- Each visible relationship edge SHOULD render a direction arrow aligned to the line direction.
+- Aggregate/dense edges SHOULD also show direction where possible, while staying visually quieter than selected direct edges.
+- Arrow rendering is presentation-only and MUST NOT alter relation direction, relation type, confidence, or evidence.
+
+### Inspector source/target opening contract
+
+- Source and target open actions SHALL use the existing `onOpenEvidenceFile(path, location?)` boundary.
+- Source opening MAY use evidence line when the evidence path matches the source file path.
+- Target opening SHALL prefer a resolved target symbol definition line when available.
+- Target symbol resolution SHALL use this input:
+  - selected `ProjectMapFileRelation`
+  - `relationshipDashboardData.symbols`
+  - relation call candidate parsed into a likely target symbol name
+- Target symbol resolution SHALL match by `targetFileId` first and symbol name second.
+- Exact symbol-name match SHOULD be preferred.
+- Case-insensitive symbol-name fallback MAY be used for scanner/language differences.
+- If no symbol match exists, target opening SHALL fall back to the previous evidence-line behavior.
+- If no line is available, the action SHALL still open the target file without a location.
+- The UI MUST NOT invent a target line without a symbol or matching evidence.
+
+### Editor navigation feedback contract
+
+- File opening at a line uses the existing editor navigation target state.
+- After CodeMirror successfully focuses the requested location, the editor SHOULD apply a transient line decoration to the target line.
+- The target line SHOULD flash 3 times over 2 seconds.
+- The flash SHALL be single-line only.
+- The flash SHALL clear itself after the animation window.
+- The flash SHALL clear when changing file or when the editor navigation surface unmounts.
+- The flash MUST NOT use persistent Git line markers, annotation markers, diff markers, or file content changes.
+- The flash SHOULD use theme-aware CSS tokens so light, dark, dim, and custom VS Code themes remain readable.
+
+### Theme and i18n contract
+
+- Relationship visible copy MUST use i18n keys rather than hardcoded strings.
+- Relationship graph/read/inspector/action copy SHOULD keep Chinese UI readable while preserving precise English professional terms where appropriate.
+- Relationship-specific colors SHOULD be exposed through Project Map CSS variables:
+  - relation call/import/test/other colors
+  - inspected file state
+  - info/core/accent states
+- Components SHOULD reference variables rather than hardcoded naked hex colors for active, hover, selected, inspected, edge, and arrow states.
+- CSS fallbacks MAY keep safe default colors, but the primary path must remain theme-token driven.
+
+### Good / Base / Bad cases
+
+- Good: clicking `WebUserController.java` node only changes Inspector; clicking its jump icon recenters/focuses graph and keeps Inspector on the same file.
+- Good: selecting a `calls` edge shows edge evidence; `Open Target` lands on the target method definition line if the symbol artifact contains it.
+- Good: opened target line flashes briefly and then returns to normal editor rendering.
+- Base: target symbol is unavailable; `Open Target` opens the file and uses matching evidence line if available.
+- Base: custom theme maps accent tokens differently; arrows, selected node, inspected node, and line flash remain visible.
+- Bad: node body click both changes Inspector and jumps graph focus, making detail browsing feel unstable.
+- Bad: `Open Target` always uses source evidence line and therefore opens the target file at the wrong row.
+- Bad: line feedback is implemented as a Git marker and stays visible forever.
+- Bad: relationship header duplicates scan buttons and semantic Project Map counters, making the active relationship workspace visually noisy.
+
+### Tests / validation points
+
+- Component interaction SHOULD cover node click inspect-only and jump-icon graph focus behavior.
+- Component interaction SHOULD cover edge selection still updates Inspector edge evidence.
+- Relationship action coverage SHOULD assert `Open Target` uses target symbol line before evidence fallback.
+- Editor navigation coverage SHOULD assert a line-flash decoration is applied after navigation and cleared after the timeout.
+- Theme review SHOULD inspect dark/light/custom theme tokens for relationship arrows, inspected state, active view switch, and editor flash visibility.
+- i18n review SHOULD search relationship UI copy for hardcoded visible strings.

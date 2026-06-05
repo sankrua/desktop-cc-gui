@@ -1,0 +1,72 @@
+## 1. Data Model and Storage
+
+- [ ] 1.1 [P0][Depends: proposal/specs] Define shared API contract TypeScript/Rust data types for `ApiEndpoint`, `ApiGroup`, `ApiParameter`, `ApiRequestBody`, `ApiResponse`, `ApiEvidence`, `ApiSchemaRef`, `ApiCallChain`, and `ApiContractGraph`; input: OpenSpec specs; output: compile-safe domain model; validation: typecheck and fixture serialization.
+- [ ] 1.2 [P0][Depends: 1.1] Add API contract artifact namespace at `project-map-relations/<storage-key>/api-contracts/` with manifest, ownership storage key, run metadata, endpoint index, group index, schema index, and chain index; input: active workspace scan result; output: persisted API artifacts; validation: read/write round trip fixture.
+- [ ] 1.3 [P0][Depends: 1.2] Enforce workspace ownership checks for API contract artifact read/write; input: mismatched manifest fixture; output: rejected or quarantined artifact; validation: focused ownership mismatch test.
+- [ ] 1.4 [P1][Depends: 1.2] Add stale and repair metadata for API contract artifacts; input: changed workspace fingerprint; output: visible stale summary; validation: fixture with stale manifest.
+- [ ] 1.5 [P0][Depends: 1.1] Implement evidence redaction utility for headers, cookies, examples, credentials, tokens, passwords, secrets, api keys, private keys, and env-style values; input: sensitive evidence fixtures; output: redacted UI-safe evidence; validation: redaction fixture tests.
+
+## 2. Scan Orchestration
+
+- [ ] 2.1 [P0][Depends: 1.1] Add an independent API contract scan branch to Project Map scan orchestration; input: workspace scan request; output: API scan run result isolated from file relationship scan; validation: branch failure does not corrupt file relationship artifacts.
+- [ ] 2.2 [P0][Depends: 2.1] Implement scan result merge rules that prefer strong contract evidence and merge duplicate endpoint identities; input: OpenAPI plus source handler fixture; output: single merged endpoint with both evidence sets; validation: duplicate merge fixture.
+- [ ] 2.3 [P0][Depends: 2.1] Implement scan scope controls for workspace ignore, dependency/generated directory skip, binary skip, max file size, and skipped reason metadata; input: workspace containing dependencies/generated/binary files; output: bounded scan with skip summary; validation: scan scope fixture.
+- [ ] 2.4 [P0][Depends: 2.2] Implement protocol-specific canonical endpoint identity for HTTP, gRPC, GraphQL, and C ABI / generic RPC fallback; input: duplicate and ambiguous endpoint fixtures; output: stable merge or explicit ambiguity; validation: identity fixture tests.
+- [ ] 2.5 [P1][Depends: 2.1] Surface API branch progress and failure status separately from file relationship branch status; input: parser failure fixture; output: API-specific error state; validation: UI/state reducer focused test.
+
+## 3. Strong Contract Adapters
+
+- [ ] 3.1 [P0][Depends: 1.1] Implement OpenAPI / Swagger adapter; input: `openapi.yaml` and `swagger.json`; output: endpoints with `spec` confidence and schema evidence; validation: fixture parse test.
+- [ ] 3.2 [P0][Depends: 1.1] Implement protobuf / gRPC adapter; input: `.proto` services and messages; output: RPC endpoints, request schema refs, response schema refs; validation: fixture parse test.
+- [ ] 3.3 [P1][Depends: 1.1] Implement GraphQL schema adapter; input: GraphQL schema files; output: query/mutation/subscription endpoints and schema evidence; validation: fixture parse test.
+
+## 4. Language Source Adapters
+
+- [ ] 4.0 [P0][Depends: 1.1] Register first-stage adapter skeletons for Java, Kotlin, Python, Go, C, C++, TypeScript, JavaScript, C#, and Rust with explicit no-candidate or unsupported reason output; input: mixed-language workspace fixture; output: adapter registry coverage and skip/no-candidate reasons; validation: adapter registry fixture test.
+- [ ] 4.1 [P0][Depends: 1.1] Implement Java / Kotlin adapter for Spring MVC, WebFlux, JAX-RS, Micronaut, and Quarkus route annotations; input: controller fixtures; output: endpoint candidates with handler evidence; validation: adapter fixture tests.
+- [ ] 4.2 [P0][Depends: 1.1] Implement Python adapter for FastAPI, Flask, Django, DRF, and typed function route patterns; input: route fixtures; output: endpoint candidates and request/response model refs when detectable; validation: adapter fixture tests.
+- [ ] 4.3 [P0][Depends: 1.1] Implement Go adapter for net/http, Gin, Echo, Fiber, Chi, and gRPC registration; input: router fixtures; output: endpoint candidates and handler symbols; validation: adapter fixture tests.
+- [ ] 4.4 [P0][Depends: 1.1] Implement TypeScript / JavaScript adapter for Express, Koa, Fastify, NestJS, and Next API routes; input: route fixtures; output: endpoint candidates and source evidence; validation: adapter fixture tests.
+- [ ] 4.5 [P1][Depends: 1.1] Implement C# adapter for ASP.NET Core controllers and Minimal API; input: controller and minimal API fixtures; output: endpoint candidates with confidence; validation: adapter fixture tests.
+- [ ] 4.6 [P1][Depends: 1.1] Implement Rust adapter for Axum, Actix Web, Rocket, and Warp; input: router fixtures; output: endpoint candidates with handler evidence; validation: adapter fixture tests.
+- [ ] 4.7 [P0][Depends: 1.1] Implement C adapter baseline for Mongoose, CivetWeb, libmicrohttpd, handler tables, and ABI-style entry points; input: C server fixtures; output: endpoint or handler candidates with explicit confidence/evidence; validation: low-confidence fixture tests.
+- [ ] 4.8 [P0][Depends: 1.1] Implement C++ adapter baseline for Drogon, Crow, Oat++, Pistache, RESTinio, Boost.Beast, and gRPC; input: C++ server fixtures; output: endpoint or handler candidates with explicit confidence/evidence; validation: adapter fixture tests.
+
+## 5. Method Chain Extraction
+
+- [ ] 5.1 [P0][Depends: language adapters] Extract conservative handler-to-service call chain candidates for supported languages with edge kind, direction, max depth, cycle guard, and truncated reason; input: handler fixtures with service calls and cycles; output: bounded `ApiCallChain` edges; validation: per-language chain fixture tests.
+- [ ] 5.2 [P1][Depends: 5.1] Attach source line and excerpt evidence to method chain edges when available; input: source file fixtures; output: chain evidence with line/excerpt; validation: evidence fixture tests.
+- [ ] 5.3 [P1][Depends: 5.1] Represent unavailable method chains explicitly in endpoint metadata; input: endpoint without chain fixture; output: endpoint visible with no fabricated chain; validation: no-chain fixture test.
+
+## 6. API Contract View UI
+
+- [ ] 6.1 [P0][Depends: 1.1] Add `接口 API` as the fourth Project Map relationship dashboard tab; input: API tab state; output: selectable tab without breaking Graph, Files, or Read; validation: component focused test or manual smoke.
+- [ ] 6.2 [P0][Depends: 1.2] Implement API empty state and scan status summary; input: workspace without API artifacts; output: clear empty state and scan hint; validation: UI fixture state.
+- [ ] 6.3 [P0][Depends: 1.2] Implement API graph data mapper from `ApiContractGraph` artifacts to UI nodes and edges; input: persisted API artifacts; output: renderable graph model; validation: mapper unit test.
+- [ ] 6.4 [P0][Depends: 6.3] Implement group-first API graph rendering by protocol, module/package/namespace, controller/router/service, endpoint with thresholds `<=30 endpoint direct`, `31-50 selected-group endpoint reveal`, and `>50 group-only first render`; input: large endpoint fixture; output: grouped graph nodes with aggregate counts; validation: large graph smoke test.
+- [ ] 6.5 [P0][Depends: 6.4] Implement drill-down interactions from group nodes to endpoint nodes; input: selected group node; output: next hierarchy level or endpoint children; validation: UI interaction test or manual smoke.
+- [ ] 6.6 [P1][Depends: 6.4] Implement API graph zoom, reset, wheel zoom, and layout selection parity with relationship graph controls; input: user graph controls; output: updated graph transform/layout; validation: manual smoke.
+- [ ] 6.7 [P0][Depends: 6.1] Add localized labels for API tab, empty state, graph controls, filters, confidence labels, inspector fields, scan errors, and redaction states; input: Chinese UI locale; output: no raw i18n keys in API view; validation: i18n fixture or manual smoke.
+
+## 7. API Inspector and Filtering
+
+- [ ] 7.1 [P0][Depends: 6.3] Implement endpoint inspector showing protocol, method/operation, path, framework, handler, source file, path/query/header/cookie parameters, request body, response status codes, content types, error responses, request schema, response schema, description, usage scenario, confidence, and redacted evidence; input: selected endpoint; output: populated inspector; validation: fixture render test.
+- [ ] 7.2 [P0][Depends: 5.1, 7.1] Implement method chain inspector with source symbol, target symbol, file, line, excerpt, and confidence; input: selected chain edge; output: evidence-rich chain details; validation: fixture render test.
+- [ ] 7.3 [P1][Depends: 6.4] Implement group inspector with endpoint count, protocol distribution, language distribution, confidence distribution, and drill-down affordances; input: selected group; output: aggregate inspector; validation: fixture render test.
+- [ ] 7.4 [P1][Depends: 6.4] Implement filters for protocol, language, framework, module, namespace, controller, confidence, and text query; input: filter state; output: reduced graph preserving hierarchy; validation: filter mapper unit test.
+- [ ] 7.5 [P1][Depends: 7.4] Implement search result hierarchy reveal; input: text search matching endpoint inside collapsed group; output: ancestor groups revealed without flat replacement; validation: search fixture test.
+
+## 8. Project Map Generation Integration
+
+- [ ] 8.1 [P1][Depends: 1.2, 1.5] Allow Project Map generation context builder to read API endpoint summaries, groups, and redacted method chain evidence; input: API contract artifacts; output: source-backed context entries; validation: context builder fixture.
+- [ ] 8.2 [P1][Depends: 8.1] Prevent API endpoint flattening into root-level semantic nodes during generation; input: large endpoint artifact; output: grouped evidence context without one-node-per-endpoint root flattening; validation: generation prompt/context fixture.
+- [ ] 8.3 [P1][Depends: 8.1] Preserve API evidence provenance in generated Project Map content; input: generated content referencing API contract; output: source links to schema/source/evidence lines; validation: provenance fixture.
+
+## 9. Validation and Rollout
+
+- [ ] 9.1 [P0][Depends: all specs] Run `openspec validate add-project-map-api-contract-view --strict --no-interactive`; input: completed artifacts; output: strict validation pass; validation: command exits successfully.
+- [ ] 9.2 [P0][Depends: implementation] Run `npm run typecheck`; input: frontend/backend TypeScript changes; output: typecheck pass; validation: command exits successfully.
+- [ ] 9.3 [P0][Depends: implementation] Run `cargo check --manifest-path src-tauri/Cargo.toml` and focused Rust/backend tests when backend scan/storage changes are touched; input: Rust/backend changes; output: backend validation pass; validation: command exits successfully.
+- [ ] 9.4 [P1][Depends: implementation] Run focused adapter fixture tests for strong contract sources and language adapters; input: adapter fixtures; output: parser and merge tests pass; validation: focused test command exits successfully.
+- [ ] 9.5 [P1][Depends: implementation] Run API tab smoke test on a project with many endpoints; input: large endpoint fixture or real workspace; output: group-first rendering, drill-down, inspector, zoom, filters, i18n, and redaction verified; validation: manual smoke notes.
+- [ ] 9.6 [P2][Depends: validation] Document known adapter confidence limitations and unsupported framework gaps; input: implemented adapter matrix; output: user-visible limitation notes; validation: docs review.

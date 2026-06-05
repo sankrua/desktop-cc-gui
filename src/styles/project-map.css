@@ -25,6 +25,12 @@
   --project-map-success: var(--status-success, var(--success, #16a34a));
   --project-map-warning: var(--status-warning, var(--warning, #f59e0b));
   --project-map-error: var(--status-error, var(--destructive, #dc2626));
+  --project-map-info: var(--status-info, var(--info, color-mix(in srgb, var(--project-map-accent) 68%, var(--project-map-success))));
+  --project-map-core: var(--project-map-accent);
+  --project-map-relation-calls: color-mix(in srgb, var(--project-map-accent) 72%, var(--project-map-success));
+  --project-map-relation-imports: var(--project-map-info);
+  --project-map-relation-tests: color-mix(in srgb, var(--project-map-success) 72%, var(--project-map-warning));
+  --project-map-relation-inspected: var(--project-map-success);
   --project-map-shadow: color-mix(in srgb, var(--background, #000000) 58%, transparent);
   --project-map-grid-line: color-mix(in srgb, var(--project-map-border) 58%, transparent);
   --project-map-grid-glow: color-mix(in srgb, var(--project-map-accent) 18%, transparent);
@@ -385,31 +391,6 @@
 .project-map-panel.is-chrome-collapsed .project-map-stage {
   grid-template-rows: auto minmax(0, 1fr);
   padding: 6px 10px 10px;
-}
-
-.project-map-stage.is-file-relations-focused {
-  display: flex;
-  flex-direction: column;
-}
-
-.project-map-stage.is-file-relations-focused .project-map-lens-shell {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  margin-bottom: 0;
-}
-
-.project-map-stage.is-file-relations-focused .project-map-relationship-scan-panel {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  min-height: 0;
-  max-height: none;
-}
-
-.project-map-stage.is-file-relations-focused .project-map-graph-canvas {
-  display: none;
 }
 
 .project-map-task-card code {
@@ -893,7 +874,7 @@
     );
   box-shadow:
     0 18px 46px color-mix(in srgb, var(--project-map-shadow) 78%, transparent),
-    0 1px 0 color-mix(in srgb, #ffffff 58%, transparent) inset;
+    0 1px 0 color-mix(in srgb, var(--project-map-accent-text) 58%, transparent) inset;
 }
 
 .project-map-auto-ingestion-dialog::after {
@@ -1222,14 +1203,14 @@
 }
 
 .project-map-delete-dialog {
-  border-color: color-mix(in srgb, #dc2626 30%, var(--project-map-border));
+  border-color: color-mix(in srgb, var(--project-map-error) 30%, var(--project-map-border));
   background: var(--project-map-surface);
   color: var(--project-map-text-strong);
 }
 
 .project-map-delete-dialog-warning {
   margin: 8px 0 0;
-  color: #b91c1c;
+  color: var(--project-map-error);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -1260,9 +1241,9 @@
 }
 
 .project-map-delete-dialog-danger {
-  border: 1px solid color-mix(in srgb, #dc2626 44%, transparent);
-  background: #dc2626;
-  color: #ffffff;
+  border: 1px solid color-mix(in srgb, var(--project-map-error) 44%, transparent);
+  background: var(--project-map-error);
+  color: var(--project-map-accent-text);
 }
 
 .project-map-delete-dialog-danger svg {
@@ -1409,7 +1390,7 @@
 }
 
 .project-map-edge.is-path-edge {
-  stroke: color-mix(in srgb, #2563eb 74%, #22d3ee 26%);
+  stroke: color-mix(in srgb, var(--project-map-core) 74%, var(--project-map-info) 26%);
   stroke-width: 3;
   stroke-dasharray: 7 5;
 }
@@ -1472,23 +1453,23 @@
 .project-map-node.is-core {
   width: 220px;
   min-height: 132px;
-  border: 2px solid color-mix(in srgb, #2563eb 76%, #7dd3fc 24%);
+  border: 2px solid color-mix(in srgb, var(--project-map-core) 76%, var(--project-map-info) 24%);
   border-left-width: 7px;
   padding: 13px 36px 13px 14px;
   background:
-    linear-gradient(135deg, color-mix(in srgb, #2563eb 18%, transparent), transparent 44%),
-    linear-gradient(180deg, color-mix(in srgb, #7dd3fc 10%, transparent), transparent 72%),
-    color-mix(in srgb, var(--project-map-surface) 88%, #2563eb 12%);
+    linear-gradient(135deg, color-mix(in srgb, var(--project-map-core) 18%, transparent), transparent 44%),
+    linear-gradient(180deg, color-mix(in srgb, var(--project-map-info) 10%, transparent), transparent 72%),
+    color-mix(in srgb, var(--project-map-surface) 88%, var(--project-map-core) 12%);
   box-shadow:
-    0 0 0 1px color-mix(in srgb, #7dd3fc 38%, transparent),
-    0 0 0 6px color-mix(in srgb, #2563eb 14%, transparent),
-    0 22px 42px color-mix(in srgb, var(--project-map-shadow) 72%, #2563eb 28%);
+    0 0 0 1px color-mix(in srgb, var(--project-map-info) 38%, transparent),
+    0 0 0 6px color-mix(in srgb, var(--project-map-core) 14%, transparent),
+    0 22px 42px color-mix(in srgb, var(--project-map-shadow) 72%, var(--project-map-core) 28%);
 }
 
 .project-map-node.is-core .project-map-node-kind {
-  background: linear-gradient(90deg, #2563eb, #0891b2);
-  color: #f8fbff;
-  box-shadow: 0 0 0 1px color-mix(in srgb, #bfdbfe 34%, transparent);
+  background: linear-gradient(90deg, var(--project-map-core), var(--project-map-info));
+  color: var(--project-map-accent-text);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--project-map-info) 34%, transparent);
 }
 
 .project-map-node.is-core strong {
@@ -1498,9 +1479,9 @@
 
 .project-map-node.is-core:hover {
   box-shadow:
-    0 0 0 1px color-mix(in srgb, #7dd3fc 48%, transparent),
-    0 0 0 7px color-mix(in srgb, #2563eb 18%, transparent),
-    0 24px 44px color-mix(in srgb, var(--project-map-shadow) 68%, #2563eb 32%);
+    0 0 0 1px color-mix(in srgb, var(--project-map-info) 48%, transparent),
+    0 0 0 7px color-mix(in srgb, var(--project-map-core) 18%, transparent),
+    0 24px 44px color-mix(in srgb, var(--project-map-shadow) 68%, var(--project-map-core) 32%);
 }
 
 .project-map-node.is-hub {
@@ -1515,11 +1496,11 @@
 }
 
 .project-map-node.is-core.is-selected {
-  border-color: color-mix(in srgb, #2563eb 82%, #7dd3fc 18%);
+  border-color: color-mix(in srgb, var(--project-map-core) 82%, var(--project-map-info) 18%);
   box-shadow:
-    0 0 0 2px color-mix(in srgb, #bfdbfe 44%, transparent),
-    0 0 0 8px color-mix(in srgb, #2563eb 18%, transparent),
-    0 24px 46px color-mix(in srgb, var(--project-map-shadow) 66%, #2563eb 34%);
+    0 0 0 2px color-mix(in srgb, var(--project-map-info) 44%, transparent),
+    0 0 0 8px color-mix(in srgb, var(--project-map-core) 18%, transparent),
+    0 24px 46px color-mix(in srgb, var(--project-map-shadow) 66%, var(--project-map-core) 34%);
 }
 
 .project-map-node.is-group-selected:not(.is-selected) {
@@ -1528,19 +1509,19 @@
 }
 
 .project-map-node.is-search-match {
-  border-color: color-mix(in srgb, #0891b2 72%, transparent);
+  border-color: color-mix(in srgb, var(--project-map-info) 72%, transparent);
   box-shadow:
-    0 0 0 2px color-mix(in srgb, #0891b2 22%, transparent),
+    0 0 0 2px color-mix(in srgb, var(--project-map-info) 22%, transparent),
     0 14px 30px var(--project-map-shadow);
 }
 
 .project-map-node.is-path-node {
-  border-color: color-mix(in srgb, #22d3ee 72%, transparent);
+  border-color: color-mix(in srgb, var(--project-map-info) 72%, transparent);
   background:
-    linear-gradient(135deg, color-mix(in srgb, #2563eb 12%, transparent), transparent 58%),
+    linear-gradient(135deg, color-mix(in srgb, var(--project-map-core) 12%, transparent), transparent 58%),
     color-mix(in srgb, var(--project-map-surface) 94%, transparent);
   box-shadow:
-    0 0 0 3px color-mix(in srgb, #22d3ee 20%, transparent),
+    0 0 0 3px color-mix(in srgb, var(--project-map-info) 20%, transparent),
     0 16px 34px var(--project-map-shadow);
 }
 
@@ -2460,7 +2441,7 @@
   border: 1px solid var(--project-map-border);
   border-radius: 16px;
   background: color-mix(in srgb, var(--project-map-surface) 88%, transparent);
-  box-shadow: 0 14px 40px rgb(15 23 42 / 8%);
+  box-shadow: 0 14px 40px color-mix(in srgb, var(--project-map-shadow) 8%, transparent);
   overflow: auto;
 }
 
@@ -2682,7 +2663,7 @@
 
 .project-map-node.is-evidence-file-node {
   border-color: color-mix(in srgb, var(--project-map-accent) 72%, var(--project-map-border));
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--project-map-accent) 18%, transparent), 0 20px 40px rgb(37 99 235 / 16%);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--project-map-accent) 18%, transparent), 0 20px 40px color-mix(in srgb, var(--project-map-core) 16%, transparent);
 }
 
 @media (max-width: 900px) {

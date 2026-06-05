@@ -30,6 +30,7 @@ pub(crate) struct ProjectMapRelationshipReadResponse {
     relations: Option<Value>,
     relations_by_file: Option<Value>,
     relations_by_type: Option<Value>,
+    symbols: Option<Value>,
     modules: Option<Value>,
     impact: Option<Value>,
     context_pack: Option<Value>,
@@ -2667,6 +2668,7 @@ pub(crate) async fn project_map_relationship_read(
     let relations = read_json_with_errors(&root, "relations/latest.json", &mut read_errors);
     let relations_by_file = read_json_with_errors(&root, "relations/by-file.json", &mut read_errors);
     let relations_by_type = read_json_with_errors(&root, "relations/by-type.json", &mut read_errors);
+    let symbols = read_json_with_errors(&root, "symbols/chunks-000.json", &mut read_errors);
     let modules = read_json_with_errors(&root, "modules/latest.json", &mut read_errors);
     let impact = read_json_with_errors(&root, "impact/latest.json", &mut read_errors);
     let context_pack = read_json_with_errors(&root, "context-packs/latest.json", &mut read_errors);
@@ -2689,6 +2691,7 @@ pub(crate) async fn project_map_relationship_read(
         relations,
         relations_by_file,
         relations_by_type,
+        symbols,
         modules,
         impact,
         context_pack,

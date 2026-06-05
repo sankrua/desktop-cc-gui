@@ -1944,17 +1944,64 @@ export function ProjectMapPanel({
         {!isProjectMapChromeCollapsed ? (
           <div className={cn("project-map-lens-shell", isLensStripCollapsed && "is-collapsed")}>
             <div className="project-map-stage-toolbar">
-              <div className="project-map-breadcrumb" aria-label={t("projectMap.breadcrumb")}>
-                <span className="project-map-breadcrumb-root">
-                  <Network aria-hidden />
-                  {t("projectMap.breadcrumbRoot")}
-                </span>
-                {activeLens && focusNodeId ? (
+              <div
+                className={cn("project-map-breadcrumb", visibleSectionState.fileRelations && "is-file-relations-summary")}
+                aria-label={visibleSectionState.fileRelations
+                  ? t("projectMap.relationship.dashboardTitle")
+                  : t("projectMap.breadcrumb")}
+              >
+                {visibleSectionState.fileRelations ? (
+                  <div className="project-map-relationship-inline-summary" role="status">
+                    <Network aria-hidden />
+                    <div className="project-map-relationship-inline-copy">
+                      <strong>{t("projectMap.relationship.dashboardTitle")}</strong>
+                      <span>
+                        {relationshipSummaryState.status === "success"
+                          ? t("projectMap.relationship.dashboardReady", {
+                              runId: relationshipSummaryState.summary.scanRunId,
+                            })
+                          : relationshipSummaryState.status === "failed"
+                            ? t("projectMap.relationship.failed", {
+                                message: relationshipSummaryState.message,
+                              })
+                            : t("projectMap.relationship.dashboardEmpty")}
+                      </span>
+                    </div>
+                    {relationshipSummaryState.status === "success" ? (
+                      <div className="project-map-relationship-inline-metrics">
+                        <span>
+                          <strong>{relationshipSummaryState.summary.fileCount}</strong>
+                          {t("projectMap.relationship.metricFiles")}
+                        </span>
+                        <span>
+                          <strong>{relationshipSummaryState.summary.relationCount}</strong>
+                          {t("projectMap.relationship.metricRelations")}
+                        </span>
+                        <span>
+                          <strong>{relationshipSummaryState.summary.ignoredCount}</strong>
+                          {t("projectMap.relationship.metricIgnored")}
+                        </span>
+                        <span>
+                          <strong>{relationshipSummaryState.summary.repairIssueCount}</strong>
+                          {t("projectMap.relationship.metricRepair")}
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <>
+                    <span className="project-map-breadcrumb-root">
+                      <Network aria-hidden />
+                      {t("projectMap.breadcrumbRoot")}
+                    </span>
+                    {activeLens && focusNodeId ? (
                   <>
                     <span>/</span>
                     <strong>{activeLens.title}</strong>
                   </>
-                ) : null}
+                    ) : null}
+                  </>
+                )}
               </div>
               <div className="project-map-stage-stats">
                 <span>{t("projectMap.totalNodes", { count: dataset.nodes.length })}</span>
@@ -2147,6 +2194,7 @@ export function ProjectMapPanel({
               activeWorkspaceId={activeWorkspace?.id ?? null}
               activeReadLocation={datasetController.activeReadLocation}
               expanded={visibleSectionState.fileRelations}
+              onOpenEvidenceFile={onOpenEvidenceFile}
               reloadRelationshipContext={datasetController.reloadRelationshipContext}
               scanRequestId={relationshipScanRequestId}
               onSummaryStateChange={setRelationshipSummaryState}

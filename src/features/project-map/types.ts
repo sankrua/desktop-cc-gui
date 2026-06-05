@@ -599,6 +599,15 @@ export type ProjectMapScannedFile = {
   parseStatus: ProjectMapRelationshipParseStatus;
 };
 
+export type ProjectMapRelationshipSymbol = {
+  id: string;
+  fileId: string;
+  name: string;
+  kind: string;
+  language: ProjectMapRelationshipLanguage;
+  line: number;
+};
+
 export type ProjectMapFileRelation = {
   id: string;
   sourceFileId: string;
@@ -749,6 +758,7 @@ export type ProjectMapRelationshipReadResponse = {
   relations?: unknown;
   relationsByFile?: unknown;
   relationsByType?: unknown;
+  symbols?: unknown;
   modules?: unknown;
   impact?: unknown;
   contextPack?: unknown;

@@ -259,6 +259,59 @@
 
 ### UA reference mapping / UA 复刻映射
 
+## Proposal supplement：UA-like File Relationship Workspace（2026-06-05）
+
+### 中文导读
+
+用户再次对比 Understand-Anything 后确认：当前 mossx 的文件关系视图仍然偏“扫描结果管理面板”，和 UA 的 graph-first workspace 有明显差距。
+本次 deepening 的目标不是继续堆 tab，而是把关系扫描结果投影成一个更清晰的工作台：
+
+- 主画布负责关系空间理解。
+- 侧栏负责文件定位。
+- Inspector 负责解释当前选中节点或边。
+- Read 负责下一步阅读顺序。
+
+### Problem correction / 问题纠偏
+
+- `Chain` 当前只是一跳边列表，和 Graph/Inspector 重复，缺少独立认知价值。
+- `Board` 当前按 role 分组，会让用户误以为“只剩某一类文件”，也无法像 UA 文件树一样稳定导航全部文件。
+- 顶部 chrome、统计、说明文案过重，挤占主画布，削弱 graph-first 体验。
+- Advanced action 输出隐藏在按钮后，无法承担 UA `Project Tour / LearnPanel` 的阅读路径价值。
+
+### Updated product contract / 更新产品契约
+
+- Default view MUST remain `Graph 图谱`.
+- View switch SHOULD expose only `Graph / Files / Read`.
+- `Chain` tab SHOULD be removed; selected edge list SHALL live inside Inspector/Read rather than作为主 tab。
+- `Files` view SHOULD use a path/module tree projection and show all filtered files through scroll, not role-lane caps.
+- `Read` view SHOULD project `contextPack` and `impactSummary` into an actionable reading path:
+  - selected file profile
+  - must-read files
+  - related files
+  - test targets
+  - contracts
+  - risk flags
+  - current selected-file incoming/outgoing/calls summary
+- Graph canvas SHOULD visually dominate the relationship panel, with file rail and inspector as supporting surfaces.
+- Relationship copy SHOULD be minimal; scan id and metrics are status metadata, not primary content.
+
+### UA reference mapping / UA 复刻映射
+
+| UA surface | mossx implementation direction |
+|---|---|
+| GraphView | Existing relationship graph remains default surface and one-hop focus projection. |
+| FileExplorer | Replace role board/list-first UI with path/module file tree. |
+| NodeInfo | Enrich right inspector with selected file profile, edge evidence, and relationship counts. |
+| LearnPanel / Project Tour | Replace Chain tab with Read path using context-pack and impact artifacts. |
+| CodeViewer | Deferred; requires separate source-content runtime contract and path allowlist. |
+
+### Non-goals for this batch / 本批不做
+
+- 不引入 ReactFlow、ELK、Louvain 或 UA schema。
+- 不改后端 scanner/parser/storage。
+- 不做源码 CodeViewer。
+- 不把 scan snapshot 写回主 Project Map semantic graph。
+
 | UA element | mossx mapping | 说明 |
 |---|---|---|
 | `GraphView` canvas | `Graph 图谱` center canvas | 复刻图形为第一视觉，不复用 UA schema。 |
@@ -345,3 +398,71 @@
 - Searching files SHOULD update the graph focus to the first matched file instead of only filtering the side list.
 - Graph view SHOULD provide explicit zoom in / zoom out / reset controls in addition to drag-to-pan.
 - Zoom controls MUST be presentation-only and MUST NOT mutate relationship storage, evidence, or Project Map semantic graph.
+
+## Corrective stage update：Explorer Chrome / Graph Navigation / Editor Feedback（2026-06-06）
+
+### 中文导读
+
+用户在真实项目中继续 smoke test 后确认：`File Relationship Explorer` 的 graph-first 方向已经成立，但剩余问题集中在三个层面：
+
+- 顶部 Project Map chrome 仍然把 `文件关系` 当作普通 tab，旁边还保留 `总览 / 节点 / Lens / 候选` 等旧统计，导致用户进入文件关系后视觉焦点不稳定。
+- Graph 节点点击同时承担“查看详情”和“跳转链路”的语义，交互过载；用户需要普通点击只切换右侧详情，显式 icon 才负责链路跳转。
+- Inspector 的 `Open Target` 打开目标文件后没有跳到方法定义行；即便跳到行，编辑器也缺少醒目的目标行反馈。
+
+本轮把文件关系视图进一步收敛为“单一关系工作台”：顶部只保留必要状态，Graph 点击语义拆分，source/target 打开能力回到具体行，并在编辑器里给出短时单行闪烁反馈。
+
+### Product correction / 产品纠偏
+
+- 当用户选择 `文件关系 / File Relations` 时，Project Map 左侧主槽位 SHOULD 显示 `文件关系 Explorer` 状态摘要，而不是继续显示 `总览`。
+- 文件关系 focused 状态下，旧的 Project Map 统计（节点、Lens、候选等）SHOULD 隐藏，避免把 semantic Project Map 与 deterministic relationship snapshot 混成同一信息层。
+- Relationship summary SHOULD 与顶栏合并为一排，去掉独立卡片边框，减少“下面又开了一行工具栏”的错觉。
+- Relationship summary 内部 SHOULD NOT 再显示 `扫描关系 / Scan Relationships`，因为全局 Project Map toolbar 已经有同一动作；重复入口会制造视觉噪音。
+- `Graph 图谱` view switch icon SHOULD 是 graph/relationship 语义图标，而不是 radio-like circle，避免用户误解为选项状态点。
+
+### Graph interaction contract / 图谱交互契约
+
+- Clicking a graph file node MUST only switch the right-side Inspector details to that file.
+- Clicking a graph file node MUST NOT directly navigate graph focus / relationship chain, because inspection and graph traversal are two different user intents.
+- Each graph file node SHOULD expose a compact jump icon near the node title area.
+- Clicking the jump icon MUST perform graph focus traversal and MUST also sync the right-side Inspector to the same file, so explicit traversal never leaves stale details behind.
+- Edge rendering SHOULD include a visible arrow affordance, not only a plain line, so source -> target direction is readable at a glance.
+- Edge click / edge label click SHOULD continue to select the relationship and show edge evidence in Inspector.
+- Pan behavior MUST remain guarded: node cards, jump icons, edge labels, aggregate controls, legend filters, and inspector buttons MUST NOT accidentally start drag-to-pan.
+
+### Source opening and editor feedback / 源码打开与编辑器反馈
+
+- `Open Source` MAY continue to prefer evidence line when evidence path matches the source file.
+- `Open Target` MUST prefer target method/function definition line when a matching symbol exists in the relationship `symbols` artifact.
+- `Open Target` SHOULD parse the relation call candidate into a target symbol name and match it against `targetFileId + symbol.name`.
+- If target symbol matching fails, `Open Target` MUST safely fall back to the existing evidence-line behavior rather than blocking the action.
+- After opening a file at a line, the editor SHOULD flash that single target line 3 times within 2 seconds.
+- The flash is a presentation-only CodeMirror decoration and MUST NOT become a persistent Git marker, diff marker, annotation, or stored file state.
+
+### i18n and theme calibration / 多语言与主题校准
+
+- File relationship visible copy MUST go through i18n keys; Chinese UI keeps Chinese as primary language and keeps technical terms such as `Explorer`, `Graph`, `Inspector`, `Files`, `Target` where they improve precision.
+- Relationship view CSS SHOULD consume Project Map theme tokens for accent, relation type colors, inspected state, and interactive states.
+- Dark theme, light theme, and custom VS Code theme mapping MUST remain readable; relationship-specific colors SHOULD be defined as variables instead of naked one-off hex usage in component selectors.
+- Relationship graph arrows, jump icon, selected/inspected states, edge labels, and line flash SHOULD use theme-aware tokens so custom themes do not regress into invisible UI.
+
+### Implementation fact snapshot / 当前实现事实
+
+- Project Map header now replaces `总览` with `文件关系 Explorer` when the relationship entry is active.
+- Relationship active header is a compact one-row layout; old node/lens/candidate counters are hidden in this focused state.
+- Duplicate scan action was removed from relationship inline summary; the top/global scan action remains the recovery entry.
+- File relationship summary border/chrome was removed in focused mode.
+- Graph node body click now changes Inspector details only.
+- Graph node jump icon performs explicit graph traversal and also syncs Inspector details.
+- Relationship edges now render directional arrows.
+- `Graph 图谱` switch icon was changed from a radio-like circle to a mini graph glyph.
+- Relationship i18n keys were extended for graph/read/action/context labels and file direction summaries.
+- Project Map relationship styles were moved toward theme variables for relation colors and inspected state.
+- `Open Target` now resolves target symbol definition line from the `symbols` artifact before falling back to evidence line.
+- Editor navigation now flashes the opened target line 3 pulses over 2 seconds through a transient CodeMirror line decoration.
+
+### Boundary / 边界
+
+- These changes remain frontend presentation / interaction corrections.
+- They do not mutate `project-map-relations` storage, relationship confidence, evidence provenance, context-pack generation, or the Project Map semantic graph.
+- The target-definition jump consumes existing `symbols` artifact data; it does not add a new parser or invent AST facts in the UI.
+- The editor line flash is local UI feedback only and does not write annotations, file metadata, git markers, or persisted editor preferences.

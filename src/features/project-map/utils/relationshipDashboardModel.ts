@@ -9,12 +9,14 @@ import type {
   ProjectMapRelationshipScanResponse,
   ProjectMapRelationshipStaleReason,
   ProjectMapRelationshipStaleSummary,
+  ProjectMapRelationshipSymbol,
   ProjectMapScannedFile,
 } from "../types";
 
 export type ProjectMapRelationshipDashboardData = {
   files: ProjectMapScannedFile[];
   relations: ProjectMapFileRelation[];
+  symbols: ProjectMapRelationshipSymbol[];
   modules: ProjectMapRelationshipModuleSummary[];
   hotspots: ProjectMapRelationshipHotspot[];
   impactSummary: ProjectMapRelationshipImpactSummary | null;
@@ -227,6 +229,32 @@ function normalizeProjectMapFileRelations(value: unknown): ProjectMapFileRelatio
       sourceKind: "deterministic",
       evidence,
       fingerprint: readProjectMapRelationshipString(item, "fingerprint") ?? undefined,
+    }];
+  });
+}
+
+function normalizeProjectMapRelationshipSymbols(value: unknown): ProjectMapRelationshipSymbol[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  return value.flatMap((item) => {
+    if (!isProjectMapRelationshipRecord(item)) {
+      return [];
+    }
+    const id = readProjectMapRelationshipString(item, "id");
+    const fileId = readProjectMapRelationshipString(item, "fileId");
+    const name = readProjectMapRelationshipString(item, "name");
+    const line = readProjectMapRelationshipNumber(item, "line");
+    if (!id || !fileId || !name || line < 1) {
+      return [];
+    }
+    return [{
+      id,
+      fileId,
+      name,
+      kind: readProjectMapRelationshipString(item, "kind") ?? "symbol",
+      language: (readProjectMapRelationshipString(item, "language") ?? "unknown") as ProjectMapRelationshipSymbol["language"],
+      line,
     }];
   });
 }
@@ -471,6 +499,7 @@ export function normalizeProjectMapRelationshipDashboardData(
   return {
     files: normalizeProjectMapScannedFiles(response.files),
     relations: normalizeProjectMapFileRelations(response.relations),
+    symbols: normalizeProjectMapRelationshipSymbols(response.symbols),
     modules: normalizeProjectMapRelationshipModules(response.modules),
     hotspots: normalizeProjectMapRelationshipHotspots(response.modules),
     impactSummary: normalizeProjectMapRelationshipImpactSummary(response.impact),

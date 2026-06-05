@@ -1,0 +1,214 @@
+## Context
+
+Project Map 现有关系扫描主要回答“文件之间如何相关”，但 API 理解需要回答另一类问题：项目暴露了哪些外部契约、接口入参出参是什么、handler 后面的调用链如何走、接口在业务里可能承担什么使用场景。
+
+这个能力不能绑定单一语言或框架。真实项目可能同时包含 Java、Python、Go、C、C++、TypeScript、C#、Rust，也可能只有 OpenAPI、protobuf 或 GraphQL schema。设计上必须把语言扫描器降级为 evidence provider，把 UI 绑定到统一 API contract graph。
+
+另一个关键约束是规模。接口数量一多，全量 endpoint 平铺图会变成不可读噪音。因此接口视图必须先展示层级 group，再允许用户逐层 drill down 到 endpoint 和 method chain。
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- 新增独立 API contract scan branch，与 file relationship scan 解耦。
+- 建立通用 `ApiContractGraph` 数据模型，覆盖 HTTP / RPC / GraphQL / ABI-style API。
+- 建立多语言 adapter contract，第一阶段覆盖 Java / Kotlin、Python、Go、C、C++、TypeScript / JavaScript、C#、Rust，以及 OpenAPI / Swagger、protobuf / gRPC、GraphQL schema。
+- 在 Project Map 中新增 `接口 API` tab。
+- 大规模 endpoint 默认采用 group-first rendering，不允许直接平铺所有 endpoint。
+- Inspector 展示接口信息、入参、出参、描述、使用场景、源码证据、置信度和方法链路。
+
+**Non-Goals:**
+
+- 不引入 graph database。
+- 不要求第一阶段对每种语言做到完整 compiler-grade analysis。
+- 不把 API contract graph 直接合并进现有 Project Map semantic graph。
+- 不做单框架定制 UI。
+- 不让弱推断结果伪装为强契约结果。
+
+## Decisions
+
+### Decision 1: API scan 使用独立 artifact namespace
+
+API contract artifacts SHALL 独立于 file relationship artifacts。落点固定为 `project-map-relations/<storage-key>/api-contracts/`，复用 relationship storage 的 workspace ownership 与 stale/repair 机制，但在 artifact namespace、manifest、index、run metadata 上保持隔离。
+
+Alternatives considered:
+
+- 复用现有 file relation artifact：改动小，但会混淆 file dependency 与 API contract。
+- 直接写入 Project Map semantic nodes：展示方便，但会污染知识图谱，且难以处理 stale / repair。
+
+选择独立 namespace，因为 API contract 是可扫描事实层，不是人工确认后的知识节点。
+
+### Decision 2: 统一 graph model，adapter 只提供 evidence
+
+核心模型以 `ApiEndpoint`、`ApiGroup`、`ApiSchemaRef`、`ApiCallChain`、`ApiEvidence`、`ApiContractGraph` 表达。adapter 不直接控制 UI，只产出候选 endpoint、schema、group 和 evidence。
+
+推荐模型：
+
+```ts
+type ApiProtocol = "http" | "grpc" | "graphql" | "rpc" | "c-abi" | "unknown";
+
+type ApiConfidence = "spec" | "high" | "medium" | "low";
+
+type ApiParameterLocation = "path" | "query" | "header" | "cookie";
+
+interface ApiParameter {
+  name: string;
+  location: ApiParameterLocation;
+  required?: boolean;
+  schema?: ApiSchemaRef;
+  defaultValue?: string;
+  example?: string;
+  evidence: ApiEvidence[];
+}
+
+interface ApiRequestBody {
+  contentType?: string;
+  required?: boolean;
+  schema?: ApiSchemaRef;
+  examples?: string[];
+  evidence: ApiEvidence[];
+}
+
+interface ApiResponse {
+  statusCode?: string;
+  contentType?: string;
+  schema?: ApiSchemaRef;
+  examples?: string[];
+  isError?: boolean;
+  evidence: ApiEvidence[];
+}
+
+interface ApiEndpoint {
+  id: string;
+  protocol: ApiProtocol;
+  language: string;
+  framework?: string;
+  method?: string;
+  path?: string;
+  operationName?: string;
+  handlerSymbol?: string;
+  sourceFile: string;
+  parameters: ApiParameter[];
+  requestBody?: ApiRequestBody;
+  responses: ApiResponse[];
+  requestSchema?: ApiSchemaRef;
+  responseSchema?: ApiSchemaRef;
+  description?: string;
+  usageScenario?: string;
+  groupIds: string[];
+  callChainIds: string[];
+  confidence: ApiConfidence;
+  evidence: ApiEvidence[];
+}
+```
+
+Alternatives considered:
+
+- 每种语言一套模型：短期直接，但 UI 会分叉。
+- 只保存文本摘要：实现快，但不可搜索、不可过滤、不可做 graph。
+
+选择统一模型，因为它把多语言复杂性限制在 adapter 层。
+
+### Decision 2.1: endpoint identity 使用 protocol-specific canonical key
+
+Endpoint merge SHALL use protocol-specific canonical identity:
+
+- HTTP: `protocol + normalized method + normalized path + operationName/sourceRoot`。
+- gRPC: `package + service + method`。
+- GraphQL: `operationType + fieldName`。
+- C ABI / RPC fallback: `symbol + normalized source/header path`。
+
+Strong contract evidence and source implementation evidence SHALL merge into the same endpoint when identity matches. If identity is ambiguous, the scanner SHALL keep separate candidates and expose ambiguity evidence instead of force-merging.
+
+### Decision 3: 强契约源优先，源码推断补充
+
+扫描顺序 SHALL 为：
+
+1. OpenAPI / Swagger / protobuf / GraphQL schema。
+2. 框架语义：annotation、decorator、macro、router registration。
+3. AST / symbol / regex fallback：handler function、request/response model、service call candidate。
+
+强契约源的 confidence 可为 `spec`。源码推断根据 evidence 完整度降级为 `high / medium / low`。
+
+Scanner scope SHALL reuse workspace ignore rules and skip dependency/generated/binary-heavy directories such as `node_modules`, `target`, `build`, `dist`, `vendor`, `.git`, generated code, binary files, and files above the configured max scan size. Every skipped bucket SHALL be countable in run metadata with a reason.
+
+Alternatives considered:
+
+- 只做源码推断：覆盖面高但误判多。
+- 只做规范文件：准确但覆盖不足。
+
+选择混合策略，因为真实项目的契约信息常常分散在 schema 与源码之间。
+
+### Decision 3.1: description 与 usageScenario 必须 evidence-backed
+
+`description` and `usageScenario` SHALL only come from schema summary/description, doc comments, route names, README/example references, tests, or explicit inference metadata. If no reliable source exists, the UI SHALL show an unavailable state instead of fabricating copy.
+
+### Decision 4: group-first rendering 是默认交互
+
+API view SHALL 默认按以下层级聚合：
+
+`protocol -> module/package/namespace -> controller/router/service -> endpoint`
+
+Rendering thresholds are fixed for the first implementation:
+
+- `endpoint <= 30`: endpoint nodes MAY be shown directly, while breadcrumb/group context remains visible.
+- `31 <= endpoint <= 50`: show group nodes and the selected group's endpoint nodes.
+- `endpoint > 50`: initial render MUST show group nodes and aggregate edges only.
+
+用户点击 group 后再展开下一层。搜索和过滤可以直接定位 endpoint，但默认图不平铺。这个模式参考成熟 API explorer / service map 的共同经验：先用 namespace/tag/controller 做信息架构，再在局部区域展开 endpoint 和调用链，避免 canvas 退化为节点噪音。
+
+Alternatives considered:
+
+- 全量 endpoint graph：小 demo 好看，大项目不可用。
+- 纯 table：密度高，但丢失链路和分组结构。
+
+选择 group-first graph + inspector + optional list，因为它兼顾规模、结构和细节。
+
+### Decision 5: method chain 以 candidate chain 表达
+
+方法链路 SHALL 由 endpoint handler 出发，追踪 service、repository、model、outbound HTTP/RPC、event publish 等 candidate。第一阶段允许 conservative extraction，不要求跨语言完整调用图。
+
+每条 chain edge MUST 带 evidence、confidence、direction 和 edge kind，不能只给自然语言结论。默认最大链路深度为 4；发现循环时必须截断并记录 `truncatedReason`，避免图谱无限扩张。
+
+Alternatives considered:
+
+- 不做 method chain：实现简单，但无法解释接口背后的代码路径。
+- 做全量 call graph：工程量大且容易不稳定。
+
+选择 candidate chain，因为它能先提供可解释价值，同时保留精度边界。
+
+### Decision 6: evidence 展示前必须 redaction
+
+Evidence excerpt, schema examples, headers, cookies, request samples, response samples, and README/test examples SHALL pass through redaction before entering UI artifacts. The redactor SHALL mask Authorization, Cookie, token, password, secret, api key, private key, credential and common env-style sensitive values.
+
+Alternatives considered:
+
+- 原样展示 evidence：调试方便，但容易泄露密钥。
+- 完全不展示 excerpt：安全但解释力不足。
+
+选择 redacted evidence，因为它保留可解释性，同时降低敏感信息泄露风险。
+
+## Risks / Trade-offs
+
+- [Risk] 多语言 parser 精度不一致 -> Mitigation: adapter 输出统一 confidence/evidence，UI 显示推断强弱。
+- [Risk] C / C++ route 语义分散 -> Mitigation: 优先识别常见框架和 handler table，低置信度结果不作为确定接口。
+- [Risk] endpoint 数量过多导致 canvas 卡顿 -> Mitigation: group-first rendering、阈值展开、虚拟化列表、聚合边。
+- [Risk] 强契约源和源码推断重复 -> Mitigation: 使用 stable endpoint id 和 source priority merge，schema 来源优先。
+- [Risk] 扫描依赖目录导致性能失控 -> Mitigation: workspace ignore、dependency/generated skip、file size cap、skipped reason metadata。
+- [Risk] evidence 泄露敏感示例 -> Mitigation: redaction before UI artifacts。
+- [Risk] 工作区切换导致 scan 写错位置 -> Mitigation: manifest storageKey 必须匹配启动时 workspace ownership。
+- [Risk] API scan 与 file relation scan 失败相互影响 -> Mitigation: 分支隔离，artifact 独立，错误独立呈现。
+
+## Migration Plan
+
+1. 新增 API contract artifact namespace，不迁移现有 relationship artifacts。
+2. 在 scan orchestration 中增加 API branch，默认可与 file relation scan 并行或串行执行，但写入互不依赖。
+3. 新增 Project Map `接口 API` tab，在无 API artifact 时显示空态和扫描引导。
+4. 将 OpenAPI / proto / GraphQL adapter 作为高可信入口，再逐步接入语言 adapter。
+5. UI 默认显示 group graph，endpoint 详情只在 drill-down 或搜索命中后展示。
+6. 若出现回归，可隐藏 `接口 API` tab 或关闭 API branch，不影响现有 file relationship dashboard。
+
+## Open Questions
+
+- 是否需要把 API graph 结果作为 Agent Read Plan 的高优先级 resource candidate。
+- 是否需要为每种 adapter 建独立 fixture directory 与 focused test suite。

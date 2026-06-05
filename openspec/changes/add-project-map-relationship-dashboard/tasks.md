@@ -37,6 +37,10 @@
 - [x] Task 17：实现 UA-style actions 的 mossx 内化入口，覆盖 explain/diff/guided read/ask/domain 的 context pack 基础。
 - [x] Task 18：打通 Composer/Agent resource discovery 对 Project Map relationship context-pack 的消费。
 - [x] Task 19：完成 focused validation，更新 specs/tasks 状态，准备 verify/sync/archive。
+- [x] Task 20：将 Relationship Dashboard 深化为 UA-like File Relationship Workspace，移除鸡肋 Chain tab，改为 Graph / Files / Read 三视图。
+- [x] Task 20A：把 Board role lanes 替换为 path/module file tree，确保用户可以看到全部过滤后的文件。
+- [x] Task 20B：把 Chain 一跳列表替换为 persistent Read path，直接展示 context-pack、impact、risk flags 与当前文件 calls/outgoing/incoming。
+- [x] Task 20C：压缩 scan chrome 与说明文案，让 Graph 成为默认主视觉，Inspector 承担选中节点/边解释。
 
 ## 里程碑与任务
 
@@ -455,3 +459,79 @@
 - [x] Task 13G.15：强化 drag-to-pan：空白画布拖拽移动 graph stage，edge/node/legend/control click 不触发 pan，并增加 panning 视觉反馈。
 - [x] Task 13G.16：将 file search 提升到 Graph toolbar 常驻入口，并在搜索命中时自动聚焦首个匹配文件，修复“列表过滤但图谱不变”的体验问题。
 - [x] Task 13G.17：新增 Graph zoom in / zoom out / reset controls，使用 `auto-fit scale * user zoom` 模型，保留响应式自适应同时支持手动缩放。
+- [x] Task 20D：修复 UA-like Graph 画布布局回归，确保 Files / Inspector 折叠时 graph canvas 占满主区域，不被 focused grid 覆盖压成左侧窄列。
+- [x] Task 20E：升级 Graph 右侧 Inspector 为文件详情面板，展示选中文件 metadata、关系分组、edge evidence、context-pack 快捷入口，并接入现有打开文件能力。
+- [x] Task 20F：精简 Graph Inspector 文件详情交互，移除顶部打开按钮，将 source/target 打开改为 icon action，并让 incoming/outgoing/total metrics 可点击反向定位关系。
+- [x] Task 20G：增强 Graph Inspector 打开文件定位，source/target action 在 evidence path 匹配时携带 evidence line，Evidence 卡片继续直达具体证据行。
+
+## Corrective Phase 13H：Explorer Chrome / Navigation Intent Split / Editor Feedback（2026-06-06）
+
+### 中文导读
+
+本阶段来自用户连续确认后的 UI/交互细化：文件关系视图已经进入 graph-first workspace，但顶部 chrome、节点点击语义、source/target 打开定位和主题/i18n 仍需要收口。
+本阶段目标是把 `File Relationship Explorer` 作为 Project Map 内的独立 deterministic scan workspace 固化下来：进入文件关系时隐藏旧 semantic-map 噪音，Graph 点击只做详情，显式 icon 才做链路跳转，source/target 打开能回到具体代码行，并且目标行有短时视觉反馈。
+
+- [x] Task 20H：将 `文件关系 / File Relations` 选中态移动到 Project Map 左侧主槽位，替换 `总览`，让用户进入关系视图后第一视觉就是 `File Relationship Explorer`。
+  - 输入：Project Map 顶部 active entry state。
+  - 输出：relationship active 时显示 `文件关系 Explorer` 摘要。
+  - 验收：文件关系选中后，左侧不再显示 `总览` 作为主入口。
+
+- [x] Task 20I：隐藏 relationship-focused header 中的旧 semantic-map counters。
+  - 输入：active entry 为 `fileRelations`。
+  - 输出：节点、Lens、候选等旧统计在文件关系 focused 状态下隐藏。
+  - 验收：用户不会把 deterministic file relationship snapshot 与 Project Map semantic graph 统计混读。
+
+- [x] Task 20J：合并 relationship summary 到单排 header，并去掉独立边框/卡片感。
+  - 输入：relationship scan summary、metrics、fresh/stale state。
+  - 输出：一排 compact status metadata。
+  - 验收：顶部不再出现“选中 tab 后下面又多一行边框卡片”的视觉断层。
+
+- [x] Task 20K：移除 relationship inline summary 内重复的 `扫描关系 / Scan Relationships` 按钮。
+  - 输入：全局 Project Map toolbar 已存在 scan action。
+  - 输出：relationship summary 不重复渲染 scan button。
+  - 验收：扫描入口只保留在全局/top recovery path，避免冗余按钮并排。
+
+- [x] Task 20L：拆分 graph node 点击语义，节点 body click 只切换右侧 Inspector 详情。
+  - 输入：Graph node card click。
+  - 输出：`inspectedRelationshipFileId` 更新，`selectedRelationshipFileId` 不被普通点击强制改写。
+  - 验收：用户可以连续点不同节点查看右侧详情，而不会每次都触发 graph focus/link traversal。
+
+- [x] Task 20M：在 graph node 右侧新增 jump icon，并让 icon click 同时负责 graph focus 和 Inspector 同步。
+  - 输入：Graph node jump icon click。
+  - 输出：设置 selected file、inspected file，并清空 selected edge。
+  - 验收：显式点击 icon 才做链路跳转；跳转后右侧详情与图谱焦点一致。
+
+- [x] Task 20N：为 relationship graph edges 增加方向箭头效果。
+  - 输入：visible direct edges / aggregate edges。
+  - 输出：SVG edge 上显示 direction arrow。
+  - 验收：用户能直接看出 source -> target 方向，而不是只看到无向线段。
+
+- [x] Task 20O：替换 `Graph 图谱` view switch 的 radio-like 圆点 icon 为 mini graph glyph。
+  - 输入：Graph view switch button。
+  - 输出：图谱语义 icon。
+  - 验收：图标不再像未选中的 radio control，视觉语义更贴近关系图谱。
+
+- [x] Task 20P：核实并补齐文件关系视图 i18n。
+  - 输入：relationship graph/read/inspector/action/context 可见文案。
+  - 输出：新增/替换 locale keys，中文界面使用中文 + English professional terms。
+  - 验收：关系视图无主要硬编码英文裸露；中英语言切换语义一致。
+
+- [x] Task 20Q：核实并补齐文件关系视图深色、浅色、自定义主题适配。
+  - 输入：Project Map relationship CSS、inspector CSS、Project Map root theme tokens。
+  - 输出：relation calls/imports/tests/inspected/info/core 等颜色抽成 CSS variables，并减少 naked color 直接散落。
+  - 验收：dark/light/custom theme 下 arrow、edge label、selected/inspected node、legend、inspector 状态可见。
+
+- [x] Task 20R：修复 Inspector `Open Target` 未跳到目标方法定义行的问题。
+  - 输入：selected `ProjectMapFileRelation`、call candidate、relationship `symbols` artifact、target file。
+  - 输出：优先解析 target symbol line 并通过 `onOpenEvidenceFile(path, { line, column })` 打开。
+  - 验收：有 target symbol 时打开 target 文件直接定位到方法/函数定义行；无 symbol 时 fallback 到 evidence line 或只打开文件。
+
+- [x] Task 20S：为编辑器文件打开跳行增加单行背景闪烁反馈。
+  - 输入：editor navigation target line。
+  - 输出：CodeMirror transient line decoration，2 秒内闪烁 3 次后自动清除。
+  - 验收：打开文件并跳行后，用户能一眼看到目标行；闪烁不污染 Git markers、annotations、diff markers 或持久编辑器状态。
+
+- [x] Task 20T：固化本轮实现事实到 proposal / design / tasks。
+  - 输入：本轮已完成 UI、navigation、theme、i18n、editor feedback 改动。
+  - 输出：OpenSpec artifact 记录产品校准、设计契约和完成任务。
+  - 验收：后续 verify/archive 能直接引用 `13H` 作为本轮校准依据。
