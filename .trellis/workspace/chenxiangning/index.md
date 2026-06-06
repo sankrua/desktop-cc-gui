@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-19.md`
-- **Total Sessions**: 722
+- **Total Sessions**: 723
 - **Last Active**: 2026-06-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-19.md` | ~1360 | Active |
+| `journal-19.md` | ~1418 | Active |
 | `journal-18.md` | ~1966 | Archived |
 | `journal-17.md` | ~1971 | Archived |
 | `journal-16.md` | ~1985 | Archived |
@@ -47,6 +47,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 723 | 2026-06-06 | 修复 Project Map 文件导航完整性与治理 | `72fc29f4` | `feature/v0.5.7` |
 | 722 | 2026-06-06 | 禁用文件关系滚轮缩放 | `98c16634` | `feature/v0.5.7` |
 | 721 | 2026-06-06 | 收口文件关系图谱工作台 | `6a0bdbb3` | `feature/v0.5.7` |
 | 720 | 2026-06-05 | 优化文件关系聚焦视图 | `9a8cd685` | `feature/v0.5.7` |

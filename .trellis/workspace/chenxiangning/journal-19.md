@@ -1358,3 +1358,61 @@ OpenSpec 回写：
 ### Next Steps
 
 - None - task complete
+
+
+## Session 723: 修复 Project Map 文件导航完整性与治理
+
+**Date**: 2026-06-06
+**Task**: 修复 Project Map 文件导航完整性与治理
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+完成 Project Map 文件导航完整性与关系图治理收口。
+
+主要改动：
+- 将 Graph rail 从误导性的 File Tree 语义校准为 bounded Top Files，并实现 role -> module/path -> files 的可折叠层级。
+- 回写 OpenSpec change: fix-project-map-file-navigation-completeness，明确大项目下 Top Files 与完整 Files Explorer 的边界。
+- 拆分 project_map_relations.rs 中 API contract 构建逻辑到 project_map_api_contracts.rs，降低大文件治理压力。
+- 拆分 project-map.relationship.css 到 project-map.relationship-workspace.css 与 project-map.api-contract.css，修复 large-file fail gate。
+- 后端 API evidence 生成统一脱敏 authorization/cookie/token/password/secret/api key/private key/credential 等敏感片段，前端保留 redacted 标记。
+- 清理 3 个 React hook dependency lint warning。
+
+验证：
+- npm run lint 通过，0 warning。
+- npm run typecheck 通过。
+- cargo test --manifest-path src-tauri/Cargo.toml 通过：lib 1199、daemon 739、tauri_config 1，0 failed。
+- npm run check:large-files:gate 通过，found=0。
+- npm run check:large-files:near-threshold 通过但报告 38 个存量 watch warning。
+- node --test scripts/check-large-files.test.mjs 通过，12/12。
+- node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs 通过，19/19。
+- npm run check:heavy-test-noise 通过，608 test files completed，act/stdout/stderr violation 均为 0，仅 1 条 environment warning。
+- openspec validate fix-project-map-file-navigation-completeness --strict --no-interactive 通过。
+- openspec validate add-project-map-api-contract-view --strict --no-interactive 通过。
+
+残余风险：
+- large-file near-threshold 仍有 38 个 watch 文件，属于存量治理队列。
+- openspec/changes/add-intent-canvas-module/ 保持未跟踪，未纳入本次提交。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `72fc29f4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
