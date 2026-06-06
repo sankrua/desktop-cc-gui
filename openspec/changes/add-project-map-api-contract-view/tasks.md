@@ -8,6 +8,7 @@ Current code supports `13 / 48` fully completed tasks. Several discovery tasks h
 - `4.0 / 4.1-4.8`: backend has fallback-pattern extraction for several language families, but no mature parser wrapper, adapter registry, unsupported/no-candidate reason matrix, or focused adapter fixture suite yet.
 - `5.x`: `callChains` is currently emitted as an empty artifact slot; method chain extraction and inspector are not complete.
 - `7.4 / 7.5`: relationship dashboard search/filter exists for file relationship views, but API-specific protocol/language/framework/module/controller/confidence filters and hierarchy reveal are not complete.
+- `7.4 / 7.5` update: API tab text query is now wired to endpoints and ancestor groups, and file role/type/noise controls are hidden while API tab is active. Full protocol/language/framework/controller/confidence filter matrix remains open.
 
 Do not mark these partial substrate items as complete until their validation clauses are satisfied.
 

@@ -180,6 +180,8 @@ Rendering thresholds are fixed for the first implementation:
 
 用户点击 group 后再展开下一层。搜索和过滤可以直接定位 endpoint，但默认图不平铺。这个模式参考成熟 API explorer / service map 的共同经验：先用 namespace/tag/controller 做信息架构，再在局部区域展开 endpoint 和调用链，避免 canvas 退化为节点噪音。
 
+API tab 的文本搜索 SHALL 复用 relationship dashboard 顶部输入框，但语义必须切换为 API contract query。API query 命中 endpoint 时必须保留所属 module/controller ancestor groups；命中 group 时必须保留该 group 的可展开子树。文件关系视图的 role/type/noise filters 不得在 API tab 下继续展示为可用控件，避免误导用户。
+
 Alternatives considered:
 
 - 全量 endpoint graph：小 demo 好看，大项目不可用。

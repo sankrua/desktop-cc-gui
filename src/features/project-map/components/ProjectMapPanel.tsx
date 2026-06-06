@@ -727,6 +727,7 @@ export function ProjectMapPanel({
       isRelationPanelExpanded,
     ],
   );
+  const isFileRelationsWorkspaceVisible = visibleSectionState.fileRelations;
   const selectedNodeStaleReasons = useMemo(
     () =>
       selectedNode
@@ -1980,7 +1981,7 @@ export function ProjectMapPanel({
       <main
         className={cn(
           "project-map-stage",
-          visibleSectionState.fileRelations && "is-file-relations-focused",
+          isFileRelationsWorkspaceVisible && "is-file-relations-focused",
         )}
         aria-label={t("projectMap.stageAria")}
       >
@@ -1988,12 +1989,12 @@ export function ProjectMapPanel({
           <div className={cn("project-map-lens-shell", isLensStripCollapsed && "is-collapsed")}>
             <div className="project-map-stage-toolbar">
               <div
-                className={cn("project-map-breadcrumb", visibleSectionState.fileRelations && "is-file-relations-summary")}
-                aria-label={visibleSectionState.fileRelations
+                className={cn("project-map-breadcrumb", isFileRelationsWorkspaceVisible && "is-file-relations-summary")}
+                aria-label={isFileRelationsWorkspaceVisible
                   ? t("projectMap.relationship.dashboardTitle")
                   : t("projectMap.breadcrumb")}
               >
-                {visibleSectionState.fileRelations ? (
+                {isFileRelationsWorkspaceVisible ? (
                   <div className="project-map-relationship-inline-summary" role="status">
                     <Network aria-hidden />
                     <div className="project-map-relationship-inline-copy">
@@ -2233,16 +2234,6 @@ export function ProjectMapPanel({
               />
             ) : null}
 
-            <ProjectMapRelationshipSection
-              activeWorkspaceId={activeWorkspace?.id ?? null}
-              activeReadLocation={datasetController.activeReadLocation}
-              expanded={visibleSectionState.fileRelations}
-              onOpenEvidenceFile={onOpenEvidenceFile}
-              reloadRelationshipContext={datasetController.reloadRelationshipContext}
-              scanRequestId={relationshipScanRequestId}
-              onSummaryStateChange={setRelationshipSummaryState}
-            />
-
             {visibleSectionState.relations ? (
                 <section className="project-map-semantic-relations-panel">
                   <header className="project-map-semantic-relations-header">
@@ -2312,6 +2303,16 @@ export function ProjectMapPanel({
           </div>
         ) : null}
 
+        <ProjectMapRelationshipSection
+          activeWorkspaceId={activeWorkspace?.id ?? null}
+          activeReadLocation={datasetController.activeReadLocation}
+          expanded={isFileRelationsWorkspaceVisible}
+          onOpenEvidenceFile={onOpenEvidenceFile}
+          reloadRelationshipContext={datasetController.reloadRelationshipContext}
+          scanRequestId={relationshipScanRequestId}
+          onSummaryStateChange={setRelationshipSummaryState}
+        />
+
         {candidateBatchMessage ? (
           <div className="project-map-inline-status" role="status">
             {candidateBatchMessage}
@@ -2328,7 +2329,7 @@ export function ProjectMapPanel({
               {t("projectMap.retryLoad")}
             </button>
           </div>
-        ) : visibleSectionState.fileRelations ? null : visibleNodes.length === 0 ? (
+        ) : isFileRelationsWorkspaceVisible ? null : visibleNodes.length === 0 ? (
           <div className="project-map-empty-state">
             <Crosshair aria-hidden />
             <h3>{t("projectMap.emptyTitle")}</h3>

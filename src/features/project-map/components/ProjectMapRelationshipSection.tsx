@@ -184,6 +184,60 @@ function resolveProjectMapRelationshipTargetSymbolLine(input: {
   ))?.line ?? null;
 }
 
+function projectMapApiSearchIncludes(query: string, values: Array<string | null | undefined>): boolean {
+  if (!query) {
+    return true;
+  }
+  return values.some((value) => value?.toLowerCase().includes(query));
+}
+
+function projectMapApiEndpointMatchesQuery(endpoint: ProjectMapApiEndpoint, query: string): boolean {
+  return projectMapApiSearchIncludes(query, [
+    endpoint.id,
+    endpoint.protocol,
+    endpoint.language,
+    endpoint.framework,
+    endpoint.method,
+    endpoint.path,
+    endpoint.operationName,
+    endpoint.handlerSymbol,
+    endpoint.sourceFile,
+    endpoint.description,
+    endpoint.usageScenario,
+    ...endpoint.parameters.flatMap((parameter) => [
+      parameter.name,
+      parameter.location,
+      parameter.schema?.name,
+      parameter.schema?.sourceFile,
+      parameter.defaultValue,
+      parameter.example,
+    ]),
+    endpoint.requestBody?.contentType,
+    endpoint.requestBody?.schema?.name,
+    endpoint.requestBody?.schema?.sourceFile,
+    ...endpoint.responses.flatMap((response) => [
+      response.statusCode,
+      response.contentType,
+      response.schema?.name,
+      response.schema?.sourceFile,
+    ]),
+    ...endpoint.evidence.flatMap((evidence) => [
+      evidence.path,
+      evidence.excerpt,
+      evidence.parserSource,
+    ]),
+  ]);
+}
+
+function projectMapApiGroupMatchesQuery(group: ProjectMapApiGroup, query: string): boolean {
+  return projectMapApiSearchIncludes(query, [
+    group.id,
+    group.label,
+    group.level,
+    group.parentId,
+  ]);
+}
+
 export function ProjectMapRelationshipSection({
   activeWorkspaceId,
   activeReadLocation,
@@ -232,7 +286,7 @@ export function ProjectMapRelationshipSection({
   const [expandedApiModuleGroupIds, setExpandedApiModuleGroupIds] = useState<Set<string>>(() => new Set());
   const relationshipGraphCanvasRef = useRef<HTMLDivElement | null>(null);
   const relationshipGraphPanRef = useRef<ProjectMapRelationshipGraphPanStart | null>(null);
-  const lastHandledScanRequestIdRef = useRef(0);
+  const lastHandledScanRequestIdRef = useRef(scanRequestId);
 
   useEffect(() => {
     onSummaryStateChange(relationshipScanState);
@@ -1100,6 +1154,65 @@ export function ProjectMapRelationshipSection({
     return index;
   }, [relationshipDashboardData?.apiContracts?.endpoints]);
 
+  const apiSearchQuery = relationshipDashboardViewMode === "api"
+    ? relationshipDashboardQuery.trim().toLowerCase()
+    : "";
+
+  const apiSearchProjection = useMemo(() => {
+    const apiContracts = relationshipDashboardData?.apiContracts;
+    const visibleEndpointIds = new Set<string>();
+    const visibleGroupIds = new Set<string>();
+    if (!apiContracts) {
+      return { visibleEndpointIds, visibleGroupIds };
+    }
+
+    const groupIndex = new Map(apiContracts.groups.map((group) => [group.id, group]));
+    const addGroupWithAncestors = (groupId: string) => {
+      let currentGroupId: string | undefined = groupId;
+      while (currentGroupId) {
+        const group = groupIndex.get(currentGroupId);
+        if (!group || visibleGroupIds.has(group.id)) {
+          break;
+        }
+        visibleGroupIds.add(group.id);
+        currentGroupId = group.parentId;
+      }
+    };
+    const addGroupWithDescendants = (groupId: string) => {
+      const group = groupIndex.get(groupId);
+      if (!group) {
+        return;
+      }
+      visibleGroupIds.add(group.id);
+      group.endpointIds.forEach((endpointId) => visibleEndpointIds.add(endpointId));
+      group.childGroupIds.forEach(addGroupWithDescendants);
+    };
+
+    if (!apiSearchQuery) {
+      apiContracts.groups.forEach((group) => visibleGroupIds.add(group.id));
+      apiContracts.endpoints.forEach((endpoint) => visibleEndpointIds.add(endpoint.id));
+      return { visibleEndpointIds, visibleGroupIds };
+    }
+
+    apiContracts.groups.forEach((group) => {
+      if (!projectMapApiGroupMatchesQuery(group, apiSearchQuery)) {
+        return;
+      }
+      addGroupWithAncestors(group.id);
+      addGroupWithDescendants(group.id);
+    });
+
+    apiContracts.endpoints.forEach((endpoint) => {
+      if (!projectMapApiEndpointMatchesQuery(endpoint, apiSearchQuery)) {
+        return;
+      }
+      visibleEndpointIds.add(endpoint.id);
+      endpoint.groupIds.forEach(addGroupWithAncestors);
+    });
+
+    return { visibleEndpointIds, visibleGroupIds };
+  }, [apiSearchQuery, relationshipDashboardData?.apiContracts]);
+
   const apiGroups = useMemo<ProjectMapApiGroupWithCount[]>(() => {
     const apiContracts = relationshipDashboardData?.apiContracts;
     if (!apiContracts) {
@@ -1107,21 +1220,26 @@ export function ProjectMapRelationshipSection({
     }
     const endpointCounts = new Map<string, number>();
     apiContracts.endpoints.forEach((endpoint) => {
+      if (!apiSearchProjection.visibleEndpointIds.has(endpoint.id)) {
+        return;
+      }
       endpoint.groupIds.forEach((groupId) => {
         endpointCounts.set(groupId, (endpointCounts.get(groupId) ?? 0) + 1);
       });
     });
     return apiContracts.groups
+      .filter((group) => apiSearchProjection.visibleGroupIds.has(group.id))
       .map((group) => ({
         ...group,
-        endpointCount: endpointCounts.get(group.id) ?? group.endpointIds.length,
+        endpointCount: endpointCounts.get(group.id)
+          ?? group.endpointIds.filter((endpointId) => apiSearchProjection.visibleEndpointIds.has(endpointId)).length,
       }))
       .sort((left, right) => (
         left.level.localeCompare(right.level)
         || right.endpointCount - left.endpointCount
         || left.label.localeCompare(right.label)
       ));
-  }, [relationshipDashboardData?.apiContracts]);
+  }, [apiSearchProjection, relationshipDashboardData?.apiContracts]);
 
   const apiGroupById = useMemo(() => {
     const index = new Map<string, ProjectMapApiGroupWithCount>();
@@ -1224,7 +1342,8 @@ export function ProjectMapRelationshipSection({
   }, [apiControllerGroups, apiGroups, selectedApiGroupId, selectedApiModuleGroup]);
 
   const selectedApiGroupEndpoints = useMemo(() => {
-    const endpoints = relationshipDashboardData?.apiContracts?.endpoints ?? [];
+    const endpoints = (relationshipDashboardData?.apiContracts?.endpoints ?? [])
+      .filter((endpoint) => apiSearchProjection.visibleEndpointIds.has(endpoint.id));
     if (!selectedApiGroup) {
       return endpoints.slice(0, 30);
     }
@@ -1232,7 +1351,7 @@ export function ProjectMapRelationshipSection({
     return endpoints.filter((endpoint) => (
       groupEndpointIds.has(endpoint.id) || endpoint.groupIds.includes(selectedApiGroup.id)
     ));
-  }, [relationshipDashboardData?.apiContracts?.endpoints, selectedApiGroup]);
+  }, [apiSearchProjection, relationshipDashboardData?.apiContracts?.endpoints, selectedApiGroup]);
 
   const apiEndpointSections = useMemo<ProjectMapApiEndpointSection[]>(() => {
     const sectionMap = new Map<string, ProjectMapApiEndpoint[]>();
@@ -1264,12 +1383,13 @@ export function ProjectMapRelationshipSection({
   const selectedApiEndpoint = useMemo(() => {
     if (selectedApiEndpointId) {
       const selected = apiEndpointById.get(selectedApiEndpointId);
-      if (selected) {
+      const selectedStillVisible = selectedApiGroupEndpoints.some((endpoint) => endpoint.id === selectedApiEndpointId);
+      if (selected && selectedStillVisible) {
         return selected;
       }
     }
     return apiEndpointSections[0]?.endpoints[0] ?? null;
-  }, [apiEndpointById, apiEndpointSections, selectedApiEndpointId]);
+  }, [apiEndpointById, apiEndpointSections, selectedApiEndpointId, selectedApiGroupEndpoints]);
 
   const apiEndpointCount = relationshipDashboardData?.apiContracts?.endpoints.length ?? 0;
   const apiContractScanExists = Boolean(relationshipDashboardData?.apiContracts);
@@ -1405,6 +1525,21 @@ export function ProjectMapRelationshipSection({
                         : t("projectMap.relationship.scan")}
                     </button>
                   </header>
+                  {relationshipScanState.status === "running" ? (
+                    <div
+                      className="project-map-relationship-scan-loading"
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="project-map-relationship-scan-loading-card">
+                        <strong>{t("projectMap.relationship.scanLoadingTitle")}</strong>
+                        <div className="project-map-relationship-scan-progress" aria-hidden>
+                          <span />
+                        </div>
+                        <p>{t("projectMap.relationship.scanLoadingBody")}</p>
+                      </div>
+                    </div>
+                  ) : null}
                   {relationshipDashboardData ? (
                     <div className="project-map-relationship-dashboard">
                       <div className="project-map-relationship-dashboard-topbar">
@@ -1570,80 +1705,92 @@ export function ProjectMapRelationshipSection({
                             </div>
                             <div className="project-map-relationship-dashboard-controls">
                               <label>
-                                <span>{t("projectMap.relationship.searchLabel")}</span>
+                                <span>
+                                  {relationshipDashboardViewMode === "api"
+                                    ? t("projectMap.relationship.apiSearchLabel")
+                                    : t("projectMap.relationship.searchLabel")}
+                                </span>
                                 <input
                                   value={relationshipDashboardQuery}
                                   onChange={(event) => setRelationshipDashboardQuery(event.target.value)}
-                                  placeholder={t("projectMap.relationship.searchPlaceholder")}
+                                  placeholder={relationshipDashboardViewMode === "api"
+                                    ? t("projectMap.relationship.apiSearchPlaceholder")
+                                    : t("projectMap.relationship.searchPlaceholder")}
                                 />
                               </label>
-                              <label>
-                                <span>{t("projectMap.relationship.typeFilterLabel")}</span>
-                                <select
-                                  value={relationshipDashboardTypeFilter}
-                                  onChange={(event) => setRelationshipDashboardTypeFilter(event.target.value)}
-                                >
-                                  <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
-                                    {t("projectMap.relationship.allTypes")}
-                                  </option>
-                                  {relationshipDashboardTypeOptions.map((type) => (
-                                    <option key={type} value={type}>{type}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <label>
-                                <span>{t("projectMap.relationship.roleFilterLabel")}</span>
-                                <select
-                                  value={relationshipDashboardRoleFilter}
-                                  onChange={(event) => setRelationshipDashboardRoleFilter(event.target.value)}
-                                >
-                                  <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
-                                    {t("projectMap.relationship.allRoles")}
-                                  </option>
-                                  {relationshipDashboardRoleOptions.map((role) => (
-                                    <option key={role} value={role}>{role}</option>
-                                  ))}
-                                </select>
-                              </label>
-                              <button
-                                type="button"
-                                className={cn(
-                                  "project-map-relationship-noise-toggle",
-                                  showRelationshipNoiseFiles && "is-active",
-                                )}
-                                onClick={() => {
-                                  setRelationshipDashboardRoleFilter(PROJECT_MAP_RELATION_FILTER_ALL);
-                                  setShowRelationshipNoiseFiles((current) => !current);
-                                }}
-                              >
-                                {showRelationshipNoiseFiles
-                                  ? t("projectMap.relationship.hideNoise")
-                                  : t("projectMap.relationship.showNoise")}
-                              </button>
+                              {relationshipDashboardViewMode !== "api" ? (
+                                <>
+                                  <label>
+                                    <span>{t("projectMap.relationship.typeFilterLabel")}</span>
+                                    <select
+                                      value={relationshipDashboardTypeFilter}
+                                      onChange={(event) => setRelationshipDashboardTypeFilter(event.target.value)}
+                                    >
+                                      <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
+                                        {t("projectMap.relationship.allTypes")}
+                                      </option>
+                                      {relationshipDashboardTypeOptions.map((type) => (
+                                        <option key={type} value={type}>{type}</option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <label>
+                                    <span>{t("projectMap.relationship.roleFilterLabel")}</span>
+                                    <select
+                                      value={relationshipDashboardRoleFilter}
+                                      onChange={(event) => setRelationshipDashboardRoleFilter(event.target.value)}
+                                    >
+                                      <option value={PROJECT_MAP_RELATION_FILTER_ALL}>
+                                        {t("projectMap.relationship.allRoles")}
+                                      </option>
+                                      {relationshipDashboardRoleOptions.map((role) => (
+                                        <option key={role} value={role}>{role}</option>
+                                      ))}
+                                    </select>
+                                  </label>
+                                  <button
+                                    type="button"
+                                    className={cn(
+                                      "project-map-relationship-noise-toggle",
+                                      showRelationshipNoiseFiles && "is-active",
+                                    )}
+                                    onClick={() => {
+                                      setRelationshipDashboardRoleFilter(PROJECT_MAP_RELATION_FILTER_ALL);
+                                      setShowRelationshipNoiseFiles((current) => !current);
+                                    }}
+                                  >
+                                    {showRelationshipNoiseFiles
+                                      ? t("projectMap.relationship.hideNoise")
+                                      : t("projectMap.relationship.showNoise")}
+                                  </button>
+                                </>
+                              ) : null}
                             </div>
-                            <div className="project-map-relationship-role-strip">
-                              <button
-                                type="button"
-                                className={cn(
-                                  relationshipDashboardRoleFilter === PROJECT_MAP_RELATION_FILTER_ALL && "is-active",
-                                )}
-                                onClick={() => setRelationshipDashboardRoleFilter(PROJECT_MAP_RELATION_FILTER_ALL)}
-                              >
-                                {t("projectMap.relationship.allRoles")}
-                              </button>
-                              {relationshipDashboardRoleOptions.slice(0, 10).map((role) => (
+                            {relationshipDashboardViewMode !== "api" ? (
+                              <div className="project-map-relationship-role-strip">
                                 <button
-                                  key={role}
                                   type="button"
                                   className={cn(
-                                    relationshipDashboardRoleFilter === role && "is-active",
+                                    relationshipDashboardRoleFilter === PROJECT_MAP_RELATION_FILTER_ALL && "is-active",
                                   )}
-                                  onClick={() => setRelationshipDashboardRoleFilter(role)}
+                                  onClick={() => setRelationshipDashboardRoleFilter(PROJECT_MAP_RELATION_FILTER_ALL)}
                                 >
-                                  {role}
+                                  {t("projectMap.relationship.allRoles")}
                                 </button>
-                              ))}
-                            </div>
+                                {relationshipDashboardRoleOptions.slice(0, 10).map((role) => (
+                                  <button
+                                    key={role}
+                                    type="button"
+                                    className={cn(
+                                      relationshipDashboardRoleFilter === role && "is-active",
+                                    )}
+                                    onClick={() => setRelationshipDashboardRoleFilter(role)}
+                                  >
+                                    {role}
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
                           </>
                         ) : null}
                       </div>
@@ -2493,7 +2640,9 @@ export function ProjectMapRelationshipSection({
                                   </div>
                                 ) : (
                                   <p className="project-map-api-contract-stage-empty">
-                                    {t("projectMap.relationship.apiNoEndpointsInGroup")}
+                                    {apiSearchQuery
+                                      ? t("projectMap.relationship.apiSearchEmpty")
+                                      : t("projectMap.relationship.apiNoEndpointsInGroup")}
                                   </p>
                                 )}
                               </section>

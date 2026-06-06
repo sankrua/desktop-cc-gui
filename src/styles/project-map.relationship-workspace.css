@@ -638,7 +638,7 @@
 
 .project-map-stage.is-file-relations-focused .project-map-lens-shell {
   display: flex;
-  flex: 1;
+  flex: 0 0 auto;
   flex-direction: column;
   min-height: 0;
   margin-bottom: 0;
@@ -652,7 +652,9 @@
   max-height: none;
 }
 
-.project-map-stage.is-file-relations-focused .project-map-relationship-scan-panel > header {
+.project-map-panel:not(.is-chrome-collapsed)
+  .project-map-stage.is-file-relations-focused
+  .project-map-relationship-scan-panel > header {
   display: none;
 }
 
