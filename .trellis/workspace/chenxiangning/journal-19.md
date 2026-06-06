@@ -1473,3 +1473,45 @@ OpenSpec 回写：
 ### Next Steps
 
 - None - task complete
+
+
+## Session 725: 修复 Project Map UNKNOWN 关系节点聚焦
+
+**Date**: 2026-06-06
+**Task**: 修复 Project Map UNKNOWN 关系节点聚焦
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 问题 | Project Map 关系图中 UNKNOWN/noise 节点主体可见，但点击后右侧 Inspector 或右上角 jump 聚焦链路受 noise filter 影响，表现为不能稳定查看/聚焦。 |
+| 修复 | 放宽右侧 inspected 文件解析：只要文件存在于完整 relationship file index，就允许 Inspector 展示；jump 点击 noise 节点时先打开 noise files，再设置 selected/inspected file。 |
+| 影响范围 | 仅影响 `ProjectMapRelationshipSection` 的 relationship graph selection/inspection UI state，不改变 scan 数据结构、不改变关系数据归一化、不引入新依赖。 |
+| 验证 | 未运行自动测试；本次按用户手测反馈推进，代码提交前用户确认需要收口。 |
+
+**Updated Files**:
+- `src/features/project-map/components/ProjectMapRelationshipSection.tsx`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8519b3f2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
