@@ -1,6 +1,5 @@
 import { lazy, Suspense, useCallback, useDeferredValue, useEffect, useMemo, useReducer, useRef, useState, type DragEvent, type MouseEvent, type ReactNode, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
-import ArrowLeft from "lucide-react/dist/esm/icons/arrow-left";
 import { Sidebar } from "../../app/components/Sidebar";
 import { HomeChat } from "../../home/components/HomeChat";
 import { MainHeader } from "../../app/components/MainHeader";
@@ -63,12 +62,8 @@ import { patchTaskRun, saveTaskRunStore } from "../../tasks/utils/taskRunStorage
 import { WorkspaceNoteCardPanel } from "../../note-cards/components/WorkspaceNoteCardPanel";
 import { WorkspaceSessionActivityPanel } from "../../session-activity/components/WorkspaceSessionActivityPanel";
 import { WorkspaceSessionRadarPanel } from "../../session-activity/components/WorkspaceSessionRadarPanel";
-import { DebugPanel } from "../../debug/components/DebugPanel";
-import { PanelTabs } from "../components/PanelTabs";
 import { TabBar } from "../../app/components/TabBar";
 import { TabletNav } from "../../app/components/TabletNav";
-import { TerminalDock } from "../../terminal/components/TerminalDock";
-import { TerminalPanel } from "../../terminal/components/TerminalPanel";
 import { StatusPanel } from "../../status-panel/components/StatusPanel";
 import { useStatusPanelData } from "../../status-panel/hooks/useStatusPanelData";
 import { useGlobalRuntimeNoticeDock } from "../../notifications/hooks/useGlobalRuntimeNoticeDock";
@@ -181,6 +176,14 @@ import { loadCodeSelectionRelationshipGraph } from "./codeSelectionRelationshipG
 import { resolveRuntimeLifecycleForComposer } from "./runtimeLifecycle";
 import { focusUserInputRequestCard } from "./userInputRequestFocus";
 import { dispatchMessageJumpEvent } from "./messageJumpEvent";
+import {
+  buildCompactEmptyNode,
+  buildCompactGitBackNode,
+  buildDebugPanelNodes,
+  buildDesktopTopbarLeftNode,
+  buildRightPanelToolbarNode,
+  buildTerminalDockNode,
+} from "./layoutNodeSections";
 
 const GitDiffPanel = lazy(() =>
   import("../../git/components/GitDiffPanel").then((m) => ({ default: m.GitDiffPanel })),
@@ -2133,21 +2136,13 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
     />
   ) : null;
 
-  const desktopTopbarLeftNode = (
-    <>
-      {options.centerMode === "diff" && (
-        <button
-          className="icon-button back-button"
-          onClick={options.onExitDiff}
-          aria-label={t("files.backToChat")}
-        >
-          <ArrowLeft aria-hidden />
-        </button>
-      )}
-      {mainHeaderNode}
-      {topbarTabContextMenuNode}
-    </>
-  );
+  const desktopTopbarLeftNode = buildDesktopTopbarLeftNode({
+    centerMode: options.centerMode,
+    backLabel: t("files.backToChat"),
+    mainHeaderNode,
+    contextMenuNode: topbarTabContextMenuNode,
+    onExitDiff: options.onExitDiff,
+  });
 
   const tabletNavNode = (
     <TabletNav activeTab={options.tabletNavTab} onSelect={options.onSelectTab} />
@@ -2269,26 +2264,19 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
     ],
   );
 
-  const rightPanelToolbarNode =
-    showRightActivityToolbar && hasVisibleRightToolbarControl ? (
-    <div className="right-panel-toolbar">
-      <PanelTabs
-        active={
-          isIntentCanvasSurfaceActive
-            ? "intentCanvas"
-            : isProjectMapSurfaceActive
-              ? "projectMap"
-              : options.filePanelMode
-        }
-        onSelect={handleRightPanelTabSelect}
-        liveStates={{
-          activity: workspaceActivity.isProcessing,
-          radar: options.sessionRadarRunningSessions.length > 0,
-        }}
-        visibleTabs={rightToolbarVisibleTabs}
-      />
-    </div>
-  ) : null;
+  const rightPanelToolbarNode = buildRightPanelToolbarNode({
+    active: isIntentCanvasSurfaceActive
+      ? "intentCanvas"
+      : isProjectMapSurfaceActive
+        ? "projectMap"
+        : options.filePanelMode,
+    showToolbar: showRightActivityToolbar,
+    hasVisibleControl: hasVisibleRightToolbarControl,
+    activityLive: workspaceActivity.isProcessing,
+    radarLive: options.sessionRadarRunningSessions.length > 0,
+    visibleTabs: rightToolbarVisibleTabs,
+    onSelect: handleRightPanelTabSelect,
+  });
 
   let gitDiffPanelNode: ReactNode;
   if (options.filePanelMode === "files" && options.activeWorkspace) {
@@ -2885,84 +2873,52 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
     />
   ) : null;
 
-  const terminalPanelNode = options.terminalState ? (
-    <TerminalPanel
-      containerRef={options.terminalState.containerRef}
-      status={options.terminalState.status}
-      message={options.terminalState.message}
-    />
-  ) : null;
+  const terminalDockNode = buildTerminalDockNode({
+    terminalState: options.terminalState,
+    terminalOpen: options.terminalOpen,
+    terminalTabs: options.terminalTabs,
+    activeTerminalId: options.activeTerminalId,
+    onToggleTerminal: options.onToggleTerminal,
+    onSelectTerminal: options.onSelectTerminal,
+    onNewTerminal: options.onNewTerminal,
+    onCloseTerminal: options.onCloseTerminal,
+    onResizeTerminal: options.onResizeTerminal,
+  });
 
-  const terminalDockNode = (
-    <TerminalDock
-      isOpen={options.terminalOpen}
-      terminals={options.terminalTabs}
-      activeTerminalId={options.activeTerminalId}
-      onToggleOpen={options.onToggleTerminal}
-      onSelectTerminal={options.onSelectTerminal}
-      onNewTerminal={options.onNewTerminal}
-      onCloseTerminal={options.onCloseTerminal}
-      onResizeStart={options.onResizeTerminal}
-      terminalNode={terminalPanelNode}
-    />
-  );
+  const { debugPanelNode, debugPanelFullNode } = buildDebugPanelNodes({
+    debugEntries: options.debugEntries,
+    debugOpen: options.debugOpen,
+    onClearDebug: options.onClearDebug,
+    onCopyDebug: options.onCopyDebug,
+    onResizeDebug: options.onResizeDebug,
+  });
 
-  const debugPanelNode = (
-    <DebugPanel
-      entries={options.debugEntries}
-      isOpen={options.debugOpen}
-      onClear={options.onClearDebug}
-      onCopy={options.onCopyDebug}
-      onResizeStart={options.onResizeDebug}
-    />
-  );
+  const compactEmptyCodexNode = buildCompactEmptyNode({
+    title: t("workspace.noWorkspaceSelected"),
+    description: t("workspace.chooseProjectToChat"),
+    buttonLabel: t("workspace.goToProjects"),
+    onGoProjects: options.onGoProjects,
+  });
 
-  const debugPanelFullNode = (
-    <DebugPanel
-      entries={options.debugEntries}
-      isOpen
-      onClear={options.onClearDebug}
-      onCopy={options.onCopyDebug}
-      variant="full"
-    />
-  );
+  const compactEmptyGitNode = buildCompactEmptyNode({
+    title: t("workspace.noWorkspaceSelected"),
+    description: t("workspace.selectProjectToInspect"),
+    buttonLabel: t("workspace.goToProjects"),
+    onGoProjects: options.onGoProjects,
+  });
 
-  const compactEmptyCodexNode = (
-    <div className="compact-empty">
-      <h3>{t("workspace.noWorkspaceSelected")}</h3>
-      <p>{t("workspace.chooseProjectToChat")}</p>
-      <button className="ghost" onClick={options.onGoProjects}>
-        {t("workspace.goToProjects")}
-      </button>
-    </div>
-  );
+  const compactEmptySpecNode = buildCompactEmptyNode({
+    title: t("workspace.noWorkspaceSelected"),
+    description: t("workspace.selectProjectToReadSpecs"),
+    buttonLabel: t("workspace.goToProjects"),
+    onGoProjects: options.onGoProjects,
+  });
 
-  const compactEmptyGitNode = (
-    <div className="compact-empty">
-      <h3>{t("workspace.noWorkspaceSelected")}</h3>
-      <p>{t("workspace.selectProjectToInspect")}</p>
-      <button className="ghost" onClick={options.onGoProjects}>
-        {t("workspace.goToProjects")}
-      </button>
-    </div>
-  );
-
-  const compactEmptySpecNode = (
-    <div className="compact-empty">
-      <h3>{t("workspace.noWorkspaceSelected")}</h3>
-      <p>{t("workspace.selectProjectToReadSpecs")}</p>
-      <button className="ghost" onClick={options.onGoProjects}>
-        {t("workspace.goToProjects")}
-      </button>
-    </div>
-  );
-
-  const compactGitBackNode = (
-    <div className="compact-git-back">
-      <button onClick={options.onBackFromDiff}>&#8249; {t("workspace.back")}</button>
-      <span className="workspace-title">{t("workspace.diff")}</span>
-    </div>
-  );
+  const compactGitBackNode = buildCompactGitBackNode({
+    backLabel: t("workspace.back"),
+    diffLabel: t("workspace.diff"),
+    onBackFromDiff: options.onBackFromDiff,
+  });
   const browserDockNode = null;
 
   return {

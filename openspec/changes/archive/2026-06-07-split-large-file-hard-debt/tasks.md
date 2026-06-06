@@ -16,25 +16,26 @@
 
 - [x] 3.1 Extract code-selection relationship graph helpers from `useLayoutNodes.tsx`.
 - [x] 3.2 Extract conversation engine/lifecycle helper logic from `useLayoutNodes.tsx`.
-- [ ] 3.3 Extract left/right/main layout section builders while preserving `useLayoutNodes` return shape.
+- [x] 3.3 Extract left/right/main layout section builders while preserving `useLayoutNodes` return shape.
 - [x] 3.4 Confirm panel ordering, selected tab behavior, lazy fallback behavior, and code-selection relationship graph behavior remain compatible.
 - [x] 3.5 Confirm `useLayoutNodes.tsx` is below 3000 lines.
 
 ## 4. Rust Project Map Relations Split
 
 - [x] 4.1 Extract path/storage validation and snapshot ownership helpers from `project_map_relations.rs`.
-- [ ] 4.2 Extract file classification, ignore rules, and language heuristic helpers.
-- [ ] 4.3 Extract import/call/symbol resolution and relation index builders.
-- [ ] 4.4 Extract context-pack stale/API enrichment helpers.
+- [x] 4.2 Extract file classification, ignore rules, and language heuristic helpers.
+- [x] 4.3 Extract import/call/symbol resolution and relation index builders.
+- [x] 4.4 Extract context-pack stale/API enrichment helpers.
 - [x] 4.5 Keep command registration, response schema, storage paths, and error semantics compatible.
 - [x] 4.6 Confirm `project_map_relations.rs` is below 3000 lines.
+- [x] 4.7 Split `project_map_api_contracts.rs` test module after large-file gate surfaced it as a new fail-scope file.
 
 ## 5. Project Map Relationship Styles Split
 
-- [ ] 5.1 Split loading/dashboard chrome styles into an imported stylesheet part.
-- [ ] 5.2 Split graph canvas/node/edge/control styles into imported stylesheet part(s).
+- [x] 5.1 Split loading/dashboard chrome styles into an imported stylesheet part.
+- [x] 5.2 Split graph canvas/node/edge/control styles into imported stylesheet part(s).
 - [x] 5.3 Split inspector/evidence/action styles into imported stylesheet part(s).
-- [ ] 5.4 Split file/read dashboard and insight tile styles into imported stylesheet part(s).
+- [x] 5.4 Split file/read dashboard and insight tile styles into imported stylesheet part(s).
 - [x] 5.5 Preserve selector names and cascade order.
 - [x] 5.6 Confirm `project-map.relationship.css` is below 2800 lines.
 

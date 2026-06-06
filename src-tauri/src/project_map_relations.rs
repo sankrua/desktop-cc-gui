@@ -1,22 +1,42 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::fs;
 use std::io;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Path, PathBuf};
 
+mod context_pack;
+mod file_classification;
 mod path_safety;
+mod relation_resolution;
 
+use context_pack::{
+    build_relationship_impact_and_context, enrich_context_pack_with_api_contracts,
+    enrich_context_pack_with_stale_state, summarize_relationship_stale_state,
+};
+use file_classification::{
+    classify_layer, classify_role, is_builtin_ignored_path, language_for_project_file,
+    should_read_project_text_file,
+};
 use path_safety::validate_relative_relationship_path;
+use relation_resolution::{
+    build_indexes, build_symbol_file_index, c_include_specifier, call_candidates_for_line,
+    dedupe_relations, document_path_mentions, evidence, first_quoted_value, import_specifiers,
+    java_declared_type, java_import_specifier, java_package_name, parent_dir_text,
+    path_is_inside_dir, project_file_stem, push_relation, python_import_specifiers,
+    relationship_symbols_for_file, resolve_call_target, resolve_java_import, resolve_python_import,
+    resolve_relative_import, resolve_rust_mod, resolve_rust_use, rust_mod_specifier,
+    rust_use_roots, tauri_command_names,
+};
 
-use serde_json::json;
-use sha2::{Digest, Sha256};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_json::Value;
+use sha2::{Digest, Sha256};
 use tauri::State;
 use uuid::Uuid;
 
 use crate::app_paths;
-use crate::project_map_api_contracts::build_api_contract_artifact;
 use crate::project_identity::project_storage_key;
+use crate::project_map_api_contracts::build_api_contract_artifact;
 use crate::state::AppState;
 use crate::storage::{with_storage_lock, write_string_atomically};
 use crate::types::WorkspaceEntry;
@@ -207,7 +227,6 @@ fn relationship_root_for_mode(
     Ok((key.clone(), root.join(key)))
 }
 
-
 fn validate_relationship_snapshot_ownership(
     storage_key: &str,
     files: &[ProjectMapRelationshipWriteFile],
@@ -256,7 +275,9 @@ fn validate_relationship_snapshot_ownership(
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|value| !value.is_empty())
-            .ok_or_else(|| "Project map relationship manifest is missing storageKey.".to_string())?;
+            .ok_or_else(|| {
+                "Project map relationship manifest is missing storageKey.".to_string()
+            })?;
         if manifest_storage_key != storage_key {
             return Err(format!(
                 "Project map relationship manifest ownership mismatch: expected {storage_key}, received {manifest_storage_key}."
@@ -279,8 +300,8 @@ fn validate_api_contract_storage_key_content(
     content: &str,
     label: &str,
 ) -> Result<(), String> {
-    let value: Value = serde_json::from_str(content)
-        .map_err(|err| format!("Failed to parse {label}: {err}"))?;
+    let value: Value =
+        serde_json::from_str(content).map_err(|err| format!("Failed to parse {label}: {err}"))?;
     validate_api_contract_storage_key_value(expected_storage_key, &value, label)
 }
 
@@ -466,1003 +487,6 @@ fn relation_id(source_file_id: &str, target_file_id: &str, relation_type: &str) 
     format!("rel-{}", stable_hash(&fingerprint))
 }
 
-fn is_builtin_ignored_path(path: &Path) -> bool {
-    path.components().any(|component| {
-        let Component::Normal(segment) = component else {
-            return false;
-        };
-        let Some(segment) = segment.to_str() else {
-            return false;
-        };
-        matches!(
-            segment,
-            ".git"
-                | ".hg"
-                | ".svn"
-                | "node_modules"
-                | "target"
-                | "dist"
-                | "build"
-                | "out"
-                | ".next"
-                | ".turbo"
-                | ".vite"
-                | ".cache"
-                | ".ccgui"
-                | ".mossx"
-                | ".codemoss"
-        )
-    })
-}
-
-fn is_manifest_path(path: &str) -> bool {
-    let normalized = path.to_ascii_lowercase();
-    let basename = normalized.rsplit('/').next().unwrap_or(&normalized);
-    matches!(
-        basename,
-        "package.json"
-            | "cargo.toml"
-            | "pom.xml"
-            | "build.gradle"
-            | "build.gradle.kts"
-            | "settings.gradle"
-            | "settings.gradle.kts"
-            | "go.mod"
-            | "pyproject.toml"
-            | "requirements.txt"
-            | "composer.json"
-            | "gemfile"
-            | "package.swift"
-            | "pubspec.yaml"
-            | "pubspec.yml"
-            | "dockerfile"
-            | "docker-compose.yml"
-            | "docker-compose.yaml"
-            | "makefile"
-            | "cmakelists.txt"
-    ) || basename.starts_with("dockerfile")
-        || basename.starts_with("makefile")
-        || (basename.starts_with("requirements") && basename.ends_with(".txt"))
-        || basename.ends_with(".csproj")
-        || basename.ends_with(".sln")
-        || basename.ends_with(".tf")
-}
-
-fn language_for_project_file(path: &str, extension: &str) -> &'static str {
-    let normalized = path.to_ascii_lowercase();
-    let basename = normalized.rsplit('/').next().unwrap_or(&normalized);
-    if basename.starts_with("dockerfile") {
-        return "dockerfile";
-    }
-    if basename.starts_with("makefile") {
-        return "makefile";
-    }
-    if basename == "cmakelists.txt" {
-        return "cmake";
-    }
-    match extension {
-        "ts" | "tsx" => "typescript",
-        "js" | "jsx" | "mjs" | "cjs" => "javascript",
-        "rs" => "rust",
-        "java" => "java",
-        "kt" | "kts" => "kotlin",
-        "py" => "python",
-        "go" => "go",
-        "cs" => "csharp",
-        "php" => "php",
-        "rb" => "ruby",
-        "c" => "c",
-        "cc" | "cpp" | "cxx" | "h" | "hpp" | "hh" => "cpp",
-        "swift" => "swift",
-        "dart" => "dart",
-        "vue" => "vue",
-        "svelte" => "svelte",
-        "json" => "json",
-        "toml" => "toml",
-        "xml" => "xml",
-        "yaml" | "yml" => "yaml",
-        "properties" => "properties",
-        "gradle" => "gradle",
-        "tf" | "hcl" => "terraform",
-        "sql" => "sql",
-        "html" | "htm" => "html",
-        "md" | "mdx" => "markdown",
-        "css" | "scss" | "sass" | "less" => "css",
-        "sh" | "bash" | "zsh" => "shell",
-        "txt" => "text",
-        _ => "unknown",
-    }
-}
-
-fn should_read_project_text_file(path: &str, extension: &str) -> bool {
-    !matches!(language_for_project_file(path, extension), "unknown")
-}
-
-fn classify_layer(path: &str, extension: &str) -> &'static str {
-    let normalized = path.to_ascii_lowercase();
-    if normalized.contains("/tests/")
-        || normalized.contains("/test/")
-        || normalized.ends_with(".test.ts")
-        || normalized.ends_with(".test.tsx")
-        || normalized.ends_with(".spec.ts")
-        || normalized.ends_with(".spec.tsx")
-        || normalized.ends_with("test.java")
-        || normalized.ends_with("tests.java")
-        || normalized.ends_with("_test.rs")
-    {
-        "test"
-    } else if matches!(extension, "css" | "scss" | "sass" | "less") {
-        "style"
-    } else if normalized.starts_with("openspec/") || normalized.contains("/openspec/") {
-        "spec"
-    } else if normalized.starts_with("docs/") || matches!(extension, "md" | "mdx") {
-        "docs"
-    } else if normalized.starts_with("src-tauri/")
-        || normalized.starts_with("src/main/java/")
-        || normalized.contains("/server/")
-        || normalized.contains("/api/")
-        || matches!(extension, "rs" | "java" | "kt" | "kts" | "py" | "go" | "cs" | "php" | "rb")
-    {
-        "backend"
-    } else if normalized.starts_with("src/")
-        || matches!(extension, "ts" | "tsx" | "js" | "jsx" | "vue" | "svelte" | "html" | "htm")
-    {
-        "frontend"
-    } else if is_manifest_path(&normalized)
-        || matches!(
-            extension,
-            "json" | "toml" | "xml" | "yaml" | "yml" | "properties" | "gradle" | "tf" | "hcl" | "sql"
-        )
-    {
-        "config"
-    } else {
-        "unknown"
-    }
-}
-
-fn classify_role(path: &str, extension: &str) -> &'static str {
-    let normalized = path.to_ascii_lowercase();
-    if is_manifest_path(&normalized) {
-        "manifest"
-    } else if normalized.contains("/migrations/") || matches!(extension, "sql") {
-        "migration"
-    } else if matches!(extension, "tf" | "hcl") || normalized.rsplit('/').next().unwrap_or(&normalized).starts_with("dockerfile") {
-        "infra"
-    } else if normalized.ends_with(".test.ts")
-        || normalized.ends_with(".test.tsx")
-        || normalized.ends_with(".spec.ts")
-        || normalized.ends_with(".spec.tsx")
-        || normalized.ends_with("test.java")
-        || normalized.ends_with("tests.java")
-        || normalized.ends_with("_test.rs")
-    {
-        "test"
-    } else if normalized.contains("/components/") || normalized.ends_with(".tsx") {
-        "component"
-    } else if normalized.contains("/hooks/") || normalized.contains("/use") {
-        "hook"
-    } else if normalized.contains("/services/") || normalized.contains("/service/") {
-        "service"
-    } else if normalized.contains("/controller/") || normalized.contains("/controllers/") {
-        "controller"
-    } else if normalized.contains("/repository/") || normalized.contains("/repositories/") {
-        "repository"
-    } else if normalized.contains("/entity/") || normalized.contains("/entities/") || normalized.contains("/model/") {
-        "entity"
-    } else if normalized.ends_with("types.ts") || normalized.ends_with("/types.rs") {
-        "type"
-    } else if matches!(extension, "css" | "scss" | "sass" | "less") {
-        "style"
-    } else if normalized.contains("commands.rs") || normalized.contains("command_registry.rs") {
-        "command"
-    } else if normalized.starts_with("openspec/") {
-        "spec"
-    } else if normalized.contains("/routes/") || normalized.contains("/router/") {
-        "route"
-    } else if matches!(
-        extension,
-        "json" | "toml" | "xml" | "yaml" | "yml" | "properties" | "gradle" | "tf" | "hcl"
-    ) {
-        "config"
-    } else if matches!(extension, "md" | "mdx") {
-        "document"
-    } else if matches!(extension, "rs") {
-        "module"
-    } else {
-        "unknown"
-    }
-}
-
-fn module_label(path: &str) -> String {
-    let segments = path.split('/').collect::<Vec<_>>();
-    if segments.len() >= 3 && segments[0] == "src" && segments[1] == "features" {
-        return format!("frontend:{}", segments[2]);
-    }
-    if segments.len() >= 3 && segments[0] == "src-tauri" && segments[1] == "src" {
-        return format!("backend:{}", segments[2].trim_end_matches(".rs"));
-    }
-    segments.first().copied().unwrap_or("root").to_string()
-}
-
-fn first_quoted_value(text: &str) -> Option<String> {
-    let mut chars = text.char_indices();
-    while let Some((index, character)) = chars.next() {
-        if character != '\'' && character != '"' {
-            continue;
-        }
-        let quote = character;
-        let start = index + quote.len_utf8();
-        let end = text[start..].find(quote)?;
-        return Some(text[start..start + end].to_string());
-    }
-    None
-}
-
-fn import_specifiers(line: &str) -> Vec<String> {
-    let trimmed = line.trim();
-    let mut specifiers = Vec::new();
-    if (trimmed.starts_with("import ") || trimmed.starts_with("export "))
-        && trimmed.contains(" from ")
-    {
-        if let Some(specifier) = first_quoted_value(trimmed.rsplit_once(" from ").map(|(_, tail)| tail).unwrap_or(trimmed)) {
-            specifiers.push(specifier);
-        }
-    } else if trimmed.starts_with("import ") {
-        if let Some(specifier) = first_quoted_value(trimmed.trim_start_matches("import").trim()) {
-            specifiers.push(specifier);
-        }
-    }
-    if let Some((_, tail)) = trimmed.split_once("import(") {
-        if let Some(specifier) = first_quoted_value(tail) {
-            specifiers.push(specifier);
-        }
-    }
-    specifiers
-}
-
-fn java_import_specifier(line: &str) -> Option<String> {
-    let trimmed = line.trim();
-    let import_body = trimmed.strip_prefix("import ")?;
-    let import_body = import_body
-        .trim_start_matches("static ")
-        .trim()
-        .trim_end_matches(';')
-        .trim();
-    if import_body.is_empty() || import_body.ends_with(".*") {
-        return None;
-    }
-    Some(import_body.to_string())
-}
-
-fn java_package_name(content: &str) -> Option<String> {
-    content.lines().find_map(|line| {
-        let trimmed = line.trim();
-        trimmed
-            .strip_prefix("package ")
-            .map(str::trim)
-            .map(|value| value.trim_end_matches(';').trim().to_string())
-            .filter(|value| !value.is_empty())
-    })
-}
-
-fn java_declared_type(content: &str) -> Option<String> {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("//") {
-            continue;
-        }
-        let tokens = trimmed
-            .split(|character: char| !character.is_ascii_alphanumeric() && character != '_')
-            .filter(|token| !token.is_empty())
-            .collect::<Vec<_>>();
-        for (index, token) in tokens.iter().enumerate() {
-            if matches!(*token, "class" | "interface" | "enum" | "record") {
-                return tokens.get(index + 1).map(|value| (*value).to_string());
-            }
-        }
-    }
-    None
-}
-
-fn project_file_stem(basename: &str) -> String {
-    basename
-        .split('.')
-        .next()
-        .unwrap_or(basename)
-        .to_ascii_lowercase()
-}
-
-fn parent_dir_text(path: &str) -> String {
-    path.rsplit_once('/')
-        .map(|(parent, _)| parent.to_string())
-        .unwrap_or_default()
-}
-
-fn path_is_inside_dir(path: &str, directory: &str) -> bool {
-    if directory.is_empty() {
-        return true;
-    }
-    match path.strip_prefix(directory) {
-        Some(tail) => tail.starts_with('/'),
-        None => false,
-    }
-}
-
-fn document_path_mentions(line: &str) -> Vec<String> {
-    line.split(|character: char| {
-        !(character.is_ascii_alphanumeric()
-            || matches!(character, '.' | '_' | '-' | '/' | '\\'))
-    })
-    .map(|token| token.trim_matches(|character| matches!(character, '.' | ',' | ';' | ':' | ')' | ']' | '}')))
-    .map(|token| token.replace('\\', "/"))
-    .filter(|token| token.contains('.') || token.contains('/'))
-    .filter(|token| token.len() >= 4)
-    .collect()
-}
-
-fn rust_fn_name(line: &str) -> Option<String> {
-    let mut trimmed = line.trim();
-    trimmed = trimmed.strip_prefix("pub(crate) ").unwrap_or(trimmed);
-    trimmed = trimmed.strip_prefix("pub(super) ").unwrap_or(trimmed);
-    trimmed = trimmed.strip_prefix("pub ").unwrap_or(trimmed);
-    trimmed = trimmed.strip_prefix("async ").unwrap_or(trimmed);
-    let fn_tail = trimmed.strip_prefix("fn ")?;
-    let name = fn_tail
-        .chars()
-        .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
-        .collect::<String>();
-    if name.is_empty() {
-        None
-    } else {
-        Some(name)
-    }
-}
-
-fn tauri_command_names(content: &str) -> Vec<String> {
-    let mut names = Vec::new();
-    let mut waiting_for_fn = false;
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if trimmed.starts_with("#[tauri::command") {
-            waiting_for_fn = true;
-            continue;
-        }
-        if !waiting_for_fn {
-            continue;
-        }
-        if let Some(name) = rust_fn_name(trimmed) {
-            names.push(name);
-            waiting_for_fn = false;
-            continue;
-        }
-        if !trimmed.is_empty() && !trimmed.starts_with("#[") {
-            waiting_for_fn = false;
-        }
-    }
-    names
-}
-
-fn rust_use_roots(line: &str) -> Vec<String> {
-    let trimmed = line.trim();
-    let Some(use_body) = trimmed.strip_prefix("use ") else {
-        return Vec::new();
-    };
-    let use_body = use_body.trim_end_matches(';').trim();
-    let mut roots = Vec::new();
-    for prefix in ["crate::", "super::", "self::"] {
-        if let Some(rest) = use_body.strip_prefix(prefix) {
-            let module_root = rest
-                .split(|character: char| {
-                    matches!(character, ':' | '{' | ',' | ';' | ' ' | '\t' | '\n' | '\r')
-                })
-                .next()
-                .unwrap_or("")
-                .trim();
-            if !module_root.is_empty()
-                && module_root
-                    .chars()
-                    .all(|character| character.is_ascii_alphanumeric() || character == '_')
-            {
-                roots.push(format!("{prefix}{module_root}"));
-            }
-        }
-    }
-    roots
-}
-
-fn rust_mod_specifier(line: &str) -> Option<String> {
-    let trimmed = line.trim();
-    let trimmed = trimmed.strip_prefix("pub ").unwrap_or(trimmed);
-    let trimmed = trimmed.strip_prefix("mod ")?;
-    let name = trimmed.trim_end_matches(';').trim();
-    if name
-        .chars()
-        .all(|character| character.is_ascii_alphanumeric() || character == '_')
-    {
-        Some(name.to_string())
-    } else {
-        None
-    }
-}
-
-fn normalized_candidate(root: &Path, candidate: PathBuf) -> Option<String> {
-    let absolute = if candidate.is_absolute() {
-        candidate
-    } else {
-        root.join(candidate)
-    };
-    let mut normalized = PathBuf::new();
-    for component in absolute.components() {
-        match component {
-            Component::Prefix(prefix) => normalized.push(prefix.as_os_str()),
-            Component::RootDir => normalized.push(component.as_os_str()),
-            Component::CurDir => {}
-            Component::Normal(segment) => normalized.push(segment),
-            Component::ParentDir => {
-                if !normalized.pop() {
-                    return None;
-                }
-            }
-        }
-    }
-    relative_path(root, &normalized)
-}
-
-fn resolve_relative_import(
-    root: &Path,
-    source_path: &str,
-    specifier: &str,
-    path_to_file_id: &HashMap<String, String>,
-) -> Option<String> {
-    if !specifier.starts_with('.') {
-        return None;
-    }
-    let base = Path::new(source_path)
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_default();
-    let raw = base.join(specifier);
-    let mut candidates = Vec::new();
-    candidates.push(raw.clone());
-    for extension in [
-        "ts", "tsx", "js", "jsx", "mjs", "cjs", "json", "css", "rs", "vue",
-        "svelte", "py", "go", "java", "kt", "c", "cc", "cpp", "cxx", "h", "hpp",
-    ] {
-        candidates.push(raw.with_extension(extension));
-    }
-    for index_file in [
-        "index.ts",
-        "index.tsx",
-        "index.js",
-        "index.jsx",
-        "index.vue",
-        "index.svelte",
-        "__init__.py",
-        "mod.rs",
-    ] {
-        candidates.push(raw.join(index_file));
-    }
-    candidates
-        .into_iter()
-        .filter_map(|candidate| normalized_candidate(root, root.join(candidate)))
-        .find(|candidate| path_to_file_id.contains_key(candidate))
-}
-
-fn resolve_rust_mod(
-    root: &Path,
-    source_path: &str,
-    module_name: &str,
-    path_to_file_id: &HashMap<String, String>,
-) -> Option<String> {
-    let base = Path::new(source_path)
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_default();
-    [base.join(format!("{module_name}.rs")), base.join(module_name).join("mod.rs")]
-        .into_iter()
-        .filter_map(|candidate| normalized_candidate(root, root.join(candidate)))
-        .find(|candidate| path_to_file_id.contains_key(candidate))
-}
-
-fn rust_crate_root(source_path: &str) -> PathBuf {
-    if source_path.starts_with("src-tauri/src/") {
-        PathBuf::from("src-tauri/src")
-    } else {
-        Path::new(source_path)
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_default()
-    }
-}
-
-fn rust_super_root(source_path: &str) -> PathBuf {
-    let parent = Path::new(source_path)
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_default();
-    if source_path.ends_with("/mod.rs") {
-        parent.parent().map(Path::to_path_buf).unwrap_or(parent)
-    } else {
-        parent
-            .parent()
-            .map(Path::to_path_buf)
-            .unwrap_or_else(|| rust_crate_root(source_path))
-    }
-}
-
-fn resolve_rust_use(
-    root: &Path,
-    source_path: &str,
-    specifier: &str,
-    path_to_file_id: &HashMap<String, String>,
-) -> Option<String> {
-    let (base, module_name) = if let Some(module_name) = specifier.strip_prefix("crate::") {
-        (rust_crate_root(source_path), module_name)
-    } else if let Some(module_name) = specifier.strip_prefix("super::") {
-        (rust_super_root(source_path), module_name)
-    } else if let Some(module_name) = specifier.strip_prefix("self::") {
-        (
-            Path::new(source_path)
-                .parent()
-                .map(Path::to_path_buf)
-                .unwrap_or_default(),
-            module_name,
-        )
-    } else {
-        return None;
-    };
-
-    [
-        base.join(format!("{module_name}.rs")),
-        base.join(module_name).join("mod.rs"),
-    ]
-    .into_iter()
-    .filter_map(|candidate| normalized_candidate(root, root.join(candidate)))
-    .find(|candidate| path_to_file_id.contains_key(candidate))
-}
-
-fn resolve_java_import(
-    import_name: &str,
-    java_file_by_type: &HashMap<String, String>,
-) -> Option<String> {
-    java_file_by_type.get(import_name).cloned()
-}
-
-fn canonical_symbol_key(value: &str) -> String {
-    value
-        .chars()
-        .filter(|character| character.is_ascii_alphanumeric() || *character == '_')
-        .flat_map(|character| character.to_lowercase())
-        .collect()
-}
-
-fn symbol_name_after_keyword(line: &str, keyword: &str) -> Option<String> {
-    let (_, tail) = line.split_once(keyword)?;
-    let candidate = tail.trim_start_matches(|character: char| {
-        character.is_whitespace() || matches!(character, '*' | '&' | '<')
-    });
-    let name = candidate
-        .chars()
-        .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
-        .collect::<String>();
-    if name.is_empty() { None } else { Some(name) }
-}
-
-fn declaration_name_before_paren(line: &str) -> Option<String> {
-    let paren_index = line.find('(')?;
-    let before = line[..paren_index].trim_end();
-    let name = before
-        .chars()
-        .rev()
-        .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
-        .collect::<String>()
-        .chars()
-        .rev()
-        .collect::<String>();
-    if name.is_empty() || is_call_keyword(&name) {
-        None
-    } else {
-        Some(name)
-    }
-}
-
-fn declared_symbol_name_for_line(line: &str, language: &str) -> Option<(String, &'static str)> {
-    let trimmed = line.trim();
-    if trimmed.is_empty()
-        || trimmed.starts_with("//")
-        || trimmed.starts_with('#')
-        || trimmed.starts_with('*')
-        || trimmed.starts_with("/*")
-    {
-        return None;
-    }
-    for keyword in ["class ", "interface ", "enum ", "record ", "struct ", "trait "] {
-        if let Some(name) = symbol_name_after_keyword(trimmed, keyword) {
-            return Some((name, "type"));
-        }
-    }
-    if matches!(language, "typescript" | "javascript" | "vue" | "svelte") {
-        if let Some(name) = symbol_name_after_keyword(trimmed, "function ") {
-            return Some((name, "function"));
-        }
-        for keyword in ["const ", "let ", "var "] {
-            if let Some(name) = symbol_name_after_keyword(trimmed, keyword) {
-                if trimmed.contains("=>") || trimmed.contains("function") || trimmed.contains('(') {
-                    return Some((name, "function"));
-                }
-            }
-        }
-    }
-    if language == "python" {
-        if let Some(name) = symbol_name_after_keyword(trimmed, "def ") {
-            return Some((name, "function"));
-        }
-    }
-    if language == "go" {
-        if let Some(after_func) = trimmed.strip_prefix("func ") {
-            let function_tail = if after_func.trim_start().starts_with('(') {
-                after_func.split_once(')').map(|(_, tail)| tail.trim_start()).unwrap_or(after_func)
-            } else {
-                after_func
-            };
-            let name = function_tail
-                .chars()
-                .take_while(|character| character.is_ascii_alphanumeric() || *character == '_')
-                .collect::<String>();
-            if !name.is_empty() {
-                return Some((name, "function"));
-            }
-        }
-    }
-    if language == "rust" {
-        if let Some(name) = rust_fn_name(trimmed) {
-            return Some((name, "function"));
-        }
-    }
-    if matches!(language, "c" | "cpp" | "csharp" | "java" | "kotlin" | "swift" | "php" | "ruby") {
-        if let Some(name) = declaration_name_before_paren(trimmed) {
-            if trimmed.ends_with('{') || trimmed.ends_with(';') || trimmed.contains(" throws ") {
-                return Some((name, "function"));
-            }
-        }
-    }
-    None
-}
-
-fn relationship_symbols_for_file(file: &ScannedFile, content: &str) -> Vec<RelationshipSymbol> {
-    let mut symbols = Vec::new();
-    let mut seen = HashSet::new();
-    for (line_index, line) in content.lines().enumerate() {
-        let Some((name, kind)) = declared_symbol_name_for_line(line, &file.language) else {
-            continue;
-        };
-        let key = format!("{}:{name}:{kind}", file.id);
-        if !seen.insert(key.clone()) {
-            continue;
-        }
-        symbols.push(RelationshipSymbol {
-            id: format!("sym-{}", stable_hash(&key)),
-            file_id: file.id.clone(),
-            name,
-            kind: kind.to_string(),
-            language: file.language.clone(),
-            line: line_index + 1,
-        });
-    }
-    symbols
-}
-
-fn insert_symbol_alias(index: &mut HashMap<String, String>, alias: &str, file_id: &str) {
-    let key = canonical_symbol_key(alias);
-    if !key.is_empty() {
-        index.entry(key).or_insert_with(|| file_id.to_string());
-    }
-}
-
-fn build_symbol_file_index(files: &[ScannedFile], symbols: &[RelationshipSymbol]) -> HashMap<String, String> {
-    let mut index = HashMap::new();
-    for file in files {
-        let stem = project_file_stem(&file.basename);
-        insert_symbol_alias(&mut index, &stem, &file.id);
-        insert_symbol_alias(&mut index, &file.basename, &file.id);
-        if stem.ends_with("serviceimpl") {
-            insert_symbol_alias(&mut index, stem.trim_end_matches("impl"), &file.id);
-        }
-    }
-    for symbol in symbols {
-        insert_symbol_alias(&mut index, &symbol.name, &symbol.file_id);
-    }
-    index
-}
-
-fn is_call_keyword(value: &str) -> bool {
-    matches!(
-        value,
-        "if" | "for" | "while" | "switch" | "catch" | "return" | "throw" | "new" |
-        "sizeof" | "typeof" | "await" | "async" | "function" | "fn" | "def" | "func" |
-        "class" | "interface" | "struct" | "enum" | "record" | "match" | "loop" | "select"
-    )
-}
-
-fn call_candidates_for_line(line: &str) -> Vec<String> {
-    let code = line
-        .split("//")
-        .next()
-        .unwrap_or(line)
-        .split('#')
-        .next()
-        .unwrap_or(line);
-    let characters = code.char_indices().collect::<Vec<_>>();
-    let mut candidates = Vec::new();
-    for (index, character) in &characters {
-        if *character != '(' {
-            continue;
-        }
-        let before = code[..*index].trim_end();
-        let token = before
-            .chars()
-            .rev()
-            .take_while(|character| {
-                character.is_ascii_alphanumeric()
-                    || matches!(*character, '_' | '.' | ':' | '-' | '>')
-            })
-            .collect::<String>()
-            .chars()
-            .rev()
-            .collect::<String>();
-        let token = token.trim_matches(|character| matches!(character, '.' | ':' | '-' | '>'));
-        if token.is_empty() || token.len() < 3 || is_call_keyword(token) {
-            continue;
-        }
-        if token.contains('.') || token.contains("::") || token.contains("->") || token.contains('_') {
-            candidates.push(token.to_string());
-            continue;
-        }
-        if token.chars().next().is_some_and(|character| character.is_ascii_uppercase()) {
-            candidates.push(token.to_string());
-        }
-    }
-    candidates.sort();
-    candidates.dedup();
-    candidates
-}
-
-fn call_candidate_keys(candidate: &str) -> Vec<String> {
-    let normalized = candidate.replace("->", ".").replace("::", ".");
-    let mut keys = Vec::new();
-    keys.push(canonical_symbol_key(&normalized));
-    for part in normalized.split('.') {
-        if part.len() >= 3 {
-            keys.push(canonical_symbol_key(part));
-        }
-    }
-    if let Some((prefix, _)) = normalized.split_once('_') {
-        if prefix.len() >= 3 {
-            keys.push(canonical_symbol_key(prefix));
-        }
-    }
-    keys.retain(|key| !key.is_empty());
-    keys.dedup();
-    keys
-}
-
-fn resolve_call_target(
-    candidate: &str,
-    source_file_id: &str,
-    symbol_file_by_key: &HashMap<String, String>,
-) -> Option<String> {
-    for key in call_candidate_keys(candidate) {
-        let Some(target_file_id) = symbol_file_by_key.get(&key) else {
-            continue;
-        };
-        if target_file_id != source_file_id {
-            return Some(target_file_id.clone());
-        }
-    }
-    None
-}
-
-fn c_include_specifier(line: &str) -> Option<String> {
-    let trimmed = line.trim();
-    if !trimmed.starts_with("#include") {
-        return None;
-    }
-    first_quoted_value(trimmed)
-}
-
-fn python_import_specifiers(line: &str) -> Vec<String> {
-    let trimmed = line.trim();
-    if let Some(rest) = trimmed.strip_prefix("from ") {
-        return rest
-            .split_whitespace()
-            .next()
-            .filter(|value| !value.is_empty())
-            .map(|value| vec![value.to_string()])
-            .unwrap_or_default();
-    }
-    if let Some(rest) = trimmed.strip_prefix("import ") {
-        return rest
-            .split(',')
-            .filter_map(|value| value.trim().split_whitespace().next())
-            .filter(|value| !value.is_empty())
-            .map(str::to_string)
-            .collect();
-    }
-    Vec::new()
-}
-
-fn resolve_python_import(
-    root: &Path,
-    source_path: &str,
-    specifier: &str,
-    path_to_file_id: &HashMap<String, String>,
-) -> Option<String> {
-    let mut base = Path::new(source_path)
-        .parent()
-        .map(Path::to_path_buf)
-        .unwrap_or_default();
-    let mut rest = specifier.trim();
-    while let Some(next) = rest.strip_prefix('.') {
-        rest = next;
-        base = base.parent().map(Path::to_path_buf).unwrap_or_default();
-    }
-    if rest.is_empty() {
-        return None;
-    }
-    let module_path = rest.replace('.', "/");
-    [
-        base.join(&module_path).with_extension("py"),
-        base.join(&module_path).join("__init__.py"),
-    ]
-    .into_iter()
-    .filter_map(|candidate| normalized_candidate(root, root.join(candidate)))
-    .find(|candidate| path_to_file_id.contains_key(candidate))
-}
-
-fn evidence(path: &str, line: usize, excerpt: &str, observed_at: &str) -> RelationEvidence {
-    RelationEvidence {
-        path: path.to_string(),
-        line,
-        excerpt: excerpt.trim().chars().take(180).collect(),
-        extractor_version: "project-map-relations-v1".to_string(),
-        observed_at: observed_at.to_string(),
-    }
-}
-
-fn push_relation(
-    relations: &mut Vec<FileRelation>,
-    relation_type: &str,
-    source_file_id: &str,
-    target_file_id: &str,
-    confidence: &str,
-    evidence: RelationEvidence,
-) {
-    let fingerprint = format!("{source_file_id}>{relation_type}>{target_file_id}");
-    relations.push(FileRelation {
-        id: relation_id(source_file_id, target_file_id, relation_type),
-        source_file_id: source_file_id.to_string(),
-        target_file_id: target_file_id.to_string(),
-        relation_type: relation_type.to_string(),
-        type_alias: relation_type.to_string(),
-        direction: "forward".to_string(),
-        confidence: confidence.to_string(),
-        source_kind: "deterministic".to_string(),
-        evidence: vec![evidence],
-        fingerprint,
-    });
-}
-
-fn dedupe_relations(relations: Vec<FileRelation>) -> (Vec<FileRelation>, Vec<RepairIssue>) {
-    let mut seen = HashSet::new();
-    let mut deduped = Vec::new();
-    let mut issues = Vec::new();
-    for relation in relations {
-        if seen.insert(relation.fingerprint.clone()) {
-            deduped.push(relation);
-            continue;
-        }
-        issues.push(RepairIssue {
-            id: format!("repair-{}", stable_hash(&relation.fingerprint)),
-            kind: "duplicate-relation".to_string(),
-            severity: "info".to_string(),
-            message: "Duplicate deterministic relationship was quarantined.".to_string(),
-            file_id: Some(relation.source_file_id.clone()),
-            relation_id: Some(relation.id.clone()),
-            path: relation.evidence.first().map(|item| item.path.clone()),
-            action: "quarantined".to_string(),
-        });
-    }
-    (deduped, issues)
-}
-
-fn build_indexes(
-    files: &[ScannedFile],
-    relations: &[FileRelation],
-) -> (BTreeMap<String, FileRelationIndex>, BTreeMap<String, Vec<String>>, Vec<Value>, Vec<ModuleSummary>) {
-    let mut by_file = BTreeMap::new();
-    for file in files {
-        by_file.insert(file.id.clone(), FileRelationIndex::default());
-    }
-
-    let mut by_type: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let mut relation_count_by_file: HashMap<String, usize> = HashMap::new();
-    for relation in relations {
-        by_type
-            .entry(relation.relation_type.clone())
-            .or_default()
-            .push(relation.id.clone());
-        if let Some(source) = by_file.get_mut(&relation.source_file_id) {
-            source.outgoing.push(relation.id.clone());
-            match relation.relation_type.as_str() {
-                "tested_by" => source.tests.push(relation.target_file_id.clone()),
-                "styled_by" => source.styles.push(relation.target_file_id.clone()),
-                "specified_by" => source.specs.push(relation.target_file_id.clone()),
-                "bridges_to" => source.bridge_targets.push(relation.target_file_id.clone()),
-                _ => {}
-            }
-        }
-        if let Some(target) = by_file.get_mut(&relation.target_file_id) {
-            target.incoming.push(relation.id.clone());
-        }
-        *relation_count_by_file
-            .entry(relation.source_file_id.clone())
-            .or_default() += 1;
-        *relation_count_by_file
-            .entry(relation.target_file_id.clone())
-            .or_default() += 1;
-    }
-
-    let mut hotspot_entries = relation_count_by_file
-        .iter()
-        .filter(|(_, count)| **count >= 6)
-        .collect::<Vec<_>>();
-    hotspot_entries.sort_by(|(left_file_id, left_count), (right_file_id, right_count)| {
-        right_count
-            .cmp(left_count)
-            .then_with(|| left_file_id.cmp(right_file_id))
-    });
-    let hotspots = hotspot_entries
-        .into_iter()
-        .map(|(file_id, count)| {
-            json!({
-                "fileId": file_id,
-                "reason": "many-dependents",
-                "score": count,
-                "rationale": "File participates in many deterministic relationships."
-            })
-        })
-        .collect::<Vec<_>>();
-
-    let mut modules: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for file in files {
-        modules
-            .entry(module_label(&file.path))
-            .or_default()
-            .push(file.id.clone());
-    }
-    let module_summaries = modules
-        .into_iter()
-        .map(|(label, file_ids)| {
-            let relation_count = relations
-                .iter()
-                .filter(|relation| {
-                    file_ids.contains(&relation.source_file_id)
-                        || file_ids.contains(&relation.target_file_id)
-                })
-                .count();
-            ModuleSummary {
-                id: format!("module-{}", stable_hash(&label)),
-                label,
-                file_count: file_ids.len(),
-                file_ids,
-                relation_count,
-            }
-        })
-        .collect::<Vec<_>>();
-
-    (by_file, by_type, hotspots, module_summaries)
-}
-
 fn git_metadata(root: &Path) -> (Option<String>, Option<String>) {
     let Ok(repository) = git2::Repository::discover(root) else {
         return (None, None);
@@ -1508,246 +532,6 @@ fn git_status_changed_paths(root: &Path) -> Vec<String> {
     changed_paths.sort();
     changed_paths.dedup();
     changed_paths
-}
-
-fn push_unique_id(target: &mut Vec<String>, value: &str) {
-    if !target.iter().any(|item| item == value) {
-        target.push(value.to_string());
-    }
-}
-
-fn sorted_paths_for_ids(
-    ids: &[String],
-    file_by_id: &HashMap<String, &ScannedFile>,
-    limit: usize,
-) -> Vec<String> {
-    let mut paths = ids
-        .iter()
-        .filter_map(|id| file_by_id.get(id).map(|file| file.path.clone()))
-        .collect::<Vec<_>>();
-    paths.sort();
-    paths.dedup();
-    paths.truncate(limit);
-    paths
-}
-
-fn file_has_test_relation(file_id: &str, relations: &[FileRelation], file_by_id: &HashMap<String, &ScannedFile>) -> bool {
-    relations.iter().any(|relation| {
-        if relation.relation_type == "tested_by"
-            && (relation.source_file_id == file_id || relation.target_file_id == file_id)
-        {
-            return true;
-        }
-        let adjacent_file_id = if relation.source_file_id == file_id {
-            Some(&relation.target_file_id)
-        } else if relation.target_file_id == file_id {
-            Some(&relation.source_file_id)
-        } else {
-            None
-        };
-        adjacent_file_id
-            .and_then(|id| file_by_id.get(id))
-            .is_some_and(|file| file.role == "test")
-    })
-}
-
-fn build_relationship_impact_and_context(
-    files: &[ScannedFile],
-    relations: &[FileRelation],
-    hotspots: &[Value],
-    scan_root: &Path,
-    explicit_changed_paths: Option<&[String]>,
-    scan_run_id: &str,
-    generated_at: &str,
-) -> (Value, Value) {
-    let file_by_id = files
-        .iter()
-        .map(|file| (file.id.clone(), file))
-        .collect::<HashMap<_, _>>();
-    let file_id_by_path = files
-        .iter()
-        .map(|file| (file.path.clone(), file.id.clone()))
-        .collect::<HashMap<_, _>>();
-    let changed_paths = explicit_changed_paths
-        .map(|paths| {
-            let mut paths = paths.to_vec();
-            paths.sort();
-            paths.dedup();
-            paths
-        })
-        .unwrap_or_else(|| git_status_changed_paths(scan_root));
-    let mut changed_file_ids = Vec::new();
-    let mut unmapped_paths = Vec::new();
-    for path in &changed_paths {
-        if let Some(file_id) = file_id_by_path.get(path) {
-            push_unique_id(&mut changed_file_ids, file_id);
-        } else {
-            unmapped_paths.push(path.clone());
-        }
-    }
-    let changed_file_id_set = changed_file_ids.iter().cloned().collect::<HashSet<_>>();
-
-    let mut directly_affected_ids = Vec::new();
-    let mut directly_affected_set = HashSet::new();
-    let mut provenance_relation_ids = Vec::new();
-    for relation in relations {
-        let touches_changed = changed_file_id_set.contains(&relation.source_file_id)
-            || changed_file_id_set.contains(&relation.target_file_id);
-        if !touches_changed {
-            continue;
-        }
-        push_unique_id(&mut provenance_relation_ids, &relation.id);
-        let adjacent = if changed_file_id_set.contains(&relation.source_file_id) {
-            &relation.target_file_id
-        } else {
-            &relation.source_file_id
-        };
-        if !changed_file_id_set.contains(adjacent) && directly_affected_set.insert(adjacent.clone()) {
-            directly_affected_ids.push(adjacent.clone());
-        }
-    }
-
-    let direct_set = directly_affected_ids.iter().cloned().collect::<HashSet<_>>();
-    let mut transitive_affected_ids = Vec::new();
-    let mut transitive_set = HashSet::new();
-    for relation in relations {
-        let touches_direct = direct_set.contains(&relation.source_file_id)
-            || direct_set.contains(&relation.target_file_id);
-        if !touches_direct {
-            continue;
-        }
-        let adjacent = if direct_set.contains(&relation.source_file_id) {
-            &relation.target_file_id
-        } else {
-            &relation.source_file_id
-        };
-        if changed_file_id_set.contains(adjacent) || direct_set.contains(adjacent) {
-            continue;
-        }
-        if transitive_set.insert(adjacent.clone()) {
-            transitive_affected_ids.push(adjacent.clone());
-        }
-    }
-
-    let mut risk_flags = Vec::new();
-    for path in &unmapped_paths {
-        risk_flags.push(json!({
-            "id": format!("risk-unmapped-{}", stable_hash(path)),
-            "severity": "warning",
-            "label": format!("Changed file is not present in latest relationship scan: {path}"),
-            "fileId": path
-        }));
-    }
-    for hotspot in hotspots {
-        let Some(file_id) = hotspot.get("fileId").and_then(Value::as_str) else {
-            continue;
-        };
-        if changed_file_id_set.contains(file_id) || direct_set.contains(file_id) {
-            let label = file_by_id
-                .get(file_id)
-                .map(|file| format!("Hotspot participates in current change scope: {}", file.path))
-                .unwrap_or_else(|| format!("Hotspot participates in current change scope: {file_id}"));
-            risk_flags.push(json!({
-                "id": format!("risk-hotspot-{}", stable_hash(file_id)),
-                "severity": "warning",
-                "label": label,
-                "fileId": file_id
-            }));
-        }
-    }
-    for file_id in &changed_file_ids {
-        let Some(file) = file_by_id.get(file_id) else {
-            continue;
-        };
-        if matches!(file.role.as_str(), "test" | "document" | "manifest" | "config" | "style") {
-            continue;
-        }
-        if !file_has_test_relation(file_id, relations, &file_by_id) {
-            risk_flags.push(json!({
-                "id": format!("risk-missing-test-{}", stable_hash(file_id)),
-                "severity": "info",
-                "label": format!("No deterministic test relation found for changed file: {}", file.path),
-                "fileId": file_id
-            }));
-        }
-    }
-
-    let mut must_read_ids = Vec::new();
-    for file_id in &changed_file_ids {
-        push_unique_id(&mut must_read_ids, file_id);
-    }
-    for hotspot in hotspots.iter().take(8) {
-        if let Some(file_id) = hotspot.get("fileId").and_then(Value::as_str) {
-            push_unique_id(&mut must_read_ids, file_id);
-        }
-    }
-    if must_read_ids.is_empty() {
-        for file in files.iter().filter(|file| matches!(file.role.as_str(), "controller" | "route" | "service" | "hook" | "component")).take(10) {
-            push_unique_id(&mut must_read_ids, &file.id);
-        }
-    }
-
-    let mut related_ids = Vec::new();
-    for file_id in directly_affected_ids.iter().chain(transitive_affected_ids.iter()) {
-        push_unique_id(&mut related_ids, file_id);
-    }
-    let mut test_target_ids = Vec::new();
-    let mut contract_ids = Vec::new();
-    let read_scope = must_read_ids
-        .iter()
-        .chain(related_ids.iter())
-        .cloned()
-        .collect::<HashSet<_>>();
-    for relation in relations {
-        if !(read_scope.contains(&relation.source_file_id) || read_scope.contains(&relation.target_file_id)) {
-            continue;
-        }
-        push_unique_id(&mut provenance_relation_ids, &relation.id);
-        let source_file = file_by_id.get(&relation.source_file_id);
-        let target_file = file_by_id.get(&relation.target_file_id);
-        if relation.relation_type == "tested_by" {
-            if source_file.is_some_and(|file| file.role == "test") {
-                push_unique_id(&mut test_target_ids, &relation.source_file_id);
-            }
-            if target_file.is_some_and(|file| file.role == "test") {
-                push_unique_id(&mut test_target_ids, &relation.target_file_id);
-            }
-        }
-        if matches!(relation.relation_type.as_str(), "specified_by" | "documents" | "configures") {
-            push_unique_id(&mut contract_ids, &relation.source_file_id);
-            push_unique_id(&mut contract_ids, &relation.target_file_id);
-        }
-    }
-    for file in files.iter().filter(|file| matches!(file.role.as_str(), "manifest" | "config" | "document")).take(12) {
-        push_unique_id(&mut contract_ids, &file.id);
-    }
-
-    let impact = json!({
-        "schemaVersion": 1,
-        "generatedAt": generated_at,
-        "inputFiles": changed_paths,
-        "changedFiles": sorted_paths_for_ids(&changed_file_ids, &file_by_id, 40),
-        "directlyAffectedFiles": sorted_paths_for_ids(&directly_affected_ids, &file_by_id, 80),
-        "transitivelyAffectedFiles": sorted_paths_for_ids(&transitive_affected_ids, &file_by_id, 80),
-        "unmappedFiles": unmapped_paths,
-        "ignoredFiles": [],
-        "riskFlags": risk_flags
-    });
-    let context_pack = json!({
-        "schemaVersion": 1,
-        "generatedAt": generated_at,
-        "mustReadFiles": sorted_paths_for_ids(&must_read_ids, &file_by_id, 16),
-        "relatedFiles": sorted_paths_for_ids(&related_ids, &file_by_id, 32),
-        "testTargets": sorted_paths_for_ids(&test_target_ids, &file_by_id, 16),
-        "contracts": sorted_paths_for_ids(&contract_ids, &file_by_id, 16),
-        "riskFlags": impact.get("riskFlags").cloned().unwrap_or_else(|| json!([])),
-        "provenance": {
-            "scanRunId": scan_run_id,
-            "relationIds": provenance_relation_ids.into_iter().take(80).collect::<Vec<_>>(),
-            "fileIds": must_read_ids.into_iter().chain(related_ids).take(80).collect::<Vec<_>>()
-        }
-    });
-    (impact, context_pack)
 }
 
 const IGNORED_HINT_LIMIT: usize = 500;
@@ -1819,269 +603,6 @@ fn read_json_with_errors(
     }
 }
 
-fn relationship_stale_reason(
-    kind: &str,
-    message: String,
-    path: Option<String>,
-    previous: Option<String>,
-    current: Option<String>,
-) -> Value {
-    json!({
-        "kind": kind,
-        "message": message,
-        "path": path,
-        "previous": previous,
-        "current": current
-    })
-}
-
-fn summarize_relationship_stale_state(
-    scan_root: &Path,
-    manifest: &Option<Value>,
-    files_value: &Option<Value>,
-) -> Value {
-    let generated_at = chrono::Utc::now().to_rfc3339();
-    let manifest_commit_hash = manifest
-        .as_ref()
-        .and_then(|value| value.get("gitCommitHash"))
-        .and_then(Value::as_str)
-        .map(str::to_string);
-    let (_, current_commit_hash) = git_metadata(scan_root);
-    let mut reasons = Vec::new();
-    let mut scope_warnings = Vec::new();
-
-    if let (Some(previous), Some(current)) = (&manifest_commit_hash, &current_commit_hash) {
-        if previous != current {
-            reasons.push(relationship_stale_reason(
-                "git-commit-changed",
-                "Workspace git HEAD differs from the latest relationship scan.".to_string(),
-                None,
-                Some(previous.clone()),
-                Some(current.clone()),
-            ));
-        }
-    }
-
-    let scanned_files = files_value
-        .clone()
-        .and_then(|value| serde_json::from_value::<Vec<ScannedFile>>(value).ok())
-        .unwrap_or_default();
-    let file_by_path = scanned_files
-        .iter()
-        .map(|file| (file.path.clone(), file))
-        .collect::<HashMap<_, _>>();
-    let changed_paths = git_status_changed_paths(scan_root);
-    let mut stale_paths = Vec::new();
-    let mut unmapped_paths = Vec::new();
-
-    for path in &changed_paths {
-        let Some(file) = file_by_path.get(path) else {
-            unmapped_paths.push(path.clone());
-            scope_warnings.push(relationship_stale_reason(
-                "scan-scope-warning",
-                format!("Changed file is outside the latest relationship scan scope: {path}"),
-                Some(path.clone()),
-                None,
-                None,
-            ));
-            continue;
-        };
-
-        let absolute_path = scan_root.join(path);
-        match fs::read_to_string(&absolute_path) {
-            Ok(content) => {
-                let current_hash = content_hash(&content);
-                if current_hash != file.content_hash {
-                    stale_paths.push(path.clone());
-                    reasons.push(relationship_stale_reason(
-                        "fingerprint-changed",
-                        format!("Scanned file fingerprint changed after latest relationship scan: {path}"),
-                        Some(path.clone()),
-                        Some(file.content_hash.clone()),
-                        Some(current_hash),
-                    ));
-                }
-            }
-            Err(error) => {
-                stale_paths.push(path.clone());
-                reasons.push(relationship_stale_reason(
-                    "file-read-failed",
-                    format!("Changed file could not be read for stale detection: {path}: {error}"),
-                    Some(path.clone()),
-                    Some(file.content_hash.clone()),
-                    None,
-                ));
-            }
-        }
-    }
-
-    reasons.truncate(40);
-    scope_warnings.truncate(20);
-    let refresh_mode = if unmapped_paths.is_empty() && stale_paths.is_empty() {
-        if reasons.is_empty() {
-            "ignore-only"
-        } else {
-            "full"
-        }
-    } else if unmapped_paths.is_empty() {
-        "partial"
-    } else {
-        "full"
-    };
-    let is_fresh = reasons.is_empty();
-    let all_reasons = reasons.into_iter().chain(scope_warnings).collect::<Vec<_>>();
-
-    json!({
-        "schemaVersion": 1,
-        "generatedAt": generated_at,
-        "isFresh": is_fresh,
-        "reasons": all_reasons,
-        "staleFileCount": stale_paths.len(),
-        "changedFiles": changed_paths,
-        "refreshSuggestion": if is_fresh {
-            Value::Null
-        } else {
-            json!({
-                "mode": refresh_mode,
-                "changedFiles": stale_paths.into_iter().chain(unmapped_paths).take(80).collect::<Vec<_>>(),
-                "reason": "Latest relationship snapshot is older than current workspace facts."
-            })
-        }
-    })
-}
-
-fn enrich_context_pack_with_stale_state(
-    context_pack: Option<Value>,
-    stale_summary: &Option<Value>,
-) -> Option<Value> {
-    let Some(mut context_pack) = context_pack else {
-        return None;
-    };
-    let Some(stale) = stale_summary else {
-        return Some(context_pack);
-    };
-    let Some(is_fresh) = stale.get("isFresh").and_then(Value::as_bool) else {
-        return Some(context_pack);
-    };
-    if is_fresh {
-        return Some(context_pack);
-    }
-    let Some(object) = context_pack.as_object_mut() else {
-        return Some(context_pack);
-    };
-    let stale_reason = stale
-        .get("reasons")
-        .and_then(Value::as_array)
-        .and_then(|reasons| reasons.first())
-        .and_then(|reason| reason.get("message"))
-        .and_then(Value::as_str)
-        .unwrap_or("Project Map relationship context is stale. Refresh before broad agent work.");
-    object.insert("staleReason".to_string(), Value::String(stale_reason.to_string()));
-    object.insert(
-        "staleReasons".to_string(),
-        stale
-            .get("reasons")
-            .cloned()
-            .unwrap_or_else(|| Value::Array(Vec::new())),
-    );
-    Some(context_pack)
-}
-
-fn enrich_context_pack_with_api_contracts(mut context_pack: Value, api_contracts: &Value) -> Value {
-    let Some(object) = context_pack.as_object_mut() else {
-        return context_pack;
-    };
-    let endpoints = api_contracts
-        .get("endpoints")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let groups = api_contracts
-        .get("groups")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    let call_chains = api_contracts
-        .get("callChains")
-        .and_then(Value::as_array)
-        .cloned()
-        .unwrap_or_default();
-    if endpoints.is_empty() && groups.is_empty() {
-        return context_pack;
-    }
-
-    let group_summaries = groups
-        .iter()
-        .take(48)
-        .map(|group| json!({
-            "id": group.get("id").cloned().unwrap_or(Value::Null),
-            "label": group.get("label").cloned().unwrap_or(Value::Null),
-            "level": group.get("level").cloned().unwrap_or(Value::Null),
-            "endpointIds": group.get("endpointIds").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
-            "confidenceCounts": group.get("confidenceCounts").cloned().unwrap_or(Value::Null),
-            "provenance": {
-                "artifact": "api-contracts/groups.json"
-            }
-        }))
-        .collect::<Vec<_>>();
-    let endpoint_summaries = endpoints
-        .iter()
-        .take(80)
-        .map(|endpoint| json!({
-            "id": endpoint.get("id").cloned().unwrap_or(Value::Null),
-            "protocol": endpoint.get("protocol").cloned().unwrap_or(Value::Null),
-            "method": endpoint.get("method").cloned().unwrap_or(Value::Null),
-            "path": endpoint.get("path").cloned().unwrap_or(Value::Null),
-            "operationName": endpoint.get("operationName").cloned().unwrap_or(Value::Null),
-            "framework": endpoint.get("framework").cloned().unwrap_or(Value::Null),
-            "handlerSymbol": endpoint.get("handlerSymbol").cloned().unwrap_or(Value::Null),
-            "sourceFile": endpoint.get("sourceFile").cloned().unwrap_or(Value::Null),
-            "groupIds": endpoint.get("groupIds").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
-            "callChainIds": endpoint.get("callChainIds").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
-            "confidence": endpoint.get("confidence").cloned().unwrap_or(Value::Null),
-            "evidence": endpoint.get("evidence").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
-            "provenance": {
-                "artifact": "api-contracts/endpoints.json"
-            }
-        }))
-        .collect::<Vec<_>>();
-    let chain_summaries = call_chains
-        .iter()
-        .take(40)
-        .map(|chain| json!({
-            "id": chain.get("id").cloned().unwrap_or(Value::Null),
-            "endpointId": chain.get("endpointId").cloned().unwrap_or(Value::Null),
-            "edges": chain.get("edges").cloned().unwrap_or_else(|| Value::Array(Vec::new())),
-            "truncatedReason": chain.get("truncatedReason").cloned().unwrap_or(Value::Null),
-            "provenance": {
-                "artifact": "api-contracts/chains.json"
-            }
-        }))
-        .collect::<Vec<_>>();
-
-    object.insert(
-        "apiContracts".to_string(),
-        json!({
-            "schemaVersion": 1,
-            "source": "project-map-api-contract-artifacts",
-            "mode": "grouped-evidence",
-            "flatteningPolicy": "preserve-api-hierarchy-do-not-create-root-semantic-node-per-endpoint",
-            "endpointCount": endpoints.len(),
-            "groupCount": groups.len(),
-            "chainCount": call_chains.len(),
-            "groups": group_summaries,
-            "endpointSummaries": endpoint_summaries,
-            "methodChains": chain_summaries,
-            "provenance": {
-                "artifact": "api-contracts/latest.json",
-                "scanRunId": api_contracts.get("scanRunId").cloned().unwrap_or(Value::Null),
-                "storageKey": api_contracts.get("storageKey").cloned().unwrap_or(Value::Null)
-            }
-        }),
-    );
-    context_pack
-}
-
 fn scan_workspace(
     entry: &WorkspaceEntry,
     storage_key: &str,
@@ -2106,22 +627,23 @@ fn scan_workspace(
         .into_iter()
         .filter_map(|path| normalize_requested_scan_path(&path))
         .collect::<Vec<_>>();
-    let explicit_changed_paths = options
-        .changed_files
-        .as_ref()
-        .map(|paths| {
-            paths
-                .iter()
-                .filter_map(|path| normalize_requested_scan_path(path))
-                .collect::<Vec<_>>()
-        });
+    let explicit_changed_paths = options.changed_files.as_ref().map(|paths| {
+        paths
+            .iter()
+            .filter_map(|path| normalize_requested_scan_path(path))
+            .collect::<Vec<_>>()
+    });
 
     let mut files = Vec::new();
     let mut file_contents = Vec::new();
     let mut ignored_paths = Vec::new();
     let mut repair_issues = Vec::new();
     let mut walker_builder = ignore::WalkBuilder::new(&scan_root);
-    walker_builder.hidden(false).git_ignore(true).git_global(true).git_exclude(true);
+    walker_builder
+        .hidden(false)
+        .git_ignore(true)
+        .git_global(true)
+        .git_exclude(true);
     let walker = walker_builder
         .filter_entry(|entry| !is_builtin_ignored_path(entry.path()))
         .build();
@@ -2131,11 +653,14 @@ fn scan_workspace(
             Ok(entry) => entry,
             Err(error) => {
                 if include_ignored_hints {
-                    push_ignored_hint(&mut ignored_paths, json!({
-                        "path": null,
-                        "reason": error.to_string(),
-                        "source": "walker-error"
-                    }));
+                    push_ignored_hint(
+                        &mut ignored_paths,
+                        json!({
+                            "path": null,
+                            "reason": error.to_string(),
+                            "source": "walker-error"
+                        }),
+                    );
                 }
                 continue;
             }
@@ -2161,11 +686,14 @@ fn scan_workspace(
             .to_ascii_lowercase();
         if files.len() >= max_files {
             if include_ignored_hints {
-                push_ignored_hint(&mut ignored_paths, json!({
-                    "path": relative,
-                    "reason": format!("maxFiles limit reached: {max_files}"),
-                    "source": "scanner-limit"
-                }));
+                push_ignored_hint(
+                    &mut ignored_paths,
+                    json!({
+                        "path": relative,
+                        "reason": format!("maxFiles limit reached: {max_files}"),
+                        "source": "scanner-limit"
+                    }),
+                );
             }
             break;
         }
@@ -2211,7 +739,10 @@ fn scan_workspace(
                     parse_status: "parse-failed".to_string(),
                 };
                 repair_issues.push(RepairIssue {
-                    id: format!("repair-{}", stable_hash(&format!("parse-failed:{}", file.path))),
+                    id: format!(
+                        "repair-{}",
+                        stable_hash(&format!("parse-failed:{}", file.path))
+                    ),
                     kind: "parse-failed".to_string(),
                     severity: "warning".to_string(),
                     message: format!("Failed to read scan file: {error}"),
@@ -2257,7 +788,8 @@ fn scan_workspace(
             if let Some(type_name) = java_declared_type(content) {
                 java_file_by_type.insert(type_name.clone(), file.id.clone());
                 if let Some(package_name) = java_package_name(content) {
-                    java_file_by_type.insert(format!("{package_name}.{type_name}"), file.id.clone());
+                    java_file_by_type
+                        .insert(format!("{package_name}.{type_name}"), file.id.clone());
                 }
             }
         }
@@ -2274,11 +806,17 @@ fn scan_workspace(
     for (file, content) in &file_contents {
         for (line_index, line) in content.lines().enumerate() {
             let line_number = line_index + 1;
-            if matches!(file.language.as_str(), "typescript" | "javascript" | "vue" | "svelte") {
+            if matches!(
+                file.language.as_str(),
+                "typescript" | "javascript" | "vue" | "svelte"
+            ) {
                 for specifier in import_specifiers(line) {
-                    if let Some(target_path) =
-                        resolve_relative_import(&scan_root, &file.path, &specifier, &path_to_file_id)
-                    {
+                    if let Some(target_path) = resolve_relative_import(
+                        &scan_root,
+                        &file.path,
+                        &specifier,
+                        &path_to_file_id,
+                    ) {
                         if let Some(target_file_id) = path_to_file_id.get(&target_path) {
                             push_relation(
                                 &mut relations,
@@ -2301,10 +839,8 @@ fn scan_workspace(
                         evidence(&file.path, line_number, line, &generated_at),
                     );
                 }
-                if let Some(command_name) = line
-                    .split("invoke(")
-                    .nth(1)
-                    .and_then(first_quoted_value)
+                if let Some(command_name) =
+                    line.split("invoke(").nth(1).and_then(first_quoted_value)
                 {
                     if let Some(target_file_id) = command_file_by_name.get(&command_name) {
                         push_relation(
@@ -2320,9 +856,12 @@ fn scan_workspace(
             }
             if matches!(file.language.as_str(), "c" | "cpp") {
                 if let Some(specifier) = c_include_specifier(line) {
-                    if let Some(target_path) =
-                        resolve_relative_import(&scan_root, &file.path, &specifier, &path_to_file_id)
-                    {
+                    if let Some(target_path) = resolve_relative_import(
+                        &scan_root,
+                        &file.path,
+                        &specifier,
+                        &path_to_file_id,
+                    ) {
                         if let Some(target_file_id) = path_to_file_id.get(&target_path) {
                             push_relation(
                                 &mut relations,
@@ -2404,20 +943,26 @@ fn scan_workspace(
                     }
                 }
             }
-            if !matches!(file.language.as_str(), "markdown" | "json" | "toml" | "yaml" | "xml" | "properties" | "text") {
+            if !matches!(
+                file.language.as_str(),
+                "markdown" | "json" | "toml" | "yaml" | "xml" | "properties" | "text"
+            ) {
                 for call_candidate in call_candidates_for_line(line) {
-                    if let Some(target_file_id) = resolve_call_target(
-                        &call_candidate,
-                        &file.id,
-                        &symbol_file_by_key,
-                    ) {
+                    if let Some(target_file_id) =
+                        resolve_call_target(&call_candidate, &file.id, &symbol_file_by_key)
+                    {
                         push_relation(
                             &mut relations,
                             "calls",
                             &file.id,
                             &target_file_id,
                             "medium",
-                            evidence(&file.path, line_number, &format!("calls {call_candidate}"), &generated_at),
+                            evidence(
+                                &file.path,
+                                line_number,
+                                &format!("calls {call_candidate}"),
+                                &generated_at,
+                            ),
                         );
                     }
                 }
@@ -2465,7 +1010,12 @@ fn scan_workspace(
                     &file.id,
                     test_file_id,
                     "medium",
-                    evidence(&file.path, 1, "matched by test filename convention", &generated_at),
+                    evidence(
+                        &file.path,
+                        1,
+                        "matched by test filename convention",
+                        &generated_at,
+                    ),
                 );
             }
         }
@@ -2477,7 +1027,12 @@ fn scan_workspace(
                     &file.id,
                     style_file_id,
                     "medium",
-                    evidence(&file.path, 1, "matched by style filename convention", &generated_at),
+                    evidence(
+                        &file.path,
+                        1,
+                        "matched by style filename convention",
+                        &generated_at,
+                    ),
                 );
             }
         }
@@ -2501,7 +1056,12 @@ fn scan_workspace(
                     &manifest.id,
                     &target.id,
                     "medium",
-                    evidence(&manifest.path, 1, "nested manifest discovered by project layout", &generated_at),
+                    evidence(
+                        &manifest.path,
+                        1,
+                        "nested manifest discovered by project layout",
+                        &generated_at,
+                    ),
                 );
             }
             if configured_count >= 120 || !path_is_inside_dir(&target.path, &manifest_dir) {
@@ -2513,7 +1073,12 @@ fn scan_workspace(
                 &manifest.id,
                 &target.id,
                 "medium",
-                evidence(&manifest.path, 1, "manifest configures files in the same module", &generated_at),
+                evidence(
+                    &manifest.path,
+                    1,
+                    "manifest configures files in the same module",
+                    &generated_at,
+                ),
             );
             configured_count += 1;
         }
@@ -2542,7 +1107,12 @@ fn scan_workspace(
                     &source.id,
                     &target.id,
                     "low",
-                    evidence(&source.path, 1, "same-stem project convention", &generated_at),
+                    evidence(
+                        &source.path,
+                        1,
+                        "same-stem project convention",
+                        &generated_at,
+                    ),
                 );
             }
         }
@@ -2568,7 +1138,8 @@ fn scan_workspace(
         &generated_at,
         &ignored_paths,
     );
-    context_pack_artifact = enrich_context_pack_with_api_contracts(context_pack_artifact, &api_contract_artifact);
+    context_pack_artifact =
+        enrich_context_pack_with_api_contracts(context_pack_artifact, &api_contract_artifact);
     let api_endpoint_count = api_contract_artifact
         .get("endpoints")
         .and_then(Value::as_array)
@@ -2863,16 +1434,17 @@ pub(crate) async fn project_map_relationship_read(
     let files_manifest = read_json_with_errors(&root, "files/manifest.json", &mut read_errors);
     let files = read_json_with_errors(&root, "files/chunks-000.json", &mut read_errors);
     let relations = read_json_with_errors(&root, "relations/latest.json", &mut read_errors);
-    let relations_by_file = read_json_with_errors(&root, "relations/by-file.json", &mut read_errors);
-    let relations_by_type = read_json_with_errors(&root, "relations/by-type.json", &mut read_errors);
+    let relations_by_file =
+        read_json_with_errors(&root, "relations/by-file.json", &mut read_errors);
+    let relations_by_type =
+        read_json_with_errors(&root, "relations/by-type.json", &mut read_errors);
     let symbols = read_json_with_errors(&root, "symbols/chunks-000.json", &mut read_errors);
     let modules = read_json_with_errors(&root, "modules/latest.json", &mut read_errors);
     let impact = read_json_with_errors(&root, "impact/latest.json", &mut read_errors);
     let context_pack = read_json_with_errors(&root, "context-packs/latest.json", &mut read_errors);
     let api_contracts = read_api_contracts_with_ownership(&root, &key, &mut read_errors);
-    let stale = exists.then(|| {
-        summarize_relationship_stale_state(Path::new(&entry.path), &manifest, &files)
-    });
+    let stale = exists
+        .then(|| summarize_relationship_stale_state(Path::new(&entry.path), &manifest, &files));
     let context_pack = enrich_context_pack_with_stale_state(context_pack, &stale);
     let repair = read_json_with_errors(&root, "repair/latest.json", &mut read_errors);
 
@@ -2933,7 +1505,7 @@ pub(crate) async fn project_map_relationship_clear(
 #[cfg(test)]
 mod tests {
     use super::{
-        validate_relative_relationship_path, validate_relationship_snapshot_ownership,
+        validate_relationship_snapshot_ownership, validate_relative_relationship_path,
         ProjectMapRelationshipWriteFile,
     };
 

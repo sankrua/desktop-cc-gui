@@ -89,27 +89,42 @@ pub(super) fn validate_relative_relationship_path(path: &str) -> Result<PathBuf,
 
     let allowed = match segments.as_slice() {
         [file] => matches!(file.as_str(), "manifest.json" | "profile.json"),
-        [dir, file] if matches!(dir.as_str(), "runs" | "scans" | "modules" | "impact" | "repair") => {
+        [dir, file]
+            if matches!(
+                dir.as_str(),
+                "runs" | "scans" | "modules" | "impact" | "repair"
+            ) =>
+        {
             file == "latest.json"
         }
         [dir, file] if matches!(dir.as_str(), "files" | "symbols") => {
             file == "manifest.json" || is_chunk_json_file(file)
         }
         [dir, file] if dir == "relations" => {
-            matches!(file.as_str(), "latest.json" | "by-file.json" | "by-type.json")
+            matches!(
+                file.as_str(),
+                "latest.json" | "by-file.json" | "by-type.json"
+            )
         }
         [dir, file] if dir == "context-packs" => file == "latest.json",
         [dir, file] if dir == "repair" => file == "latest.json",
         [dir, file] if dir == "api-contracts" => matches!(
             file.as_str(),
-            "latest.json" | "manifest.json" | "endpoints.json" | "groups.json" | "schemas.json" | "chains.json"
+            "latest.json"
+                | "manifest.json"
+                | "endpoints.json"
+                | "groups.json"
+                | "schemas.json"
+                | "chains.json"
         ),
         [dir, file] => is_safe_relationship_segment(dir) && is_safe_json_file(file),
         _ => false,
     };
 
     if !allowed {
-        return Err("Project map relationship write path is outside the allowed contract.".to_string());
+        return Err(
+            "Project map relationship write path is outside the allowed contract.".to_string(),
+        );
     }
     Ok(relative)
 }

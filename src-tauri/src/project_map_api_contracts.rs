@@ -366,13 +366,27 @@ fn api_adapter_descriptor_for_language(language: &str) -> Option<ApiAdapterDescr
         "c" => Some(ApiAdapterDescriptor {
             language: "c",
             parser_source: "fallback-pattern",
-            frameworks: &["Mongoose", "CivetWeb", "libmicrohttpd", "handler table", "C ABI"],
+            frameworks: &[
+                "Mongoose",
+                "CivetWeb",
+                "libmicrohttpd",
+                "handler table",
+                "C ABI",
+            ],
             extractor: extract_c_family_api_candidates,
         }),
         "cpp" => Some(ApiAdapterDescriptor {
             language: "cpp",
             parser_source: "fallback-pattern",
-            frameworks: &["Drogon", "Crow", "Oat++", "Pistache", "RESTinio", "Boost.Beast", "gRPC"],
+            frameworks: &[
+                "Drogon",
+                "Crow",
+                "Oat++",
+                "Pistache",
+                "RESTinio",
+                "Boost.Beast",
+                "gRPC",
+            ],
             extractor: extract_c_family_api_candidates,
         }),
         _ => None,
@@ -380,10 +394,21 @@ fn api_adapter_descriptor_for_language(language: &str) -> Option<ApiAdapterDescr
 }
 
 fn declared_api_adapter_descriptors() -> Vec<ApiAdapterDescriptor> {
-    ["java", "kotlin", "python", "go", "c", "cpp", "typescript", "javascript", "csharp", "rust"]
-        .into_iter()
-        .flat_map(api_adapter_descriptor_for_language)
-        .collect()
+    [
+        "java",
+        "kotlin",
+        "python",
+        "go",
+        "c",
+        "cpp",
+        "typescript",
+        "javascript",
+        "csharp",
+        "rust",
+    ]
+    .into_iter()
+    .flat_map(api_adapter_descriptor_for_language)
+    .collect()
 }
 
 fn canonical_api_scope_skip_reason(item: &Value) -> String {
@@ -410,7 +435,10 @@ fn canonical_api_scope_skip_reason(item: &Value) -> String {
         "generated-directory".to_string()
     } else if combined.contains("binary") {
         "binary-file".to_string()
-    } else if combined.contains("size") || combined.contains("large") || combined.contains("oversized") {
+    } else if combined.contains("size")
+        || combined.contains("large")
+        || combined.contains("oversized")
+    {
         "oversized-file".to_string()
     } else if combined.contains("ignore") {
         "workspace-ignore".to_string()
@@ -451,7 +479,10 @@ fn api_scan_scope_skip_reason(file: &ScannedFile) -> Option<String> {
     None
 }
 
-fn increment_skipped_reason(skipped_by_reason: &mut BTreeMap<String, usize>, reason: impl Into<String>) {
+fn increment_skipped_reason(
+    skipped_by_reason: &mut BTreeMap<String, usize>,
+    reason: impl Into<String>,
+) {
     *skipped_by_reason.entry(reason.into()).or_insert(0) += 1;
 }
 
@@ -477,7 +508,10 @@ fn parse_openapi_document(file: &ScannedFile, content: &str) -> Result<Value, St
             .map_err(|error| format!("failed to parse OpenAPI JSON {}: {error}", file.path)),
         "yaml" | "yml" => serde_yaml::from_str(content)
             .map_err(|error| format!("failed to parse OpenAPI YAML {}: {error}", file.path)),
-        extension => Err(format!("unsupported OpenAPI extension {extension} for {}", file.path)),
+        extension => Err(format!(
+            "unsupported OpenAPI extension {extension} for {}",
+            file.path
+        )),
     }
 }
 
@@ -550,7 +584,10 @@ fn openapi_schema_ref(
     }
     let name = openapi_schema_ref_name(schema, fallback_name);
     Some(ApiSchemaRef {
-        id: format!("api-schema-{}", stable_hash(&format!("{}|{}|{}", file.path, line, name))),
+        id: format!(
+            "api-schema-{}",
+            stable_hash(&format!("{}|{}|{}", file.path, line, name))
+        ),
         name,
         language: "unknown".to_string(),
         source_file: file.path.clone(),
@@ -571,7 +608,8 @@ fn openapi_first_content_schema(value: &Value) -> (Option<String>, Option<&Value
     content
         .iter()
         .find_map(|(content_type, media)| {
-            media.get("schema")
+            media
+                .get("schema")
                 .map(|schema| (Some(content_type.clone()), Some(schema)))
         })
         .unwrap_or((None, None))
@@ -656,7 +694,10 @@ fn openapi_request_body(
         let (content_type, schema) = openapi_first_content_schema(body);
         return Some(ApiRequestBody {
             content_type,
-            required: body.get("required").and_then(Value::as_bool).unwrap_or(false),
+            required: body
+                .get("required")
+                .and_then(Value::as_bool)
+                .unwrap_or(false),
             schema: schema.and_then(|schema| {
                 openapi_schema_ref(schema, file, line, excerpt, generated_at, "requestBody")
             }),
@@ -692,9 +733,9 @@ fn openapi_response(
 ) -> ApiResponse {
     let (content_type, schema) = openapi_first_content_schema(response);
     let swagger_schema = response.get("schema");
-    let schema = schema
-        .or(swagger_schema)
-        .and_then(|schema| openapi_schema_ref(schema, file, line, excerpt, generated_at, status_code));
+    let schema = schema.or(swagger_schema).and_then(|schema| {
+        openapi_schema_ref(schema, file, line, excerpt, generated_at, status_code)
+    });
     let is_error = status_code == "default"
         || status_code
             .parse::<u16>()
@@ -753,14 +794,22 @@ fn extract_openapi_contract_candidates(
         let Some(path_item_object) = path_item.as_object() else {
             continue;
         };
-        for method in ["get", "post", "put", "delete", "patch", "options", "head", "trace"] {
+        for method in [
+            "get", "post", "put", "delete", "patch", "options", "head", "trace",
+        ] {
             let Some(operation) = path_item_object.get(method) else {
                 continue;
             };
             let line = openapi_line_number(content, raw_path, method);
-            let excerpt = openapi_excerpt(content, line, &format!("{} {}", method.to_ascii_uppercase(), raw_path));
-            let parameters = openapi_parameters(path_item, operation, file, line, &excerpt, generated_at);
-            let request_body = openapi_request_body(operation, &parameters, file, line, &excerpt, generated_at);
+            let excerpt = openapi_excerpt(
+                content,
+                line,
+                &format!("{} {}", method.to_ascii_uppercase(), raw_path),
+            );
+            let parameters =
+                openapi_parameters(path_item, operation, file, line, &excerpt, generated_at);
+            let request_body =
+                openapi_request_body(operation, &parameters, file, line, &excerpt, generated_at);
             let responses = openapi_responses(operation, file, line, &excerpt, generated_at);
             let operation_name = operation
                 .get("operationId")
@@ -781,7 +830,9 @@ fn extract_openapi_contract_candidates(
                 .as_deref()
                 .and_then(|prefix| join_api_paths(prefix, Some(raw_path.clone())))
                 .or_else(|| normalize_api_path(Some(raw_path.clone())));
-            let response_schema = responses.iter().find_map(|response| response.schema.clone());
+            let response_schema = responses
+                .iter()
+                .find_map(|response| response.schema.clone());
             candidates.push(ApiRouteCandidate {
                 protocol: "http".to_string(),
                 language: "unknown".to_string(),
@@ -819,7 +870,10 @@ fn is_proto_contract_file(file: &ScannedFile) -> bool {
 }
 
 fn is_graphql_contract_file(file: &ScannedFile) -> bool {
-    matches!(file.extension.to_ascii_lowercase().as_str(), "graphql" | "gql")
+    matches!(
+        file.extension.to_ascii_lowercase().as_str(),
+        "graphql" | "gql"
+    )
 }
 
 fn api_contract_schema_ref_from_name(
@@ -841,7 +895,10 @@ fn api_contract_schema_ref_from_name(
         return None;
     }
     Some(ApiSchemaRef {
-        id: format!("api-schema-{}", stable_hash(&format!("{}|{}|{}", file.path, line, normalized))),
+        id: format!(
+            "api-schema-{}",
+            stable_hash(&format!("{}|{}|{}", file.path, line, normalized))
+        ),
         name: normalized.to_string(),
         language: "unknown".to_string(),
         source_file: file.path.clone(),
@@ -879,7 +936,11 @@ fn proto_rpc_signature(line: &str) -> Option<(String, String, String)> {
     if method.is_empty() || request_type.is_empty() || response_type.is_empty() {
         return None;
     }
-    Some((method.to_string(), request_type.to_string(), response_type.to_string()))
+    Some((
+        method.to_string(),
+        request_type.to_string(),
+        response_type.to_string(),
+    ))
 }
 
 fn extract_proto_contract_candidates(
@@ -994,9 +1055,16 @@ fn graphql_field_signature(line: &str) -> Option<(String, Option<String>, String
         .filter(|value| !value.is_empty())?;
     let args = left
         .split_once('(')
-        .and_then(|(_, tail)| tail.rsplit_once(')').map(|(args, _)| args.trim().to_string()))
+        .and_then(|(_, tail)| {
+            tail.rsplit_once(')')
+                .map(|(args, _)| args.trim().to_string())
+        })
         .filter(|value| !value.is_empty());
-    Some((field_name.to_string(), args, response_type.trim().to_string()))
+    Some((
+        field_name.to_string(),
+        args,
+        response_type.trim().to_string(),
+    ))
 }
 
 fn extract_graphql_contract_candidates(
@@ -1009,7 +1077,11 @@ fn extract_graphql_contract_candidates(
     for (line_index, line) in content.lines().enumerate() {
         let line_number = line_index + 1;
         let trimmed = line.trim();
-        for (type_name, operation) in [("type Query", "query"), ("type Mutation", "mutation"), ("type Subscription", "subscription")] {
+        for (type_name, operation) in [
+            ("type Query", "query"),
+            ("type Mutation", "mutation"),
+            ("type Subscription", "subscription"),
+        ] {
             if trimmed.starts_with(type_name) {
                 operation_type = Some(operation.to_string());
             }
@@ -1221,7 +1293,9 @@ fn handler_name_before_parenthesis(line: &str) -> Option<String> {
     let token = before_parenthesis
         .split_whitespace()
         .last()?
-        .trim_matches(|character: char| !character.is_alphanumeric() && character != '_' && character != '$');
+        .trim_matches(|character: char| {
+            !character.is_alphanumeric() && character != '_' && character != '$'
+        });
     if token.is_empty()
         || matches!(
             token,
@@ -1249,7 +1323,10 @@ fn api_module_label(file: &ScannedFile) -> String {
     if let Some(package_path) = path
         .strip_prefix("src/main/java/")
         .or_else(|| path.strip_prefix("src/main/kotlin/"))
-        .and_then(|tail| tail.rsplit_once('/').map(|(directory, _)| directory.replace('/', ".")))
+        .and_then(|tail| {
+            tail.rsplit_once('/')
+                .map(|(directory, _)| directory.replace('/', "."))
+        })
     {
         if !package_path.is_empty() {
             return package_path;
@@ -1317,7 +1394,9 @@ fn spring_route_annotation(line: &str) -> Option<ApiRouteAnnotation> {
         Some(("POST", "Micronaut"))
     } else if trimmed.contains("@Put(") || trimmed.contains("@io.micronaut.http.annotation.Put") {
         Some(("PUT", "Micronaut"))
-    } else if trimmed.contains("@Delete(") || trimmed.contains("@io.micronaut.http.annotation.Delete") {
+    } else if trimmed.contains("@Delete(")
+        || trimmed.contains("@io.micronaut.http.annotation.Delete")
+    {
         Some(("DELETE", "Micronaut"))
     } else if trimmed == "@GET" || trimmed.contains("@GET ") {
         Some(("GET", "JAX-RS"))
@@ -1344,15 +1423,18 @@ fn spring_route_annotation(line: &str) -> Option<ApiRouteAnnotation> {
     Some(ApiRouteAnnotation {
         method,
         path: first_quoted_value(trimmed),
-        framework: route.map(|(_, framework)| framework).unwrap_or_else(|| {
-            if trimmed.contains("@Path(") {
-                "JAX-RS"
-            } else if trimmed.contains("@Controller(") {
-                "Micronaut"
-            } else {
-                "Spring MVC"
-            }
-        }).to_string(),
+        framework: route
+            .map(|(_, framework)| framework)
+            .unwrap_or_else(|| {
+                if trimmed.contains("@Path(") {
+                    "JAX-RS"
+                } else if trimmed.contains("@Controller(") {
+                    "Micronaut"
+                } else {
+                    "Spring MVC"
+                }
+            })
+            .to_string(),
         confidence: if trimmed.contains("@RequestMapping")
             || trimmed.contains("@Path(")
             || trimmed.contains("@Controller(")
@@ -1370,8 +1452,13 @@ fn merge_java_route_annotations(annotations: Vec<ApiRouteAnnotation>) -> Vec<Api
     if annotations.len() <= 1 {
         return annotations;
     }
-    let method = annotations.iter().find_map(|annotation| annotation.method.clone());
-    let path = annotations.iter().rev().find_map(|annotation| annotation.path.clone());
+    let method = annotations
+        .iter()
+        .find_map(|annotation| annotation.method.clone());
+    let path = annotations
+        .iter()
+        .rev()
+        .find_map(|annotation| annotation.path.clone());
     let framework = annotations
         .iter()
         .find(|annotation| annotation.method.is_some())
@@ -1422,7 +1509,9 @@ fn extract_java_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRout
 
         let trimmed = line.trim();
         if !pending_annotations.is_empty()
-            && (trimmed.contains(" class ") || trimmed.starts_with("class ") || trimmed.contains(" interface "))
+            && (trimmed.contains(" class ")
+                || trimmed.starts_with("class ")
+                || trimmed.contains(" interface "))
         {
             if let Some(prefix) = pending_annotations
                 .iter()
@@ -1529,9 +1618,10 @@ fn extract_python_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRo
             continue;
         }
         if !pending_annotations.is_empty() && trimmed.starts_with("def ") {
-            let handler = trimmed
-                .strip_prefix("def ")
-                .and_then(|tail| tail.split_once('(').map(|(name, _)| name.trim().to_string()));
+            let handler = trimmed.strip_prefix("def ").and_then(|tail| {
+                tail.split_once('(')
+                    .map(|(name, _)| name.trim().to_string())
+            });
             for annotation in pending_annotations.drain(..) {
                 push_api_route_candidate(
                     &mut candidates,
@@ -1545,7 +1635,10 @@ fn extract_python_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRo
             }
             continue;
         }
-        if trimmed.starts_with("path(") || trimmed.contains(" path(") || trimmed.starts_with("re_path(") {
+        if trimmed.starts_with("path(")
+            || trimmed.contains(" path(")
+            || trimmed.starts_with("re_path(")
+        {
             push_api_route_candidate(
                 &mut candidates,
                 file,
@@ -1698,7 +1791,13 @@ fn extract_typescript_api_candidates(file: &ScannedFile, content: &str) -> Vec<A
             .or_else(|| normalized_path.split("/app/api/").nth(1))
             .map(|tail| {
                 let without_extension = tail.rsplit_once('.').map(|(stem, _)| stem).unwrap_or(tail);
-                format!("/api/{}", without_extension.replace("/route", "").replace("[", ":").replace("]", ""))
+                format!(
+                    "/api/{}",
+                    without_extension
+                        .replace("/route", "")
+                        .replace("[", ":")
+                        .replace("]", "")
+                )
             });
         if let Some(path) = api_path {
             push_api_route_candidate(
@@ -1768,7 +1867,9 @@ fn extract_rust_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRout
     .into_iter()
     .map(|mut candidate| {
         if candidate.method.as_deref() == Some("") {
-            candidate.method = parse_api_methods_from_line(&candidate.excerpt).first().cloned();
+            candidate.method = parse_api_methods_from_line(&candidate.excerpt)
+                .first()
+                .cloned();
             candidate.framework = Some("Axum/Rocket".to_string());
         }
         candidate
@@ -1777,7 +1878,11 @@ fn extract_rust_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRout
 }
 
 fn extract_c_family_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiRouteCandidate> {
-    let framework = if file.language == "c" { "C HTTP handler" } else { "C++ HTTP framework" };
+    let framework = if file.language == "c" {
+        "C HTTP handler"
+    } else {
+        "C++ HTTP framework"
+    };
     let mut candidates = extract_line_call_api_candidates(
         file,
         content,
@@ -1816,7 +1921,11 @@ fn extract_project_api_candidates(file: &ScannedFile, content: &str) -> Vec<ApiR
         .unwrap_or_default()
 }
 
-fn api_path_parameters(path: Option<&str>, candidate: &ApiRouteCandidate, generated_at: &str) -> Vec<ApiParameter> {
+fn api_path_parameters(
+    path: Option<&str>,
+    candidate: &ApiRouteCandidate,
+    generated_at: &str,
+) -> Vec<ApiParameter> {
     let Some(path) = path else {
         return Vec::new();
     };
@@ -1824,11 +1933,17 @@ fn api_path_parameters(path: Option<&str>, candidate: &ApiRouteCandidate, genera
     let mut seen = BTreeSet::new();
     for segment in path.split('/') {
         let name = if segment.starts_with('{') && segment.ends_with('}') {
-            segment.trim_start_matches('{').trim_end_matches('}').to_string()
+            segment
+                .trim_start_matches('{')
+                .trim_end_matches('}')
+                .to_string()
         } else if let Some(name) = segment.strip_prefix(':') {
             name.to_string()
         } else if segment.starts_with('<') && segment.ends_with('>') {
-            segment.trim_start_matches('<').trim_end_matches('>').to_string()
+            segment
+                .trim_start_matches('<')
+                .trim_end_matches('>')
+                .to_string()
         } else {
             continue;
         };
@@ -1858,7 +1973,11 @@ fn api_evidence(candidate: &ApiRouteCandidate, generated_at: &str) -> ApiEvidenc
     )
 }
 
-fn api_schema_ref_json(type_name: &str, candidate: &ApiRouteCandidate, generated_at: &str) -> Option<ApiSchemaRef> {
+fn api_schema_ref_json(
+    type_name: &str,
+    candidate: &ApiRouteCandidate,
+    generated_at: &str,
+) -> Option<ApiSchemaRef> {
     let normalized = type_name
         .trim()
         .trim_start_matches("final ")
@@ -1870,7 +1989,10 @@ fn api_schema_ref_json(type_name: &str, candidate: &ApiRouteCandidate, generated
         return None;
     }
     Some(ApiSchemaRef {
-        id: format!("api-schema-{}", stable_hash(&format!("{}|{}", candidate.source_file, normalized))),
+        id: format!(
+            "api-schema-{}",
+            stable_hash(&format!("{}|{}", candidate.source_file, normalized))
+        ),
         name: normalized.to_string(),
         language: candidate.language.clone(),
         source_file: candidate.source_file.clone(),
@@ -1981,11 +2103,16 @@ fn api_parameter_name_and_type(parameter: &str) -> Option<(String, String)> {
         .replace("...", " ");
     let tokens = cleaned
         .split_whitespace()
-        .filter(|token| !matches!(*token, "public" | "private" | "protected" | "static" | "final"))
+        .filter(|token| {
+            !matches!(
+                *token,
+                "public" | "private" | "protected" | "static" | "final"
+            )
+        })
         .collect::<Vec<_>>();
-    let fallback_name = tokens.last()?.trim_matches(|character: char| {
-        !character.is_alphanumeric() && character != '_'
-    });
+    let fallback_name = tokens
+        .last()?
+        .trim_matches(|character: char| !character.is_alphanumeric() && character != '_');
     let name = explicit_name.unwrap_or_else(|| fallback_name.to_string());
     if name.is_empty() {
         return None;
@@ -2002,7 +2129,10 @@ fn api_parameter_name_and_type(parameter: &str) -> Option<(String, String)> {
     Some((name, type_name))
 }
 
-fn api_signature_parameters(candidate: &ApiRouteCandidate, generated_at: &str) -> Vec<ApiParameter> {
+fn api_signature_parameters(
+    candidate: &ApiRouteCandidate,
+    generated_at: &str,
+) -> Vec<ApiParameter> {
     let Some(parameters_text) = api_signature_parameter_text(&candidate.excerpt) else {
         return Vec::new();
     };
@@ -2053,10 +2183,12 @@ fn api_signature_response(candidate: &ApiRouteCandidate, generated_at: &str) -> 
     let Some((prefix, _)) = candidate.excerpt.split_once(&format!("{method_name}(")) else {
         return Vec::new();
     };
-    let return_type = prefix
-        .split_whitespace()
-        .rev()
-        .find(|token| !matches!(*token, "public" | "private" | "protected" | "static" | "final" | "async"));
+    let return_type = prefix.split_whitespace().rev().find(|token| {
+        !matches!(
+            *token,
+            "public" | "private" | "protected" | "static" | "final" | "async"
+        )
+    });
     let Some(return_type) = return_type else {
         return Vec::new();
     };
@@ -2077,7 +2209,11 @@ fn api_endpoint_instance_identity(candidate: &ApiRouteCandidate) -> String {
     let fingerprint = format!(
         "source-candidate|{}|{}|{}|{}|{}|{}",
         candidate.protocol,
-        candidate.method.as_deref().unwrap_or("*").to_ascii_uppercase(),
+        candidate
+            .method
+            .as_deref()
+            .unwrap_or("*")
+            .to_ascii_uppercase(),
         candidate.path.as_deref().unwrap_or("").to_ascii_lowercase(),
         candidate.source_file.to_ascii_lowercase(),
         candidate.line,
@@ -2127,22 +2263,34 @@ fn canonical_api_endpoint_identity(candidate: &ApiRouteCandidate) -> Option<Stri
             let path = normalized_api_identity_path(candidate.path.as_deref())?;
             Some(format!(
                 "http|{}|{}",
-                candidate.method.as_deref().unwrap_or("*").to_ascii_uppercase(),
+                candidate
+                    .method
+                    .as_deref()
+                    .unwrap_or("*")
+                    .to_ascii_uppercase(),
                 path
             ))
         }
-        "grpc" => candidate.operation_name.as_ref().or(candidate.handler_symbol.as_ref()).map(|operation| {
-            format!(
-                "grpc|{}|{}|{}",
-                candidate.module_label.to_ascii_lowercase(),
-                candidate.controller_label.to_ascii_lowercase(),
-                operation
-            )
-        }),
+        "grpc" => candidate
+            .operation_name
+            .as_ref()
+            .or(candidate.handler_symbol.as_ref())
+            .map(|operation| {
+                format!(
+                    "grpc|{}|{}|{}",
+                    candidate.module_label.to_ascii_lowercase(),
+                    candidate.controller_label.to_ascii_lowercase(),
+                    operation
+                )
+            }),
         "graphql" => candidate.operation_name.as_ref().map(|operation| {
             format!(
                 "graphql|{}|{}",
-                candidate.method.as_deref().unwrap_or("operation").to_ascii_lowercase(),
+                candidate
+                    .method
+                    .as_deref()
+                    .unwrap_or("operation")
+                    .to_ascii_lowercase(),
                 operation
             )
         }),
@@ -2219,7 +2367,9 @@ fn api_call_chain_edge_kind(line: &str) -> Option<String> {
 fn api_call_chain_target_symbol(line: &str) -> Option<String> {
     let before_parenthesis = line.split_once('(')?.0.trim();
     let token = before_parenthesis
-        .split(|character: char| character.is_whitespace() || character == '=' || character == ':' || character == ',')
+        .split(|character: char| {
+            character.is_whitespace() || character == '=' || character == ':' || character == ','
+        })
         .last()?
         .trim_matches(|character: char| {
             !character.is_alphanumeric() && !matches!(character, '_' | '.' | ':' | '-')
@@ -2258,7 +2408,10 @@ fn extract_api_call_chain(
         edges.push(ApiCallChainEdge {
             id: format!(
                 "api-chain-edge-{}",
-                stable_hash(&format!("{}|{}|{}|{}", endpoint_id, source_symbol, target_symbol, line_number))
+                stable_hash(&format!(
+                    "{}|{}|{}|{}",
+                    endpoint_id, source_symbol, target_symbol, line_number
+                ))
             ),
             source_symbol: source_symbol.clone(),
             target_symbol,
@@ -2305,9 +2458,18 @@ fn api_group_id(level: &str, label: &str, parent_id: Option<&str>) -> String {
 }
 
 fn increment_api_group_counts(group: &mut ApiGroupBuild, candidate: &ApiRouteCandidate) {
-    *group.protocol_counts.entry(candidate.protocol.clone()).or_insert(0) += 1;
-    *group.language_counts.entry(candidate.language.clone()).or_insert(0) += 1;
-    *group.confidence_counts.entry(candidate.confidence.clone()).or_insert(0) += 1;
+    *group
+        .protocol_counts
+        .entry(candidate.protocol.clone())
+        .or_insert(0) += 1;
+    *group
+        .language_counts
+        .entry(candidate.language.clone())
+        .or_insert(0) += 1;
+    *group
+        .confidence_counts
+        .entry(candidate.confidence.clone())
+        .or_insert(0) += 1;
 }
 
 pub(crate) fn build_api_contract_artifact(
@@ -2324,13 +2486,21 @@ pub(crate) fn build_api_contract_artifact(
         .collect::<BTreeMap<_, _>>();
     let mut skipped_by_reason = BTreeMap::<String, usize>::new();
     for item in ignored_paths {
-        increment_skipped_reason(&mut skipped_by_reason, canonical_api_scope_skip_reason(item));
+        increment_skipped_reason(
+            &mut skipped_by_reason,
+            canonical_api_scope_skip_reason(item),
+        );
     }
 
     let descriptors = declared_api_adapter_descriptors();
     let mut adapter_coverage = descriptors
         .iter()
-        .map(|descriptor| (descriptor.language.to_string(), ApiAdapterCoverageBuild::default()))
+        .map(|descriptor| {
+            (
+                descriptor.language.to_string(),
+                ApiAdapterCoverageBuild::default(),
+            )
+        })
         .collect::<BTreeMap<_, _>>();
     adapter_coverage
         .entry("openapi".to_string())
@@ -2360,7 +2530,10 @@ pub(crate) fn build_api_contract_artifact(
                     coverage.endpoint_count += file_candidates.len();
                     if file_candidates.is_empty() {
                         coverage.no_candidate_count += 1;
-                        increment_skipped_reason(&mut skipped_by_reason, "adapter-no-candidate:openapi");
+                        increment_skipped_reason(
+                            &mut skipped_by_reason,
+                            "adapter-no-candidate:openapi",
+                        );
                     }
                     candidates.extend(file_candidates);
                 }
@@ -2403,7 +2576,10 @@ pub(crate) fn build_api_contract_artifact(
                 file.extension.as_str(),
                 "proto" | "graphql" | "gql" | "yaml" | "yml" | "json"
             ) {
-                increment_skipped_reason(&mut skipped_by_reason, "unsupported-strong-contract-adapter");
+                increment_skipped_reason(
+                    &mut skipped_by_reason,
+                    "unsupported-strong-contract-adapter",
+                );
             }
             continue;
         };
@@ -2470,13 +2646,15 @@ pub(crate) fn build_api_contract_artifact(
         for (level, label) in group_layers {
             let group_id = api_group_id(level, &label, parent_id.as_deref());
             {
-                let group = groups.entry(group_id.clone()).or_insert_with(|| ApiGroupBuild {
-                    id: group_id.clone(),
-                    label: label.clone(),
-                    level: level.to_string(),
-                    parent_id: parent_id.clone(),
-                    ..ApiGroupBuild::default()
-                });
+                let group = groups
+                    .entry(group_id.clone())
+                    .or_insert_with(|| ApiGroupBuild {
+                        id: group_id.clone(),
+                        label: label.clone(),
+                        level: level.to_string(),
+                        parent_id: parent_id.clone(),
+                        ..ApiGroupBuild::default()
+                    });
                 group.endpoint_ids.insert(endpoint_id.clone());
                 increment_api_group_counts(group, &candidate);
             }
@@ -2486,7 +2664,8 @@ pub(crate) fn build_api_contract_artifact(
             parent_id = Some(group_id.clone());
             group_ids.push(group_id);
         }
-        let mut fallback_parameters = api_path_parameters(candidate.path.as_deref(), &candidate, generated_at);
+        let mut fallback_parameters =
+            api_path_parameters(candidate.path.as_deref(), &candidate, generated_at);
         fallback_parameters.extend(api_signature_parameters(&candidate, generated_at));
         let parameters = if candidate.parameter_overrides.is_empty() {
             fallback_parameters
@@ -2519,17 +2698,20 @@ pub(crate) fn build_api_contract_artifact(
             .request_schema_override
             .clone()
             .or_else(|| request_body.as_ref().and_then(|body| body.schema.clone()));
-        let response_schema = candidate
-            .response_schema_override
-            .clone()
-            .or_else(|| responses.iter().find_map(|response| response.schema.clone()));
+        let response_schema = candidate.response_schema_override.clone().or_else(|| {
+            responses
+                .iter()
+                .find_map(|response| response.schema.clone())
+        });
         let evidence = candidate_group
             .iter()
             .map(|candidate| api_evidence(candidate, generated_at))
             .collect::<Vec<_>>();
         let call_chain = file_content_index
             .get(&candidate.source_file)
-            .and_then(|content| extract_api_call_chain(&endpoint_id, candidate, content, generated_at));
+            .and_then(|content| {
+                extract_api_call_chain(&endpoint_id, candidate, content, generated_at)
+            });
         let call_chain_ids = call_chain
             .as_ref()
             .map(|chain| vec![chain.id.clone()])
@@ -2618,7 +2800,13 @@ pub(crate) fn build_api_contract_artifact(
                     })
                     .unwrap_or_else(|| "fallback-pattern".to_string()),
                 frameworks: descriptor
-                    .map(|value| value.frameworks.iter().map(|framework| (*framework).to_string()).collect())
+                    .map(|value| {
+                        value
+                            .frameworks
+                            .iter()
+                            .map(|framework| (*framework).to_string())
+                            .collect()
+                    })
                     .or_else(|| {
                         if is_openapi_adapter {
                             Some(vec!["OpenAPI".to_string(), "Swagger".to_string()])
@@ -2695,192 +2883,5 @@ pub(crate) fn build_api_contract_artifact(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{build_api_contract_artifact, stable_hash};
-    use crate::project_map_relations::ScannedFile;
-    use serde_json::Value;
-
-    fn scanned_file(path: &str, extension: &str, language: &str, content: &str) -> ScannedFile {
-        ScannedFile {
-            id: format!("file-{}", stable_hash(path)),
-            path: path.to_string(),
-            basename: path.rsplit('/').next().unwrap_or(path).to_string(),
-            extension: extension.to_string(),
-            language: language.to_string(),
-            layer: "api".to_string(),
-            role: "route".to_string(),
-            size_bytes: content.len() as u64,
-            line_count: content.lines().count(),
-            content_hash: stable_hash(content),
-            parse_status: "parsed".to_string(),
-        }
-    }
-
-    #[test]
-    fn strong_contract_adapters_emit_schema_backed_endpoints() {
-        let openapi = r#"
-openapi: 3.0.0
-info:
-  title: Fleet API
-paths:
-  /vehicles/{id}:
-    get:
-      operationId: getVehicle
-      parameters:
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Vehicle'
-"#;
-        let proto = r#"
-syntax = "proto3";
-package fleet.v1;
-service VehicleService {
-  rpc GetVehicle (GetVehicleRequest) returns (VehicleReply);
-}
-"#;
-        let graphql = r#"
-type Query {
-  vehicle(id: ID!): Vehicle
-}
-"#;
-        let artifact = build_api_contract_artifact(
-            &[
-                (scanned_file("openapi.yaml", "yaml", "yaml", openapi), openapi.to_string()),
-                (scanned_file("fleet.proto", "proto", "proto", proto), proto.to_string()),
-                (scanned_file("schema.graphql", "graphql", "graphql", graphql), graphql.to_string()),
-            ],
-            "mossx-test",
-            "scan-test",
-            "2026-06-07T00:00:00Z",
-            &[],
-        );
-        let endpoints = artifact.get("endpoints").and_then(Value::as_array).unwrap();
-        assert!(endpoints.iter().any(|endpoint| {
-            endpoint.get("protocol").and_then(Value::as_str) == Some("http")
-                && endpoint.get("confidence").and_then(Value::as_str) == Some("spec")
-        }));
-        assert!(endpoints.iter().any(|endpoint| {
-            endpoint.get("protocol").and_then(Value::as_str) == Some("grpc")
-                && endpoint.get("confidence").and_then(Value::as_str) == Some("spec")
-        }));
-        assert!(endpoints.iter().any(|endpoint| {
-            endpoint.get("protocol").and_then(Value::as_str) == Some("graphql")
-                && endpoint.get("confidence").and_then(Value::as_str) == Some("spec")
-        }));
-        assert!(artifact.get("schemas").and_then(Value::as_array).unwrap().len() >= 3);
-        let adapters = artifact.get("adapters").and_then(Value::as_array).unwrap();
-        assert!(adapters.iter().any(|adapter| {
-            adapter.get("language").and_then(Value::as_str) == Some("openapi")
-                && adapter.get("status").and_then(Value::as_str) == Some("active")
-        }));
-        assert!(adapters.iter().any(|adapter| {
-            adapter.get("language").and_then(Value::as_str) == Some("protobuf")
-                && adapter.get("status").and_then(Value::as_str) == Some("active")
-        }));
-        assert!(adapters.iter().any(|adapter| {
-            adapter.get("language").and_then(Value::as_str) == Some("graphql")
-                && adapter.get("status").and_then(Value::as_str) == Some("active")
-        }));
-    }
-
-    #[test]
-    fn duplicate_http_contract_and_source_candidates_merge_evidence() {
-        let openapi = r#"
-openapi: 3.0.0
-info:
-  title: Users API
-paths:
-  /users:
-    get:
-      operationId: listUsers
-      responses:
-        '200':
-          description: ok
-"#;
-        let source = r#"
-import express from "express";
-const app = express();
-app.get("/users", listUsers);
-function listUsers(req, res) {
-  return userService.listUsers();
-}
-"#;
-        let artifact = build_api_contract_artifact(
-            &[
-                (scanned_file("openapi.yaml", "yaml", "yaml", openapi), openapi.to_string()),
-                (scanned_file("src/routes/users.ts", "ts", "typescript", source), source.to_string()),
-            ],
-            "mossx-test",
-            "scan-test",
-            "2026-06-07T00:00:00Z",
-            &[],
-        );
-        let endpoints = artifact.get("endpoints").and_then(Value::as_array).unwrap();
-        let users = endpoints
-            .iter()
-            .filter(|endpoint| {
-                endpoint.get("protocol").and_then(Value::as_str) == Some("http")
-                    && endpoint.get("method").and_then(Value::as_str) == Some("GET")
-                    && endpoint.get("path").and_then(Value::as_str) == Some("/users")
-            })
-            .collect::<Vec<_>>();
-        assert_eq!(users.len(), 1);
-        assert!(users[0].get("evidence").and_then(Value::as_array).unwrap().len() >= 2);
-        assert!(users[0].get("callChainIds").and_then(Value::as_array).unwrap().len() <= 1);
-    }
-
-    #[test]
-    fn large_endpoint_fixture_preserves_group_first_artifact_shape() {
-        let routes = (0..64)
-            .map(|index| {
-                format!(
-                    "app.post(\"/orders/{index}\", orderController{index});\nfunction orderController{index}(req, res) {{\n  return orderService.createOrder{index}(req.body);\n}}\n"
-                )
-            })
-            .collect::<String>();
-        let artifact = build_api_contract_artifact(
-            &[(scanned_file("src/routes/orders.ts", "ts", "typescript", &routes), routes)],
-            "mossx-large",
-            "scan-large",
-            "2026-06-07T00:00:00Z",
-            &[serde_json::json!({
-                "path": "node_modules/express/index.js",
-                "reason": "ignored by dependency directory"
-            })],
-        );
-        let endpoints = artifact.get("endpoints").and_then(Value::as_array).unwrap();
-        let groups = artifact.get("groups").and_then(Value::as_array).unwrap();
-        let call_chains = artifact.get("callChains").and_then(Value::as_array).unwrap();
-        assert!(endpoints.len() > 50);
-        assert!(groups.iter().any(|group| {
-            group.get("level").and_then(Value::as_str) == Some("protocol")
-                && group
-                    .get("endpointIds")
-                    .and_then(Value::as_array)
-                    .map(|ids| ids.len() > 50)
-                    .unwrap_or(false)
-        }));
-        assert!(endpoints.iter().all(|endpoint| {
-            endpoint
-                .get("groupIds")
-                .and_then(Value::as_array)
-                .map(|ids| ids.len() >= 3)
-                .unwrap_or(false)
-        }));
-        assert!(!call_chains.is_empty());
-        assert!(artifact
-            .get("skipped")
-            .and_then(Value::as_array)
-            .unwrap()
-            .iter()
-            .any(|item| item.get("reason").and_then(Value::as_str) == Some("dependency-directory")));
-    }
-}
+#[path = "project_map_api_contracts_tests.rs"]
+mod project_map_api_contracts_tests;
