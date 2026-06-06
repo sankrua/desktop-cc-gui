@@ -1466,6 +1466,21 @@ export type GitBranchListResponse = {
   localBranches?: GitBranchListItem[];
   remoteBranches?: GitBranchListItem[];
   currentBranch?: string | null;
+  repositoryState?: GitBranchListRepositoryState;
+  diagnostic?: GitBranchListDiagnostic | null;
+};
+
+export type GitBranchListRepositoryState =
+  | "git_repository"
+  | "not_git_repository"
+  | "unknown";
+
+export type GitBranchListDiagnostic = {
+  kind: string;
+  reason?: string | null;
+  message?: string | null;
+  workspaceId?: string | null;
+  pathKind?: string | null;
 };
 
 export type GitBranchUpdateStatus = "success" | "no-op" | "blocked";

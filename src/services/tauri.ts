@@ -106,6 +106,17 @@ export {
 } from "./tauri/textFiles";
 export { getComputerUseBridgeStatus, runComputerUseActivationProbe, runComputerUseCodexBroker, runComputerUseHostContractDiagnostics } from "./tauri/computerUse";
 export {
+  getRendererStabilitySnapshot,
+  recordRendererHeartbeat,
+} from "./tauri/rendererStability";
+export type {
+  RendererHeartbeatInput,
+  RendererHeartbeatStatus,
+  RendererPlatformHookSupport,
+  RendererStabilitySnapshot,
+  RendererSupportState,
+} from "./tauri/rendererStability";
+export {
   captureBrowserAgentSnapshot,
   captureBrowserAgentSnapshotV2,
   cleanupBrowserAgentEvidence,

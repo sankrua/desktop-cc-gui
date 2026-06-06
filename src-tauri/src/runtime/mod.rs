@@ -47,6 +47,7 @@ const RUNTIME_CHURN_WINDOW_MILLIS: u64 = 30_000;
 const THREAD_CREATE_PENDING_SENTINEL: &str = "__thread-create-pending__";
 
 pub(crate) mod commands;
+mod acquire_boundary;
 mod event_sources;
 mod gates;
 mod identity;
