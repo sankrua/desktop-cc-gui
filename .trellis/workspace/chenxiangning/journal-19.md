@@ -1515,3 +1515,47 @@ OpenSpec 回写：
 ### Next Steps
 
 - None - task complete
+
+
+## Session 726: 规范化 Intent Canvas Excalidraw 选择状态
+
+**Date**: 2026-06-06
+**Task**: 规范化 Intent Canvas Excalidraw 选择状态
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 问题 | Excalidraw `appState.selectedElementIds` / `selectedGroupIds` 可能以 `null` 或 `undefined` 进入 Intent Canvas scene initial data，和 Excalidraw 期望的 object map contract 不一致。 |
+| 修复 | 在 `sanitizeIntentCanvasAppState` 中把选择状态 map 的非 object 值规范化为 `{}`，同时保留 runtime-only appState key 过滤。 |
+| Rust 收口 | `project_map.rs` 移除本地重复 wrapper，测试直接引用 `project_identity` 中的 `sanitize_project_name` / `hash_workspace_identity` helper。 |
+| 测试覆盖 | 新增 nullable Excalidraw selection maps 的 sanitizer 回归用例；本轮未额外运行测试命令。 |
+
+**Updated Files**:
+- `src/features/intent-canvas/utils/scene.ts`
+- `src/features/intent-canvas/utils/scene.test.ts`
+- `src-tauri/src/project_map.rs`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `153926fd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

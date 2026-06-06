@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-19.md`
-- **Total Sessions**: 725
+- **Total Sessions**: 726
 - **Last Active**: 2026-06-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-19.md` | ~1517 | Active |
+| `journal-19.md` | ~1561 | Active |
 | `journal-18.md` | ~1966 | Archived |
 | `journal-17.md` | ~1971 | Archived |
 | `journal-16.md` | ~1985 | Archived |
@@ -47,6 +47,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 726 | 2026-06-06 | 规范化 Intent Canvas Excalidraw 选择状态 | `153926fd` | `feature/v0.5.7` |
 | 725 | 2026-06-06 | 修复 Project Map UNKNOWN 关系节点聚焦 | `8519b3f2` | `feature/v0.5.7` |
 | 724 | 2026-06-06 | 提交收口：意图画布与项目地图上下文 | `d9560c94` | `feature/v0.5.7` |
 | 723 | 2026-06-06 | 修复 Project Map 文件导航完整性与治理 | `72fc29f4` | `feature/v0.5.7` |
