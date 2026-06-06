@@ -123,7 +123,7 @@ describe("Intent Canvas transmission context", () => {
 
     expect(payload.completeness.truncated).toBe(true);
     expect(payload.completeness.visualTextBlocks).toEqual({ total: 130, sent: 120, omitted: 10 });
-    expect(message).toContain("Structured semantic payload:");
+    expect(message).toContain("Structured transmission payload compact JSON:");
     expect(message).toContain("- truncated: yes");
   });
 });
