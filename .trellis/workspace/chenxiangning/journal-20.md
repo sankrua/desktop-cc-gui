@@ -218,3 +218,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 741: 防止跨引擎清理对话残留
+
+**Date**: 2026-06-07
+**Task**: 防止跨引擎清理对话残留
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+为 Codex no-progress watchdog 的 interrupted cleanup 增加 engine scope guard，避免 stream correlation 属于 Claude 等其它引擎时误清理前台 turn residue；补充 focused Vitest 回归，并通过 touched lifecycle test/lint。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `baa85158` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
