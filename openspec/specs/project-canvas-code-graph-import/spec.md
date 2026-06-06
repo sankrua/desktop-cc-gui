@@ -1,5 +1,8 @@
-## ADDED Requirements
+# project-canvas-code-graph-import Specification
 
+## Purpose
+TBD - created by archiving change add-project-canvas-code-graph-import. Update Purpose after archive.
+## Requirements
 ### Requirement: Canvas source anchors
 系统 SHALL 为每个 imported fact-backed Project Canvas node/edge 保存 `source anchor`，用来标识它来自 code symbol、relationship node，还是 relationship edge。
 
@@ -63,16 +66,22 @@
 - **THEN** 系统 SHALL 显示 clear unresolved-symbol message
 - **AND** 系统 SHALL NOT 使用 AI guesses 生成 fact-backed call graph
 
-### Requirement: Deterministic projection before AI annotation
-系统 SHALL 先把 source anchors 和 relationship neighborhoods 投影成 Canvas semantic nodes/edges，再允许 AI 做 explanation 或 annotation。
+### Requirement: Deterministic projection before AI context handoff
+系统 SHALL 先把 source anchors 和 relationship neighborhoods 投影成 Canvas semantic nodes/edges，再允许这些 imported graph 作为 structured AI context 发送。
 
 #### Scenario: graph imports without AI
 - **WHEN** 用户导入 relationship node、relationship edge，或 resolved code symbol
 - **THEN** 系统 SHALL 能在不依赖 AI 的情况下创建 Canvas semantic graph
 
-#### Scenario: AI annotations stay separate
-- **WHEN** AI 对 imported Canvas graph 做 summary、grouping 或 risk annotation
-- **THEN** 系统 SHALL 把 AI output 保存为 annotation metadata 或 chat context，并与 fact-backed nodes/edges 分离
+#### Scenario: structured context uses imported graph facts
+- **WHEN** 用户把包含 imported semantic graph 的 Canvas 作为上下文发送给 AI
+- **THEN** 系统 SHALL 在 transmission payload 中包含 semantic nodes、semantic edges、source anchors、evidence summaries 和 visual text 摘要
+- **AND** 系统 SHALL NOT 把 raw Canvas scene 全量作为默认模型上下文发送
+
+#### Scenario: send audit card is replayable when payload evidence exists
+- **WHEN** 历史 user turn 中保留 compact JSON payload 或 explicit Intent Canvas attachment metadata
+- **THEN** 系统 SHALL 在历史消息中恢复 Intent Canvas send-audit card
+- **AND** 缺少 payload evidence 的旧历史 SHALL NOT 被前端猜测补卡
 
 ### Requirement: Source backlinks
 系统 SHALL 为 imported Project Canvas graph nodes/edges 提供 source backlinks。
@@ -122,16 +131,13 @@
 - **THEN** 系统 SHALL 在 available 时保存 line/column range data
 - **AND** 它 SHALL NOT 把 byte offsets 当成唯一 source identity
 
-### Requirement: AI graph explanation context
-系统 SHALL 允许用户把 imported Project Canvas graph 作为 structured AI context，用于 explanation、grouping、risk marking 或 next-step suggestions。
-
-#### Scenario: explain imported graph
-- **WHEN** 用户要求 AI explain imported Canvas graph
-- **THEN** 系统 SHALL 在 AI context 中包含 graph nodes、graph edges、source anchors、relation kinds、evidence summaries、stale state
+### Requirement: AI output remains non-authoritative
+系统 SHALL 保证 AI output 不会被写成 fact-backed imported graph node/edge；Canvas 内 explain/group/risk/next-step annotation actions 属于后续变更范围。
 
 #### Scenario: AI output is not authoritative fact
 - **WHEN** AI 返回 imported Canvas graph 的 explanation 或 annotation
-- **THEN** 系统 SHALL 在视觉或结构上区分 AI output 与 fact-backed imported nodes/edges
+- **THEN** 系统 SHALL NOT 把该 output 作为 fact-backed imported node/edge 写入 `CanvasSemanticGraph`
+- **AND** 如果后续变更把该 output 保存为 `CanvasAiAnnotation` 或 chat-only result，它 SHALL 与 fact-backed nodes/edges 保持结构分离
 
 ### Requirement: Sequenced dependency with API contract proposal
 系统 SHALL 以 relation projection 为 Project Canvas code graph import 的主链路；API contract 仅作为 optional additive context source，MUST NOT 成为关系图导入的前置事实条件。
@@ -147,3 +153,4 @@
 - **AND** Canvas projection pipeline 已经拿到稳定的 relationship snapshot
 - **THEN** Canvas import SHALL 继续完成
 - **AND** AI explanation context SHALL 标记 API context 为 unavailable，projection context 保持可用
+

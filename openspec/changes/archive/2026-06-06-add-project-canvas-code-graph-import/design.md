@@ -26,7 +26,7 @@ Canvas 不做 canonical fact store。它保存 source anchors 和 projected layo
 - 定义统一 `source anchor` model，让两个入口共用 projection pipeline。
 - 从 bounded caller/callee 或 relation neighborhood 生成可读 Canvas graph。
 - 每个 fact-backed Canvas node/edge 都保留 source traceability。
-- AI 可以 explain / group / mark risk，但不能修改 authoritative facts。
+- AI 可以接收 imported graph 的 structured context；Canvas 内 explain / group / mark risk actions 延后，且不能修改 authoritative facts。
 - 继续使用现有 app-global / project-scoped Project Canvas storage。
 
 **Non-Goals / 非目标：**
@@ -96,7 +96,7 @@ Import request
   -> normalize to CanvasSemanticGraph
   -> layout to CanvasProjection
   -> merge into IntentCanvasDocument
-  -> optionally attach AI explanation annotations
+  -> optionally hand off structured context to AI chat
 ```
 
 推荐 semantic graph shape：
@@ -121,7 +121,7 @@ type CanvasSemanticGraph = {
 };
 ```
 
-AI output 单独保存为 annotation，不混入 fact-backed graph：
+AI annotation schema 保留为 future-compatible metadata，不混入 fact-backed graph；当前 MVP 不提供 Canvas 内 annotation action：
 
 ```ts
 type CanvasAiAnnotation = {
@@ -195,7 +195,7 @@ type IntentCanvasDocument = {
 
 这避免把用户手工编辑过的 Canvas 当成临时缓存误删。
 
-### Decision 7: AI is an explainer, not fact source
+### Decision 7: AI context handoff is supported, in-Canvas annotations are deferred
 
 AI context 包含：
 
@@ -205,7 +205,7 @@ AI context 包含：
 - stale state
 - current Canvas selection
 
-AI output 只能成为 annotations 或 chat context。除非用户显式转换为 manual note，否则不能成为 fact-backed node/edge。
+当前代码把这些信息打包成 compact JSON context 并在消息历史里展示 send-audit card。AI output 只能停留在 chat result；若后续变更保存为 `CanvasAiAnnotation`，也必须继续和 fact-backed node/edge 分离。当前 change 不实现 explain / group / risk / next-step action，也不实现 annotation visual layer。
 
 ### Decision 8: Code selection projection must consume explicit anchors only
 
@@ -345,7 +345,7 @@ Relationship Graph UI                 Code/File View
                          Project Canvas Document
                                       |
                                       v
-                         AI Explanation Context
+                         Structured AI Context Handoff
 ```
 
 ## UI Contract / 交互契约
@@ -357,8 +357,8 @@ Relationship Graph UI                 Code/File View
 - Code selection action: `导入调用图到 Canvas` / `Import call graph to Canvas`。
 - Import target options:
   - Create new Canvas from graph。
-  - Append to currently open Canvas。
-  - Replace selected imported graph group after confirmation。
+  - Append to selected existing Canvas。
+  - Replace selected imported graph group is deferred until Canvas selection/deletion semantics are explicit。
 - Default import depth:
   - File node: complete bounded direct one-hop file relationship graph from the selected file perspective。
   - Edge: source + target + selected edge only。
@@ -390,7 +390,7 @@ Relationship Graph UI                 Code/File View
 - [Risk] 没有 full LSP 时 code selection 解析会有歧义。→ Mitigation: 先走 relationship symbols，失败则 unresolved，不猜。
 - [Risk] Canvas file 变成 stale graph copy。→ Mitigation: 保存 anchors 和 summaries，不复制完整 snapshot。
 - [Risk] 大图不可读。→ Mitigation: bounded import、clusters、deliberate expand。
-- [Risk] AI annotations 被误认为事实。→ Mitigation: 数据模型和视觉层都分离 AI output 与 fact-backed graph。
+- [Risk] AI annotations 被误认为事实。→ Mitigation: 当前 MVP 不提供 Canvas 内 annotation action；保留数据模型边界，后续单独实现视觉隔离。
 - [Risk] Relationship Dashboard 和 Canvas 职责混淆。→ Mitigation: Dashboard 是 explorer，Canvas 是 reusable planning/thinking surface。
 
 ## Migration Plan / 迁移计划
@@ -416,10 +416,10 @@ Relationship Graph UI                 Code/File View
 
 ## Open Questions / 待确认问题
 
-- 哪个现有 editor/file-view surface 最适合承载 code-selection import action？
-- 默认导入目标应该是 new Canvas，还是 append to current Canvas？
-- 当前 relationship `symbols` artifact 和 edge evidence ids 中哪些字段最稳定？
-- depth 2 是否放入 MVP advanced option，还是等性能数据后再做？
+- Resolved：code-selection import action 承载在 active File View editor toolbar 的 `关联 Canvas / Link Canvas` action。
+- Resolved：导入目标只保留 `new Canvas` 和 `append to selected existing Canvas`；replace selected graph group 已移除。
+- Resolved：当前 MVP 使用 relationship files / relations / symbols / evidence / manifest 的 stable summary fields，不读取 API artifacts。
+- Deferred：depth 2 / expansion controls 等到性能和 UX 数据明确后另开 change。
 
 ## Code Calibration - 2026-06-06 / 代码校准
 
@@ -458,3 +458,10 @@ Relationship Graph UI                 Code/File View
 Canvas visual elements must stay structurally connected after import: moving a file node should move its title/path label with the node and keep relation arrows attached to the source/target containers.
 
 `code-symbol` anchor 保持有效，但 `selectionRange` / `definitionRange` 是 optional enhancement，不是第一版必要条件。
+
+## Final current-code calibration - 2026-06-07 / 最终代码优先校准
+
+- Current MVP scope is deterministic graph import, source traceability, stale/unresolved visibility, append/new target handling, and structured AI context handoff.
+- In-Canvas AI explain / group / risk / next-step actions are intentionally deferred. `CanvasAiAnnotation` remains a normalized optional document field for future use, not an implemented workflow in this change.
+- API contract artifacts are not consumed by current graph import code. The only required fact substrate is `project-map-relations`; API context may be added later as optional context without changing this projection boundary.
+- Historical send-audit cards are evidence-based: replay only when compact JSON payload or explicit attachment metadata exists. Legacy histories without payload evidence must not be guessed.

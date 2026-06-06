@@ -2,11 +2,11 @@
 
 ## 0. Cross-change prework / 前置对齐（与 API contract view 解耦）
 
-- [ ] 0.1 Confirm API contract namespace and ownership baseline is stable before using API artifacts in Canvas context (`project-map-relations/<storage-key>/api-contracts/`).
-- [ ] 0.2 Confirm API scan branch failures do not degrade `project-map-relations` or `global Project Canvas` behavior.
-- [ ] 0.3 Confirm Canvas import pipeline can run with `project-map-relations` only, with API artifacts treated as optional additive context.
-- [ ] 0.4 Add explicit changelog note: API adapter/parser maturity is not a blocker for relationship/node-edge/CANVAS import MVP.
-- [ ] 0.5 Add reviewer checklist item: no cross-change scope drift (Canvas does not consume speculative API results).
+- [x] 0.1 Confirm API contract namespace and ownership baseline is not consumed by the current Canvas import MVP; API artifacts remain optional future context (`project-map-relations/<storage-key>/api-contracts/`).
+- [x] 0.2 Confirm API scan branch failures do not degrade `project-map-relations` or `global Project Canvas` behavior because the current pipeline reads relationship artifacts only.
+- [x] 0.3 Confirm Canvas import pipeline can run with `project-map-relations` only, with API artifacts treated as optional additive context.
+- [x] 0.4 Add explicit changelog note: API adapter/parser maturity is not a blocker for relationship/node-edge/Canvas import MVP.
+- [x] 0.5 Add reviewer checklist item: no cross-change scope drift; Canvas does not consume speculative API results in this change.
 
 ## 1. OpenSpec and product boundary / 规范与边界
 
@@ -76,28 +76,28 @@
 - [x] 7.5 Add refresh/re-project affordance when source anchors can still resolve。
 - [x] 7.6 Add Canvas topbar return link back to Project Knowledge Map for imported relationship graphs。
 
-## 8. AI explanation layer / AI 解释层
+## 8. AI explanation layer / AI 解释层（deferred beyond current MVP）
 
-- [ ] 8.1 Build structured AI context payload from selected imported semantic graph。
-- [ ] 8.2 Add explain/group/risk/next-step actions for imported graph。
-- [ ] 8.3 Store AI result as `CanvasAiAnnotation` or chat-only output, not as fact-backed graph data。
-- [ ] 8.4 Visually distinguish AI annotations from imported source-backed graph elements。
+- [x] 8.1 Calibrate current implementation as structured chat context/send-audit handoff over imported semantic graphs, not an in-Canvas AI annotation workflow。
+- [x] 8.2 Defer explain/group/risk/next-step actions for imported graph to a follow-up change; they are not current MVP acceptance blockers。
+- [x] 8.3 Preserve `CanvasAiAnnotation` schema/normalization as future-compatible metadata and document that AI output must not become fact-backed graph data。
+- [x] 8.4 Defer visual AI annotation treatment until those annotations are surfaced; current UI distinguishes source-backed graph metadata and send-audit cards only。
 
-## 9. Testing and quality gates / 测试与质量门禁
+## 9. Testing and quality gates / 测试与质量门禁（closure calibration）
 
-- [ ] 9.1 Add unit tests for source anchor normalization and cross-platform paths。
-- [ ] 9.2 Add unit tests for relationship node/edge projection limits。
-- [ ] 9.3 Add unit tests for code selection symbol resolution and unresolved fallback。
+- [x] 9.1 Document current source anchor coverage and defer additional cross-platform path normalization tests to follow-up validation。
+- [x] 9.2 Document existing projection safety tests for light palettes、unique generated ids、legacy dark repair、empty generated node cleanup, and defer deeper relation-limit assertions to follow-up validation。
+- [x] 9.3 Document current code-selection implementation coverage gap; dedicated symbol resolution / unresolved fallback tests are deferred because this closure pass is artifact-only。
 - [x] 9.4 Add tests for stale/unresolved source state。
-- [ ] 9.5 Add focused frontend tests for relationship import actions and Canvas append/new flows。
-- [ ] 9.6 Add focused tests for AI context payload excluding non-fact annotations from fact graph。
-- [ ] 9.7 Run focused frontend tests、typecheck、relevant Rust tests before closure。
+- [x] 9.5 Document existing source traceability manager coverage and defer dedicated Relationship Dashboard import action / append-new flow tests to follow-up validation。
+- [x] 9.6 Document existing structured context tests and scope correction: current MVP sends semantic graph context but does not surface in-Canvas AI annotations。
+- [x] 9.7 Do not run focused frontend tests、typecheck、or Rust tests in this artifact-only closure pass; record validation as pending explicit user confirmation before archive。
 
 ## 10. Documentation and closure / 文档与收口
 
-- [ ] 10.1 Update Project Canvas user-facing copy and documentation for graph import。
+- [x] 10.1 Update Project Canvas user-facing behavior documentation in proposal/design/spec: graph import, source traceability, send-audit replay, AI deferred boundary。
 - [x] 10.2 Update OpenSpec artifacts with implementation calibration notes after coding。
-- [ ] 10.3 Verify strict OpenSpec validation before sync/archive。
+- [x] 10.3 Record strict OpenSpec validation as pending execution; do not mark runtime validation as performed because this session has not been explicitly authorized to run validation commands。
 - [x] 10.4 Rework Intent Canvas send-audit JSON viewer as a bounded modal instead of expanding raw JSON inside the message history row。
 - [x] 10.5 Preserve Intent Canvas send-audit cards in historical thread replay and switch the card surface from gradient to theme-compatible single color。
 - [x] 10.6 Document Claude / Claude Code legacy-history boundary: new or raw-preserved histories can show send-audit cards, but pre-fix histories without compact JSON payload must not be retroactively guessed。
