@@ -494,7 +494,7 @@ function parseDeclarationLine(line: string): Pick<IntentCanvasCodeSelectionAncho
   }
 
   const methodLike = normalizedLine.match(
-    /^(?!(?:new|return|throw)\b)(?:(?:public|private|protected|static|final|abstract|async|override|open|suspend|inline|export)\s+)*(?:[A-Za-z_$][\w$<>\[\].?,]+\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?:[:\w\s<>\[\].?,]*)(?:\{|=>|;|$)/,
+    /^(?!(?:new|return|throw)\b)(?:(?:public|private|protected|static|final|abstract|async|override|open|suspend|inline|export)\s+)*(?:[A-Za-z_$][\w$<>[\].?,]+\s+)?([A-Za-z_$][\w$]*)\s*\([^)]*\)\s*(?:[:\w\s<>[\].?,]*)(?:\{|=>|;|$)/,
   );
   if (methodLike && !normalizedLine.includes(`.${methodLike[1]}(`)) {
     const methodNameIndex = normalizedLine.indexOf(methodLike[1]);

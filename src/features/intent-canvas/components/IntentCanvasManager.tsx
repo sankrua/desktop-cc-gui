@@ -495,7 +495,7 @@ function IntentCanvasEditor({
       appState: document.scene.appState,
       files: document.scene.files,
     }),
-    [document.id],
+    [document.scene.appState, document.scene.elements, document.scene.files],
   );
 
   const markDirty = useCallback(() => {
