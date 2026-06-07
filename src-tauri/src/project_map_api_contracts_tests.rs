@@ -370,6 +370,70 @@ public class RealNameCheckParam {
 }
 
 #[test]
+fn java_method_chain_stays_inside_handler_body_and_resolves_target_definition() {
+    let controller = r#"
+@RestController
+class GoodBasicController {
+  @Autowired
+  private GoodBasicService goodBasicService;
+
+  @PostMapping("/shelf/batch")
+  public R<Integer> shelfBatch(@RequestBody GoodBasicShelfParam param) {
+    return goodBasicService.shelfBatch(param);
+  }
+
+  public R<Integer> importSkuExchangeFilter(GoodBasicShelfParam param) {
+    return goodBasicService.importSkuExchangeFilter(param);
+  }
+}
+"#;
+    let service = r#"
+class GoodBasicService {
+  public R<Integer> shelfBatch(GoodBasicShelfParam param) {
+    return R.ok(1);
+  }
+
+  public R<Integer> importSkuExchangeFilter(GoodBasicShelfParam param) {
+    return R.ok(2);
+  }
+}
+"#;
+    let artifact = build_api_contract_artifact(
+        &[
+            (
+                scanned_file("src/main/java/com/demo/GoodBasicController.java", "java", "java", controller),
+                controller.to_string(),
+            ),
+            (
+                scanned_file("src/main/java/com/demo/GoodBasicService.java", "java", "java", service),
+                service.to_string(),
+            ),
+        ],
+        "mossx-java-chain",
+        "scan-java-chain",
+        "2026-06-08T00:00:00Z",
+        &[],
+    );
+    let call_chains = artifact
+        .get("callChains")
+        .and_then(Value::as_array)
+        .unwrap();
+    assert_eq!(call_chains.len(), 1);
+    let edges = call_chains[0].get("edges").and_then(Value::as_array).unwrap();
+    assert!(edges.iter().any(|edge| {
+        edge.get("sourceSymbol").and_then(Value::as_str) == Some("GoodBasicController.shelfBatch")
+            && edge.get("targetSymbol").and_then(Value::as_str) == Some("GoodBasicService.shelfBatch")
+            && edge.get("targetFile").and_then(Value::as_str) == Some("src/main/java/com/demo/GoodBasicService.java")
+    }));
+    assert!(!edges.iter().any(|edge| {
+        edge.get("targetSymbol")
+            .and_then(Value::as_str)
+            .map(|symbol| symbol.contains("importSkuExchangeFilter"))
+            .unwrap_or(false)
+    }));
+}
+
+#[test]
 fn large_endpoint_fixture_preserves_group_first_artifact_shape() {
     let routes = (0..64)
         .map(|index| {

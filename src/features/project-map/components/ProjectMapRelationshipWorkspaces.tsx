@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type Dispatch,
   type PointerEvent as ReactPointerEvent,
+  type ReactElement,
   type SetStateAction,
 } from "react";
 import { useTranslation } from "react-i18next";
@@ -76,13 +77,21 @@ type ProjectMapRelationshipScanStatus = {
   status: "idle" | "running" | "success" | "failed";
 };
 
+type ProjectMapApiMethodChainTreeNode = {
+  symbol: string;
+  incomingEdge?: ProjectMapApiCallChain["edges"][number];
+  children: ProjectMapApiMethodChainTreeNode[];
+};
+
 const PROJECT_MAP_RELATIONSHIP_EXPLORER_GROUP_LIMIT = 80;
-const API_LEFT_PANE_DEFAULT_WIDTH = 320;
-const API_RIGHT_PANE_DEFAULT_WIDTH = 440;
-const API_LEFT_PANE_MIN_WIDTH = 240;
-const API_LEFT_PANE_MAX_WIDTH = 520;
-const API_RIGHT_PANE_MIN_WIDTH = 320;
-const API_RIGHT_PANE_MAX_WIDTH = 720;
+const API_LEFT_PANE_DEFAULT_WIDTH = 20;
+const API_RIGHT_PANE_DEFAULT_WIDTH = 60;
+const API_LEFT_PANE_MIN_WIDTH = 16;
+const API_LEFT_PANE_MAX_WIDTH = 30;
+const API_RIGHT_PANE_MIN_WIDTH = 34;
+const API_RIGHT_PANE_MAX_WIDTH = 68;
+const API_METHOD_CHAIN_MAX_TREE_DEPTH = 5;
+const API_METHOD_CHAIN_MAX_RENDERED_NODES = 32;
 
 function clampApiPaneWidth(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -98,6 +107,47 @@ function downloadProjectMapApiExport(file: { filename: string; mimeType: string;
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function buildProjectMapApiMethodChainTree(
+  chain: ProjectMapApiCallChain,
+  rootSymbol: string | null | undefined,
+): ProjectMapApiMethodChainTreeNode[] {
+  const childrenBySource = new Map<string, ProjectMapApiCallChain["edges"]>();
+  const targetSymbols = new Set<string>();
+  for (const edge of chain.edges) {
+    const children = childrenBySource.get(edge.sourceSymbol) ?? [];
+    children.push(edge);
+    childrenBySource.set(edge.sourceSymbol, children);
+    targetSymbols.add(edge.targetSymbol);
+  }
+  const roots = rootSymbol
+    ? [rootSymbol]
+    : Array.from(childrenBySource.keys()).filter((symbol) => !targetSymbols.has(symbol));
+  const fallbackRoots = roots.length ? roots : chain.edges[0] ? [chain.edges[0].sourceSymbol] : [];
+  let renderedCount = 0;
+  const visit = (
+    symbol: string,
+    incomingEdge: ProjectMapApiCallChain["edges"][number] | undefined,
+    depth: number,
+    path: Set<string>,
+  ): ProjectMapApiMethodChainTreeNode => {
+    renderedCount += 1;
+    if (
+      depth >= API_METHOD_CHAIN_MAX_TREE_DEPTH
+      || renderedCount >= API_METHOD_CHAIN_MAX_RENDERED_NODES
+      || path.has(symbol)
+    ) {
+      return { symbol, incomingEdge, children: [] };
+    }
+    const nextPath = new Set(path);
+    nextPath.add(symbol);
+    const children = (childrenBySource.get(symbol) ?? [])
+      .slice(0, 8)
+      .map((edge) => visit(edge.targetSymbol, edge, depth + 1, nextPath));
+    return { symbol, incomingEdge, children };
+  };
+  return fallbackRoots.map((symbol) => visit(symbol, undefined, 0, new Set()));
 }
 
 type ProjectMapRelationshipApiWorkspaceProps = {
@@ -187,29 +237,45 @@ export function ProjectMapRelationshipApiWorkspace({
   setSelectedApiGroupId,
 }: ProjectMapRelationshipApiWorkspaceProps) {
   const { t } = useTranslation();
+  const apiContractWorkspaceRef = useRef<HTMLDivElement | null>(null);
   const [apiLeftPaneWidth, setApiLeftPaneWidth] = useState(API_LEFT_PANE_DEFAULT_WIDTH);
   const [apiRightPaneWidth, setApiRightPaneWidth] = useState<number | null>(null);
+  const [apiInspectorFocused, setApiInspectorFocused] = useState(false);
   const apiPaneResizeCleanupRef = useRef<(() => void) | null>(null);
   const selectedApiEndpointDetail = useMemo(
     () => selectedApiEndpoint ? buildProjectMapApiEndpointDetail(selectedApiEndpoint) : null,
     [selectedApiEndpoint],
   );
+  const selectedApiMethodChainTrees = useMemo(() => (
+    selectedApiCallChains.map((chain) => ({
+      chain,
+      roots: buildProjectMapApiMethodChainTree(chain, selectedApiEndpoint?.handlerSymbol),
+    }))
+  ), [selectedApiCallChains, selectedApiEndpoint?.handlerSymbol]);
   useEffect(() => {
     return () => {
       apiPaneResizeCleanupRef.current?.();
       apiPaneResizeCleanupRef.current = null;
     };
   }, []);
+  useEffect(() => {
+    setApiInspectorFocused(false);
+  }, [selectedApiEndpoint?.id, selectedApiGroup?.id]);
   const apiPaneStyle = {
     "--relationship-graph-scale": relationshipGraphZoom,
-    "--api-left-pane-width": `${apiLeftPaneWidth}px`,
-    ...(apiRightPaneWidth === null ? {} : { "--api-right-pane-width": `${apiRightPaneWidth}px` }),
+    "--api-left-pane-width": `${apiLeftPaneWidth}%`,
+    ...(apiRightPaneWidth === null ? {} : { "--api-right-pane-width": `${apiRightPaneWidth}%` }),
   } as CSSProperties;
   const beginApiPaneResize = useCallback((
     pane: "left" | "right",
     event: ReactPointerEvent<HTMLDivElement>,
   ) => {
     event.preventDefault();
+    const workspaceRect = apiContractWorkspaceRef.current?.getBoundingClientRect();
+    const workspaceWidth = workspaceRect?.width ?? 0;
+    if (!workspaceWidth || !Number.isFinite(workspaceWidth)) {
+      return;
+    }
     apiPaneResizeCleanupRef.current?.();
     apiPaneResizeCleanupRef.current = null;
     const startX = event.clientX;
@@ -217,16 +283,17 @@ export function ProjectMapRelationshipApiWorkspace({
     const startRightWidth = apiRightPaneWidth ?? API_RIGHT_PANE_DEFAULT_WIDTH;
     const handlePointerMove = (moveEvent: PointerEvent) => {
       const delta = moveEvent.clientX - startX;
+      const deltaPercent = delta / workspaceWidth * 100;
       if (pane === "left") {
         setApiLeftPaneWidth(clampApiPaneWidth(
-          startLeftWidth + delta,
+          startLeftWidth + deltaPercent,
           API_LEFT_PANE_MIN_WIDTH,
           API_LEFT_PANE_MAX_WIDTH,
         ));
         return;
       }
       setApiRightPaneWidth(clampApiPaneWidth(
-        startRightWidth - delta,
+        startRightWidth - deltaPercent,
         API_RIGHT_PANE_MIN_WIDTH,
         API_RIGHT_PANE_MAX_WIDTH,
       ));
@@ -249,12 +316,148 @@ export function ProjectMapRelationshipApiWorkspace({
     }
     downloadProjectMapApiExport(buildProjectMapApiExportFile(relationshipDashboardData.apiContracts, format));
   }, [relationshipDashboardData.apiContracts]);
+  const openApiInspectorPath = useCallback((path: string | null | undefined, line?: number | null) => {
+    setApiInspectorFocused(true);
+    openProjectMapRelationshipPath(path, line);
+  }, [openProjectMapRelationshipPath]);
+  const renderApiMethodChainNode = (
+    node: ProjectMapApiMethodChainTreeNode,
+    depth: number,
+  ): ReactElement => {
+    const edge = node.incomingEdge;
+    const edgeLocationLabel = edge ? `${edge.sourceFile}${edge.line ? `:${edge.line}` : ""}` : null;
+    const edgeTargetLocationLabel = edge?.targetFile
+      ? `${edge.targetFile}${edge.targetLine ? `:${edge.targetLine}` : ""}`
+      : null;
+    return (
+      <li
+        key={`${node.symbol}:${edge?.id ?? "root"}`}
+        className={cn(
+          "project-map-api-method-tree-node",
+          depth === 0 && "is-root",
+          edge && !edge.targetFile && "is-unresolved",
+        )}
+      >
+        <div className="project-map-api-method-tree-card">
+          <div className="project-map-api-method-tree-card-main">
+            <strong>{node.symbol}</strong>
+            {edge ? (
+              <span>{edge.kind} · {edge.confidence}</span>
+            ) : (
+              <span>{selectedApiEndpoint?.method ?? selectedApiEndpoint?.protocol ?? "endpoint"}</span>
+            )}
+          </div>
+          {edge ? (
+            <div className="project-map-api-method-tree-anchors">
+              {edgeLocationLabel ? (
+                <button
+                  type="button"
+                  onClick={() => openApiInspectorPath(edge.sourceFile, edge.line)}
+                  aria-label={edge.line
+                    ? t("projectMap.relationship.sourceOpenFileAtLine", {
+                        path: edge.sourceFile,
+                        line: edge.line,
+                      })
+                    : t("projectMap.relationship.sourceOpenFile", {
+                        path: edge.sourceFile,
+                      })}
+                >
+                  call · {edgeLocationLabel}
+                </button>
+              ) : null}
+              {edgeTargetLocationLabel && edge.targetFile ? (
+                <button
+                  type="button"
+                  className="is-target"
+                  onClick={() => openApiInspectorPath(edge.targetFile, edge.targetLine)}
+                  aria-label={edge.targetLine
+                    ? t("projectMap.relationship.sourceOpenFileAtLine", {
+                        path: edge.targetFile,
+                        line: edge.targetLine,
+                      })
+                    : t("projectMap.relationship.sourceOpenFile", {
+                        path: edge.targetFile,
+                      })}
+                >
+                  def · {edgeTargetLocationLabel}
+                </button>
+              ) : null}
+            </div>
+          ) : null}
+          {edge?.excerpt ? (
+            <button
+              type="button"
+              className="project-map-api-method-tree-excerpt"
+              onClick={() => openApiInspectorPath(edge.sourceFile, edge.line)}
+              aria-label={edge.line
+                ? t("projectMap.relationship.sourceOpenFileAtLine", {
+                    path: edge.sourceFile,
+                    line: edge.line,
+                  })
+                : t("projectMap.relationship.sourceOpenFile", {
+                    path: edge.sourceFile,
+                  })}
+            >
+              <code>{edge.excerpt}</code>
+            </button>
+          ) : null}
+        </div>
+        {node.children.length ? (
+          <ol>
+            {node.children.map((child) => renderApiMethodChainNode(child, depth + 1))}
+          </ol>
+        ) : null}
+      </li>
+    );
+  };
+  const primaryApiFilters = [
+    {
+      label: t("projectMap.relationship.apiFilterModule"),
+      value: apiModuleFilter,
+      onChange: setApiModuleFilter,
+      options: Array.from(apiFilterOptions.modules),
+    },
+    {
+      label: t("projectMap.relationship.apiFilterController"),
+      value: apiControllerFilter,
+      onChange: setApiControllerFilter,
+      options: Array.from(apiFilterOptions.controllers),
+    },
+    {
+      label: t("projectMap.relationship.apiFilterConfidence"),
+      value: apiConfidenceFilter,
+      onChange: setApiConfidenceFilter,
+      options: Array.from(apiFilterOptions.confidences),
+    },
+  ];
+  const advancedApiFilters = [
+    {
+      label: t("projectMap.relationship.apiFilterProtocol"),
+      value: apiProtocolFilter,
+      onChange: setApiProtocolFilter,
+      options: Array.from(apiFilterOptions.protocols),
+    },
+    {
+      label: t("projectMap.relationship.apiFilterLanguage"),
+      value: apiLanguageFilter,
+      onChange: setApiLanguageFilter,
+      options: Array.from(apiFilterOptions.languages),
+    },
+    {
+      label: t("projectMap.relationship.apiFilterFramework"),
+      value: apiFrameworkFilter,
+      onChange: setApiFrameworkFilter,
+      options: Array.from(apiFilterOptions.frameworks),
+    },
+  ];
 
   return (
     <div
+      ref={apiContractWorkspaceRef}
       className={cn(
         "project-map-api-contract-workspace",
         `is-layout-${relationshipDashboardLayoutPreset}`,
+        apiInspectorFocused && "is-inspector-focused",
       )}
       style={apiPaneStyle}
     >
@@ -268,73 +471,11 @@ export function ProjectMapRelationshipApiWorkspace({
           })}</span>
         </div>
         <div className="project-map-api-contract-toolbar-controls">
-          <button
-            type="button"
-            className="project-map-toolbar-action project-map-api-contract-scan-action"
-            onClick={handleRelationshipScanClick}
-            disabled={!activeWorkspaceId || relationshipScanState.status === "running"}
-          >
-            <RefreshCw aria-hidden />
-            {relationshipScanState.status === "running"
-              ? t("projectMap.relationship.scanning")
-              : t("projectMap.relationship.apiScan")}
-          </button>
-          <div className="project-map-api-contract-export-actions" aria-label={t("projectMap.relationship.apiExportLabel")}>
-            {([
-              ["markdown", t("projectMap.relationship.apiExportMarkdown")],
-              ["html", t("projectMap.relationship.apiExportHtml")],
-              ["openapi-json", t("projectMap.relationship.apiExportOpenApiJson")],
-            ] as const).map(([format, label]) => (
-              <button
-                key={format}
-                type="button"
-                className="project-map-toolbar-action project-map-api-contract-export-action"
-                disabled={!relationshipDashboardData.apiContracts || !apiEndpointCount}
-                onClick={() => handleApiExport(format)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
           <div className="project-map-api-contract-filters">
-            {[
-              {
-                label: t("projectMap.relationship.apiFilterProtocol"),
-                value: apiProtocolFilter,
-                onChange: setApiProtocolFilter,
-                options: Array.from(apiFilterOptions.protocols),
-              },
-              {
-                label: t("projectMap.relationship.apiFilterLanguage"),
-                value: apiLanguageFilter,
-                onChange: setApiLanguageFilter,
-                options: Array.from(apiFilterOptions.languages),
-              },
-              {
-                label: t("projectMap.relationship.apiFilterFramework"),
-                value: apiFrameworkFilter,
-                onChange: setApiFrameworkFilter,
-                options: Array.from(apiFilterOptions.frameworks),
-              },
-              {
-                label: t("projectMap.relationship.apiFilterModule"),
-                value: apiModuleFilter,
-                onChange: setApiModuleFilter,
-                options: Array.from(apiFilterOptions.modules),
-              },
-              {
-                label: t("projectMap.relationship.apiFilterController"),
-                value: apiControllerFilter,
-                onChange: setApiControllerFilter,
-                options: Array.from(apiFilterOptions.controllers),
-              },
-              {
-                label: t("projectMap.relationship.apiFilterConfidence"),
-                value: apiConfidenceFilter,
-                onChange: setApiConfidenceFilter,
-                options: Array.from(apiFilterOptions.confidences),
-              },
-            ].map((filter) => (
+            <span className="project-map-api-contract-filter-group-label">
+              {t("projectMap.relationship.apiPrimaryFilters")}
+            </span>
+            {primaryApiFilters.map((filter) => (
               <label key={filter.label}>
                 <span>{filter.label}</span>
                 <select
@@ -351,8 +492,61 @@ export function ProjectMapRelationshipApiWorkspace({
                 </select>
               </label>
             ))}
+            <details className="project-map-api-contract-advanced-filters">
+              <summary>{t("projectMap.relationship.apiAdvancedFilters")}</summary>
+              <div>
+                <div className="project-map-api-contract-export-actions" aria-label={t("projectMap.relationship.apiExportLabel")}>
+                  <button
+                    type="button"
+                    className="project-map-toolbar-action project-map-api-contract-scan-action"
+                    onClick={handleRelationshipScanClick}
+                    disabled={!activeWorkspaceId || relationshipScanState.status === "running"}
+                  >
+                    <RefreshCw aria-hidden />
+                    {relationshipScanState.status === "running"
+                      ? t("projectMap.relationship.scanning")
+                      : t("projectMap.relationship.apiScan")}
+                  </button>
+                  {([
+                    ["markdown", t("projectMap.relationship.apiExportMarkdown")],
+                    ["html", t("projectMap.relationship.apiExportHtml")],
+                    ["openapi-json", t("projectMap.relationship.apiExportOpenApiJson")],
+                  ] as const).map(([format, label]) => (
+                    <button
+                      key={format}
+                      type="button"
+                      className="project-map-toolbar-action project-map-api-contract-export-action"
+                      disabled={!relationshipDashboardData.apiContracts || !apiEndpointCount}
+                      onClick={() => handleApiExport(format)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {advancedApiFilters.map((filter) => (
+                  <label key={filter.label}>
+                    <span>{filter.label}</span>
+                    <select
+                      value={filter.value}
+                      onChange={(event) => {
+                        filter.onChange(event.target.value);
+                        setSelectedApiEndpointId(null);
+                      }}
+                    >
+                      <option value="all">{t("projectMap.relationship.apiFilterAll")}</option>
+                      {filter.options.sort().map((option) => (
+                        <option key={option} value={option}>{option}</option>
+                      ))}
+                    </select>
+                  </label>
+                ))}
+              </div>
+            </details>
           </div>
         </div>
+        <small className="project-map-api-contract-export-caveat">
+          {t("projectMap.relationship.apiExportCaveat")}
+        </small>
       </header>
       {relationshipDashboardData.apiContracts && apiEndpointCount > 0 ? (
         <div className="project-map-api-contract-grid">
@@ -496,13 +690,21 @@ export function ProjectMapRelationshipApiWorkspace({
           />
           <aside className="project-map-api-contract-inspector">
             <header>
-              <span>{t("projectMap.relationship.apiInspectorTitle")}</span>
-              <strong>
-                {selectedApiEndpoint?.path
-                  ?? selectedApiEndpoint?.operationName
-                  ?? selectedApiGroup?.label
-                  ?? t("projectMap.relationship.apiInspectorEmpty")}
-              </strong>
+              <div>
+                <span>{t("projectMap.relationship.apiInspectorTitle")}</span>
+                <button
+                  type="button"
+                  className="project-map-api-contract-inspector-focus-toggle"
+                  onClick={() => setApiInspectorFocused((current) => !current)}
+                >
+                  {apiInspectorFocused
+                    ? t("projectMap.relationship.apiInspectorExitFocus")
+                    : t("projectMap.relationship.apiInspectorFocus")}
+                </button>
+              </div>
+              {selectedApiEndpoint ? null : (
+                <strong>{selectedApiGroup?.label ?? t("projectMap.relationship.apiInspectorEmpty")}</strong>
+              )}
             </header>
             {selectedApiEndpoint && selectedApiEndpointDetail ? (
               <>
@@ -512,16 +714,23 @@ export function ProjectMapRelationshipApiWorkspace({
                     <strong>{selectedApiEndpointDetail.invocation.url}</strong>
                   </div>
                   <p>{selectedApiEndpointDetail.overview.description ?? t("projectMap.relationship.apiDescriptionUnavailable")}</p>
+                  <div className="project-map-api-contract-endpoint-meta">
+                    <span>{selectedApiEndpoint.protocol}</span>
+                    <span>{selectedApiEndpoint.confidence}</span>
+                    <span>{selectedApiEndpoint.language}</span>
+                    {selectedApiEndpoint.framework ? <span>{selectedApiEndpoint.framework}</span> : null}
+                    <em>
+                      {t("projectMap.relationship.apiTrustEvidenceSummary", {
+                        count: selectedApiEndpoint.evidence.length,
+                        sources: Array.from(new Set(selectedApiEndpoint.evidence.map((entry) => entry.parserSource))).join(", ")
+                          || t("projectMap.relationship.apiTrustEvidenceUnavailable"),
+                      })}
+                    </em>
+                  </div>
                 </article>
-                <div className="project-map-api-contract-tags">
-                  <span>{selectedApiEndpoint.protocol}</span>
-                  <span>{selectedApiEndpoint.confidence}</span>
-                  <span>{selectedApiEndpoint.language}</span>
-                  {selectedApiEndpoint.framework ? <span>{selectedApiEndpoint.framework}</span> : null}
-                </div>
-                <section className="project-map-api-contract-inspector-section">
+                <section className="project-map-api-contract-inspector-section project-map-api-contract-overview-section">
                   <h5>{t("projectMap.relationship.apiOverviewTitle")}</h5>
-                  <dl className="project-map-api-contract-detail-list">
+                  <dl className="project-map-api-contract-detail-list project-map-api-contract-overview-list project-map-api-contract-invocation-list">
                     <div>
                       <dt>{t("projectMap.relationship.apiOverviewName")}</dt>
                       <dd>{selectedApiEndpointDetail.overview.interfaceName}</dd>
@@ -544,9 +753,9 @@ export function ProjectMapRelationshipApiWorkspace({
                     </div>
                   </dl>
                 </section>
-                <section className="project-map-api-contract-inspector-section">
+                <section className="project-map-api-contract-inspector-section project-map-api-contract-overview-section">
                   <h5>{t("projectMap.relationship.apiInvocationTitle")}</h5>
-                  <dl className="project-map-api-contract-detail-list">
+                  <dl className="project-map-api-contract-detail-list project-map-api-contract-overview-list">
                     <div>
                       <dt>{t("projectMap.relationship.apiInvocationMethod")}</dt>
                       <dd>{selectedApiEndpointDetail.invocation.httpMethod}</dd>
@@ -626,18 +835,26 @@ export function ProjectMapRelationshipApiWorkspace({
                     <div className="project-map-api-contract-response-list">
                       {selectedApiEndpointDetail.responses.map((response, responseIndex) => (
                         <article key={`${response.statusCode}:${response.rawType}:${responseIndex}`}>
-                          <strong>{response.statusCode}</strong>
-                          <span>{response.contentType}</span>
-                          <em>
+                          <div className="project-map-api-contract-response-head">
+                            <strong>{response.statusCode}</strong>
+                            <span>{response.contentType}</span>
+                          </div>
+                          <em className="project-map-api-contract-response-schema">
                             {response.rawType}
                             {response.businessType !== response.rawType ? ` · data: ${response.businessType}` : ""}
                             {response.description ? ` · ${response.description}` : ""}
                           </em>
-                          {response.fields.slice(0, 16).map((field, fieldIndex) => (
-                            <small key={`${response.statusCode}:${field.path}:${fieldIndex}`}>
-                              {field.path}{field.type ? `: ${field.type}` : ""}{field.description ? ` · ${field.description}` : ""}
-                            </small>
-                          ))}
+                          {response.fields.length ? (
+                            <div className="project-map-api-contract-response-fields">
+                              {response.fields.slice(0, 16).map((field, fieldIndex) => (
+                                <div key={`${response.statusCode}:${field.path}:${fieldIndex}`}>
+                                  <code>{field.path}</code>
+                                  {field.type ? <span>{field.type}</span> : null}
+                                  {field.description ? <p>{field.description}</p> : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : null}
                         </article>
                       ))}
                     </div>
@@ -677,7 +894,7 @@ export function ProjectMapRelationshipApiWorkspace({
                     <button
                       key={`${evidence.path}:${evidence.line ?? 0}:${evidence.parserSource}`}
                       type="button"
-                      onClick={() => openProjectMapRelationshipPath(evidence.path, evidence.line)}
+                      onClick={() => openApiInspectorPath(evidence.path, evidence.line)}
                     >
                       <span>{evidence.parserSource}{evidence.redacted ? " · redacted" : ""}</span>
                       <strong>{evidence.path}{evidence.line ? `:${evidence.line}` : ""}</strong>
@@ -692,8 +909,8 @@ export function ProjectMapRelationshipApiWorkspace({
                   <h5>{t("projectMap.relationship.apiMethodChainTitle")}</h5>
                   {selectedApiCallChains.length ? (
                     <div className="project-map-api-contract-method-chain-list">
-                      {selectedApiCallChains.map((chain) => (
-                        <article key={chain.id} className="project-map-api-contract-method-chain-card">
+                      {selectedApiMethodChainTrees.map(({ chain, roots }) => (
+                        <article key={chain.id} className="project-map-api-method-tree">
                           {chain.truncatedReason ? (
                             <span className="project-map-api-contract-method-chain-warning">
                               {t("projectMap.relationship.apiMethodChainTruncated", {
@@ -701,27 +918,9 @@ export function ProjectMapRelationshipApiWorkspace({
                               })}
                             </span>
                           ) : null}
-                          {chain.edges.slice(0, 8).map((edge) => (
-                            <div key={edge.id} className="project-map-api-contract-method-chain-edge">
-                              <div className="project-map-api-contract-method-chain-flow">
-                                <span>{t("projectMap.relationship.apiMethodChainSource")}</span>
-                                <strong>{edge.sourceSymbol}</strong>
-                                <b aria-hidden>{"->"}</b>
-                                <span>{t("projectMap.relationship.apiMethodChainTarget")}</span>
-                                <strong>{edge.targetSymbol}</strong>
-                              </div>
-                              <div className="project-map-api-contract-method-chain-meta">
-                                <span>{edge.kind}</span>
-                                <span>{edge.confidence}</span>
-                                <span>{edge.sourceFile}{edge.line ? `:${edge.line}` : ""}</span>
-                              </div>
-                              {edge.excerpt ? (
-                                <code className="project-map-api-contract-method-chain-excerpt">
-                                  {edge.excerpt}
-                                </code>
-                              ) : null}
-                            </div>
-                          ))}
+                          <ol className="project-map-api-method-tree-roots">
+                            {roots.map((root) => renderApiMethodChainNode(root, 0))}
+                          </ol>
                         </article>
                       ))}
                     </div>

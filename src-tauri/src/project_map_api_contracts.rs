@@ -325,6 +325,23 @@ struct JavaApiMethodMetadata {
 }
 
 #[derive(Debug, Clone)]
+struct JavaIndexedMethod {
+    class_name: String,
+    method_name: String,
+    source_file: String,
+    signature_line: usize,
+    body_start_line: usize,
+    end_line: usize,
+}
+
+#[derive(Debug, Clone, Default)]
+struct JavaSourceIndex {
+    class_name: String,
+    injected_fields: BTreeMap<String, String>,
+    methods: Vec<JavaIndexedMethod>,
+}
+
+#[derive(Debug, Clone)]
 struct ApiRouteCandidate {
     protocol: String,
     language: String,
@@ -565,6 +582,10 @@ pub(crate) struct ApiCallChainEdge {
     source_file: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     line: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    target_line: Option<usize>,
     #[serde(skip_serializing_if = "Option::is_none")]
     excerpt: Option<String>,
     direction: String,
@@ -2237,6 +2258,283 @@ fn api_candidate_priority(candidate: &ApiRouteCandidate) -> (u8, u8) {
     )
 }
 
+fn java_identifier_char(character: char) -> bool {
+    character.is_ascii_alphanumeric() || matches!(character, '_' | '$')
+}
+
+fn java_simple_type_name(value: &str) -> String {
+    value
+        .rsplit('.')
+        .next()
+        .unwrap_or(value)
+        .split('<')
+        .next()
+        .unwrap_or(value)
+        .trim_matches(|character: char| !java_identifier_char(character))
+        .to_string()
+}
+
+fn java_injected_field_from_line(line: &str, previous_line: Option<&str>) -> Option<(String, String)> {
+    let trimmed = line.trim();
+    if !trimmed.ends_with(';') || trimmed.contains('(') {
+        return None;
+    }
+    let has_injection_marker = trimmed.contains("@Autowired")
+        || trimmed.contains("@Inject")
+        || trimmed.contains("@Resource")
+        || previous_line
+            .map(|line| {
+                line.contains("@Autowired") || line.contains("@Inject") || line.contains("@Resource")
+            })
+            .unwrap_or(false);
+    let cleaned = strip_java_annotations(trimmed)
+        .split('=')
+        .next()
+        .unwrap_or(trimmed)
+        .trim_end_matches(';')
+        .replace(" final ", " ");
+    let tokens = cleaned
+        .split_whitespace()
+        .filter(|token| {
+            !matches!(
+                *token,
+                "private" | "protected" | "public" | "static" | "final" | "volatile" | "transient"
+            )
+        })
+        .collect::<Vec<_>>();
+    if tokens.len() < 2 {
+        return None;
+    }
+    let field_name = tokens.last()?.trim_matches(|character: char| !java_identifier_char(character));
+    let field_type = java_simple_type_name(tokens.get(tokens.len().saturating_sub(2))?);
+    if field_name.is_empty() || field_type.is_empty() {
+        return None;
+    }
+    if !has_injection_marker {
+        let looks_like_collaborator = field_type.contains("Service")
+            || field_type.contains("Manager")
+            || field_type.contains("UseCase")
+            || field_type.contains("Repository")
+            || field_type.contains("Mapper")
+            || field_type.ends_with("Dao")
+            || field_type.ends_with("Client");
+        if !looks_like_collaborator {
+            return None;
+        }
+    }
+    Some((field_name.to_string(), field_type))
+}
+
+fn java_brace_delta(line: &str) -> isize {
+    let mut delta = 0isize;
+    let mut in_string = false;
+    let mut escaped = false;
+    for character in line.chars() {
+        if in_string {
+            if escaped {
+                escaped = false;
+            } else if character == '\\' {
+                escaped = true;
+            } else if character == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match character {
+            '"' => in_string = true,
+            '{' => delta += 1,
+            '}' => delta -= 1,
+            _ => {}
+        }
+    }
+    delta
+}
+
+fn java_method_body_bounds(lines: &[&str], signature_index: usize) -> Option<(usize, usize)> {
+    let mut depth = 0isize;
+    let mut body_start_index: Option<usize> = None;
+    for (line_index, line) in lines.iter().enumerate().skip(signature_index) {
+        let delta = java_brace_delta(line);
+        if body_start_index.is_none() && line.contains('{') {
+            body_start_index = Some(line_index);
+        }
+        if body_start_index.is_some() {
+            depth += delta;
+            if depth <= 0 {
+                return Some((body_start_index? + 1, line_index + 1));
+            }
+        }
+    }
+    None
+}
+
+fn build_java_source_index(file: &ScannedFile, content: &str) -> Option<JavaSourceIndex> {
+    if !matches!(file.language.as_str(), "java" | "kotlin") {
+        return None;
+    }
+    let class_name = java_declared_type(content).unwrap_or_else(|| file_stem_label(&file.path));
+    let lines = content.lines().collect::<Vec<_>>();
+    let mut index = JavaSourceIndex {
+        class_name: class_name.clone(),
+        ..JavaSourceIndex::default()
+    };
+    for (line_index, line) in lines.iter().enumerate() {
+        if let Some((field_name, field_type)) = java_injected_field_from_line(
+            line,
+            line_index.checked_sub(1).and_then(|index| lines.get(index)).copied(),
+        ) {
+            index.injected_fields.insert(field_name, field_type);
+        }
+        let Some(method_name) = handler_name_before_parenthesis(line) else {
+            continue;
+        };
+        if !line.contains(')') || !line.contains('{') {
+            continue;
+        }
+        let Some((body_start_line, end_line)) = java_method_body_bounds(&lines, line_index) else {
+            continue;
+        };
+        index.methods.push(JavaIndexedMethod {
+            class_name: class_name.clone(),
+            method_name,
+            source_file: file.path.clone(),
+            signature_line: line_index + 1,
+            body_start_line,
+            end_line,
+        });
+    }
+    Some(index)
+}
+
+fn build_java_source_indexes(
+    file_contents: &[(ScannedFile, String)],
+) -> BTreeMap<String, JavaSourceIndex> {
+    file_contents
+        .iter()
+        .filter_map(|(file, content)| {
+            build_java_source_index(file, content).map(|index| (file.path.clone(), index))
+        })
+        .collect()
+}
+
+fn java_indexed_method_for_candidate(
+    candidate: &ApiRouteCandidate,
+    index: &JavaSourceIndex,
+) -> Option<JavaIndexedMethod> {
+    let method_name = candidate
+        .handler_symbol
+        .as_deref()
+        .and_then(|symbol| symbol.rsplit('.').next())
+        .or_else(|| candidate.operation_name.as_deref())?;
+    index
+        .methods
+        .iter()
+        .find(|method| {
+            method.method_name == method_name
+                && candidate.line >= method.signature_line
+                && candidate.line <= method.end_line
+        })
+        .or_else(|| index.methods.iter().find(|method| method.method_name == method_name))
+        .cloned()
+}
+
+fn java_call_expressions(line: &str) -> Vec<(String, String)> {
+    let chars = line.char_indices().collect::<Vec<_>>();
+    let mut calls = Vec::new();
+    for (position, (byte_index, character)) in chars.iter().enumerate() {
+        if *character != '.' {
+            continue;
+        }
+        let mut receiver_start = *byte_index;
+        for (left_byte, left_char) in chars[..position].iter().rev() {
+            if java_identifier_char(*left_char) {
+                receiver_start = *left_byte;
+            } else {
+                break;
+            }
+        }
+        let receiver = line[receiver_start..*byte_index].trim();
+        if receiver.is_empty() {
+            continue;
+        }
+        let method_start = *byte_index + 1;
+        let mut method_end = method_start;
+        for (right_byte, right_char) in chars.iter().skip(position + 1) {
+            if java_identifier_char(*right_char) {
+                method_end = *right_byte + right_char.len_utf8();
+            } else {
+                break;
+            }
+        }
+        let method = line[method_start..method_end].trim();
+        if method.is_empty() || line[method_end..].trim_start().chars().next() != Some('(') {
+            continue;
+        }
+        if matches!(method, "class" | "equals" | "hashCode" | "toString") {
+            continue;
+        }
+        calls.push((receiver.to_string(), method.to_string()));
+    }
+    calls
+}
+
+fn java_resolve_receiver_type(source_index: &JavaSourceIndex, receiver: &str) -> Option<String> {
+    if receiver == "this" {
+        return Some(source_index.class_name.clone());
+    }
+    source_index
+        .injected_fields
+        .get(receiver)
+        .cloned()
+        .or_else(|| {
+            receiver
+                .chars()
+                .next()
+                .filter(|character| character.is_ascii_uppercase())
+                .map(|_| java_simple_type_name(receiver))
+        })
+}
+
+fn java_type_matches_class(type_name: &str, class_name: &str) -> bool {
+    let normalized_type = type_name.trim_start_matches('I');
+    class_name == type_name
+        || class_name == normalized_type
+        || class_name == format!("{normalized_type}Impl")
+        || class_name.ends_with(&format!(".{normalized_type}"))
+        || class_name.ends_with(&format!("{normalized_type}Impl"))
+}
+
+fn java_find_target_method(
+    java_source_indexes: &BTreeMap<String, JavaSourceIndex>,
+    type_name: &str,
+    method_name: &str,
+) -> Option<JavaIndexedMethod> {
+    java_source_indexes
+        .values()
+        .flat_map(|index| index.methods.iter())
+        .find(|method| {
+            method.method_name == method_name && java_type_matches_class(type_name, &method.class_name)
+        })
+        .cloned()
+}
+
+fn api_call_chain_kind_from_target(type_name: &str, target_file: Option<&str>) -> String {
+    let lower = format!("{} {}", type_name, target_file.unwrap_or("")).to_ascii_lowercase();
+    if lower.contains("repository") || lower.contains("mapper") || lower.contains("dao") {
+        "repository".to_string()
+    } else if lower.contains("model") || lower.contains("entity") {
+        "model".to_string()
+    } else if lower.contains("client") || lower.contains("resttemplate") || lower.contains("http") {
+        "outbound-http".to_string()
+    } else if lower.contains("rpc") || lower.contains("grpc") {
+        "rpc".to_string()
+    } else if lower.contains("service") || lower.contains("usecase") || lower.contains("manager") {
+        "service".to_string()
+    } else {
+        "unknown".to_string()
+    }
+}
+
 fn api_call_chain_edge_kind(line: &str) -> Option<String> {
     let lower = line.to_ascii_lowercase();
     if lower.contains("repository") || lower.contains(".repo") || lower.contains("dao.") {
@@ -2276,7 +2574,7 @@ fn api_call_chain_target_symbol(line: &str) -> Option<String> {
     }
 }
 
-fn extract_api_call_chain(
+fn extract_fallback_api_call_chain(
     endpoint_id: &str,
     candidate: &ApiRouteCandidate,
     content: &str,
@@ -2312,6 +2610,8 @@ fn extract_api_call_chain(
             target_symbol,
             source_file: candidate.source_file.clone(),
             line: Some(line_number),
+            target_file: None,
+            target_line: None,
             excerpt: Some(excerpt.clone()),
             direction: "forward".to_string(),
             kind,
@@ -2338,6 +2638,140 @@ fn extract_api_call_chain(
         max_depth: 1,
         truncated_reason: Some("max-depth-1-conservative-scan".to_string()),
     })
+}
+
+fn extract_java_resolved_api_call_chain(
+    endpoint_id: &str,
+    candidate: &ApiRouteCandidate,
+    file_content_index: &BTreeMap<String, &str>,
+    java_source_indexes: &BTreeMap<String, JavaSourceIndex>,
+    generated_at: &str,
+) -> Option<ApiCallChain> {
+    let source_index = java_source_indexes.get(&candidate.source_file)?;
+    let root_method = java_indexed_method_for_candidate(candidate, source_index)?;
+    let mut edges = Vec::<ApiCallChainEdge>::new();
+    let mut pending = vec![(root_method, 0usize)];
+    let mut visited_methods = BTreeSet::<String>::new();
+    let mut truncated = false;
+
+    while let Some((source_method, depth)) = pending.pop() {
+        let method_key = format!(
+            "{}|{}|{}",
+            source_method.source_file, source_method.class_name, source_method.method_name
+        );
+        if !visited_methods.insert(method_key) {
+            continue;
+        }
+        let Some(source_content) = file_content_index.get(&source_method.source_file) else {
+            continue;
+        };
+        let Some(source_index) = java_source_indexes.get(&source_method.source_file) else {
+            continue;
+        };
+        for (line_offset, line) in source_content
+            .lines()
+            .enumerate()
+            .skip(source_method.body_start_line.saturating_sub(1))
+            .take(source_method.end_line.saturating_sub(source_method.body_start_line) + 1)
+        {
+            let line_number = line_offset + 1;
+            for (receiver, target_method_name) in java_call_expressions(line) {
+                let Some(target_type) = java_resolve_receiver_type(source_index, &receiver) else {
+                    continue;
+                };
+                let target_method = java_find_target_method(
+                    java_source_indexes,
+                    &target_type,
+                    &target_method_name,
+                );
+                let target_symbol = target_method
+                    .as_ref()
+                    .map(|method| format!("{}.{}", method.class_name, method.method_name))
+                    .unwrap_or_else(|| format!("{}.{}", target_type, target_method_name));
+                let source_symbol = format!("{}.{}", source_method.class_name, source_method.method_name);
+                if source_symbol == target_symbol {
+                    continue;
+                }
+                let excerpt = api_trimmed_excerpt(line);
+                let target_file = target_method.as_ref().map(|method| method.source_file.clone());
+                let target_line = target_method.as_ref().map(|method| method.signature_line);
+                let confidence = if target_method.is_some() { "high" } else { "medium" };
+                edges.push(ApiCallChainEdge {
+                    id: format!(
+                        "api-chain-edge-{}",
+                        stable_hash(&format!(
+                            "{}|{}|{}|{}",
+                            endpoint_id, source_symbol, target_symbol, line_number
+                        ))
+                    ),
+                    source_symbol,
+                    target_symbol,
+                    source_file: source_method.source_file.clone(),
+                    line: Some(line_number),
+                    target_file: target_file.clone(),
+                    target_line,
+                    excerpt: Some(excerpt.clone()),
+                    direction: "forward".to_string(),
+                    kind: api_call_chain_kind_from_target(&target_type, target_file.as_deref()),
+                    confidence: confidence.to_string(),
+                    evidence: vec![api_evidence_payload(
+                        &source_method.source_file,
+                        line_number,
+                        &excerpt,
+                        "syntax-tree-parser",
+                        generated_at,
+                    )],
+                });
+                if edges.len() >= 24 {
+                    truncated = true;
+                    break;
+                }
+                if depth < 2 {
+                    if let Some(target_method) = target_method {
+                        pending.push((target_method, depth + 1));
+                    }
+                }
+            }
+            if truncated {
+                break;
+            }
+        }
+        if truncated {
+            break;
+        }
+    }
+
+    if edges.is_empty() {
+        return None;
+    }
+    Some(ApiCallChain {
+        id: format!("api-chain-{}", stable_hash(endpoint_id)),
+        endpoint_id: endpoint_id.to_string(),
+        edges,
+        max_depth: 3,
+        truncated_reason: truncated.then(|| "max-depth-3-resolved-static-scan".to_string()),
+    })
+}
+
+fn extract_api_call_chain(
+    endpoint_id: &str,
+    candidate: &ApiRouteCandidate,
+    file_content_index: &BTreeMap<String, &str>,
+    java_source_indexes: &BTreeMap<String, JavaSourceIndex>,
+    generated_at: &str,
+) -> Option<ApiCallChain> {
+    if matches!(candidate.language.as_str(), "java" | "kotlin") {
+        return extract_java_resolved_api_call_chain(
+            endpoint_id,
+            candidate,
+            file_content_index,
+            java_source_indexes,
+            generated_at,
+        );
+    }
+    file_content_index
+        .get(&candidate.source_file)
+        .and_then(|content| extract_fallback_api_call_chain(endpoint_id, candidate, content, generated_at))
 }
 
 fn api_group_id(level: &str, label: &str, parent_id: Option<&str>) -> String {
@@ -2379,6 +2813,7 @@ pub(crate) fn build_api_contract_artifact(
         .iter()
         .map(|(file, content)| (file.path.clone(), content.as_str()))
         .collect::<BTreeMap<_, _>>();
+    let java_source_indexes = build_java_source_indexes(file_contents);
     let schema_field_index = build_java_schema_field_index(file_contents, generated_at);
     let mut skipped_by_reason = BTreeMap::<String, usize>::new();
     for item in ignored_paths {
@@ -2625,11 +3060,13 @@ pub(crate) fn build_api_contract_artifact(
             .map(|candidate| api_evidence(candidate, generated_at))
             .collect::<Vec<_>>();
         let description_sources = api_description_sources(candidate, &evidence);
-        let call_chain = file_content_index
-            .get(&candidate.source_file)
-            .and_then(|content| {
-                extract_api_call_chain(&endpoint_id, candidate, content, generated_at)
-            });
+        let call_chain = extract_api_call_chain(
+            &endpoint_id,
+            candidate,
+            &file_content_index,
+            &java_source_indexes,
+            generated_at,
+        );
         let call_chain_ids = call_chain
             .as_ref()
             .map(|chain| vec![chain.id.clone()])

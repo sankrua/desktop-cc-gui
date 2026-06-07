@@ -409,7 +409,10 @@
 
 .project-map-stage.is-file-relations-focused .project-map-relationship-graph-dashboard {
   min-height: min(74vh, 820px);
-  grid-template-columns: minmax(210px, 0.28fr) minmax(720px, 1fr) minmax(300px, 0.34fr);
+  grid-template-columns:
+    minmax(210px, var(--relationship-graph-rail-width, 280px))
+    minmax(720px, 1fr)
+    minmax(300px, var(--relationship-graph-inspector-width, 360px));
 }
 
 .project-map-stage.is-file-relations-focused .project-map-relationship-graph-rail,
@@ -538,17 +541,24 @@
 
 .project-map-stage.is-file-relations-focused
   .project-map-relationship-graph-dashboard:not(.is-rail-collapsed):not(.is-inspector-collapsed) {
-  grid-template-columns: minmax(240px, 280px) minmax(760px, 1fr) minmax(300px, 360px);
+  grid-template-columns:
+    minmax(240px, var(--relationship-graph-rail-width, 280px))
+    minmax(760px, 1fr)
+    minmax(300px, var(--relationship-graph-inspector-width, 360px));
 }
 
 .project-map-stage.is-file-relations-focused
   .project-map-relationship-graph-dashboard.is-rail-collapsed:not(.is-inspector-collapsed) {
-  grid-template-columns: minmax(760px, 1fr) minmax(300px, 360px);
+  grid-template-columns:
+    minmax(760px, 1fr)
+    minmax(300px, var(--relationship-graph-inspector-width, 360px));
 }
 
 .project-map-stage.is-file-relations-focused
   .project-map-relationship-graph-dashboard:not(.is-rail-collapsed).is-inspector-collapsed {
-  grid-template-columns: minmax(240px, 280px) minmax(760px, 1fr);
+  grid-template-columns:
+    minmax(240px, var(--relationship-graph-rail-width, 280px))
+    minmax(760px, 1fr);
 }
 
 .project-map-stage.is-file-relations-focused

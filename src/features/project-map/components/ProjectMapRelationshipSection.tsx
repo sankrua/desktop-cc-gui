@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, PointerEvent } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { useTranslation } from "react-i18next";
 import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import Network from "lucide-react/dist/esm/icons/network";
@@ -124,12 +124,22 @@ const PROJECT_MAP_RELATIONSHIP_GRAPH_GROUP_LIMIT = 6;
 const PROJECT_MAP_RELATIONSHIP_EXPLORER_GROUP_LIMIT = 80;
 const PROJECT_MAP_RELATIONSHIP_EDGE_LIMIT = 80;
 const PROJECT_MAP_RELATIONSHIP_NEW_CANVAS_TARGET = "__new_canvas__";
+const PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_DEFAULT_WIDTH = 280;
+const PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_DEFAULT_WIDTH = 360;
+const PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_MIN_WIDTH = 220;
+const PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_MAX_WIDTH = 900;
+const PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_MIN_WIDTH = 300;
+const PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_MAX_WIDTH = 900;
 const PROJECT_MAP_RELATIONSHIP_VIEW_ORDER: ProjectMapRelationshipDashboardViewMode[] = [
   "graph",
   "files",
   "read",
   "api",
 ];
+
+function clampProjectMapRelationshipPaneWidth(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
 
 function formatActiveCodeSelectionLineLabel(anchor: IntentCanvasCodeSelectionAnchor): string {
   return anchor.startLine === anchor.endLine
@@ -238,6 +248,9 @@ export function ProjectMapRelationshipSection({
     useState<"incoming" | "outgoing" | null>(null);
   const [isRelationshipGraphRailCollapsed, setIsRelationshipGraphRailCollapsed] = useState(false);
   const [isRelationshipGraphInspectorCollapsed, setIsRelationshipGraphInspectorCollapsed] = useState(false);
+  const [relationshipGraphRailWidth, setRelationshipGraphRailWidth] = useState(PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_DEFAULT_WIDTH);
+  const [relationshipGraphInspectorWidth, setRelationshipGraphInspectorWidth] =
+    useState(PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_DEFAULT_WIDTH);
   const [relationshipGraphPan, setRelationshipGraphPan] = useState({ x: 0, y: 0 });
   const [relationshipGraphScale, setRelationshipGraphScale] = useState(1);
   const [relationshipGraphZoom, setRelationshipGraphZoom] = useState(1);
@@ -268,14 +281,23 @@ export function ProjectMapRelationshipSection({
   const [apiControllerFilter, setApiControllerFilter] = useState("all");
   const [apiConfidenceFilter, setApiConfidenceFilter] = useState("all");
   const [expandedApiModuleGroupIds, setExpandedApiModuleGroupIds] = useState<Set<string>>(() => new Set());
+  const relationshipGraphDashboardRef = useRef<HTMLDivElement | null>(null);
   const relationshipGraphCanvasRef = useRef<HTMLDivElement | null>(null);
   const relationshipGraphPanRef = useRef<ProjectMapRelationshipGraphPanStart | null>(null);
+  const relationshipGraphPaneResizeCleanupRef = useRef<(() => void) | null>(null);
   const lastHandledScanRequestIdRef = useRef(scanRequestId);
   const relationshipCanvasTargetRequestIdRef = useRef(0);
 
   useEffect(() => {
     onSummaryStateChange(relationshipScanState);
   }, [onSummaryStateChange, relationshipScanState]);
+
+  useEffect(() => {
+    return () => {
+      relationshipGraphPaneResizeCleanupRef.current?.();
+      relationshipGraphPaneResizeCleanupRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     setRelationshipGraphExpandedSide(null);
@@ -942,7 +964,7 @@ export function ProjectMapRelationshipSection({
     selectedRelationshipRelations,
   ]);
 
-  const handleRelationshipGraphPointerDown = (event: PointerEvent<HTMLDivElement>) => {
+  const handleRelationshipGraphPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
     if (
       target.closest(
@@ -962,7 +984,7 @@ export function ProjectMapRelationshipSection({
     event.currentTarget.setPointerCapture?.(event.pointerId);
   };
 
-  const handleRelationshipGraphPointerMove = (event: PointerEvent<HTMLDivElement>) => {
+  const handleRelationshipGraphPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
     const panStart = relationshipGraphPanRef.current;
     if (!panStart || panStart.pointerId !== event.pointerId) {
       return;
@@ -974,13 +996,56 @@ export function ProjectMapRelationshipSection({
     });
   };
 
-  const handleRelationshipGraphPointerEnd = (event: PointerEvent<HTMLDivElement>) => {
+  const handleRelationshipGraphPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (relationshipGraphPanRef.current?.pointerId !== event.pointerId) {
       return;
     }
     relationshipGraphPanRef.current = null;
     setIsRelationshipGraphPanning(false);
   };
+
+  const beginRelationshipGraphPaneResize = useCallback((
+    pane: "rail" | "inspector",
+    event: ReactPointerEvent<HTMLDivElement>,
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (!relationshipGraphDashboardRef.current) {
+      return;
+    }
+    relationshipGraphPaneResizeCleanupRef.current?.();
+    relationshipGraphPaneResizeCleanupRef.current = null;
+    const startX = event.clientX;
+    const startRailWidth = relationshipGraphRailWidth;
+    const startInspectorWidth = relationshipGraphInspectorWidth;
+    const handlePointerMove = (moveEvent: PointerEvent) => {
+      const delta = moveEvent.clientX - startX;
+      if (pane === "rail") {
+        setRelationshipGraphRailWidth(clampProjectMapRelationshipPaneWidth(
+          startRailWidth + delta,
+          PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_MIN_WIDTH,
+          PROJECT_MAP_RELATIONSHIP_GRAPH_RAIL_MAX_WIDTH,
+        ));
+        return;
+      }
+      setRelationshipGraphInspectorWidth(clampProjectMapRelationshipPaneWidth(
+        startInspectorWidth - delta,
+        PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_MIN_WIDTH,
+        PROJECT_MAP_RELATIONSHIP_GRAPH_INSPECTOR_MAX_WIDTH,
+      ));
+    };
+    const cleanupResize = () => {
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      relationshipGraphPaneResizeCleanupRef.current = null;
+    };
+    const handlePointerUp = () => {
+      cleanupResize();
+    };
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+    relationshipGraphPaneResizeCleanupRef.current = cleanupResize;
+  }, [relationshipGraphInspectorWidth, relationshipGraphRailWidth]);
 
   const selectedRelationshipRelation = useMemo(() => {
     if (!inspectedRelationshipRelations.length) {
@@ -1900,11 +1965,16 @@ export function ProjectMapRelationshipSection({
                               {relationshipDashboardViewMode === "graph" ? (
                         <>
                           <div
+                            ref={relationshipGraphDashboardRef}
                             className={cn(
                               "project-map-relationship-graph-dashboard",
                               isRelationshipGraphRailCollapsed && "is-rail-collapsed",
                               isRelationshipGraphInspectorCollapsed && "is-inspector-collapsed",
                             )}
+                            style={{
+                              "--relationship-graph-rail-width": `${relationshipGraphRailWidth}px`,
+                              "--relationship-graph-inspector-width": `${relationshipGraphInspectorWidth}px`,
+                            } as CSSProperties}
                           >
                           {!isRelationshipGraphRailCollapsed ? (
                             <aside className="project-map-relationship-graph-rail">
@@ -2058,6 +2128,14 @@ export function ProjectMapRelationshipSection({
                                 })}
                               </div>
                             </aside>
+                          ) : null}
+                          {!isRelationshipGraphRailCollapsed ? (
+                            <div
+                              className="project-map-relationship-graph-resizer is-rail"
+                              role="separator"
+                              aria-label={t("projectMap.relationship.graphResizeFiles")}
+                              onPointerDown={(event) => beginRelationshipGraphPaneResize("rail", event)}
+                            />
                           ) : null}
                           <div
                             className={cn(
@@ -2401,6 +2479,14 @@ export function ProjectMapRelationshipSection({
                               </p>
                             )}
                           </div>
+                          {!isRelationshipGraphInspectorCollapsed ? (
+                            <div
+                              className="project-map-relationship-graph-resizer is-inspector"
+                              role="separator"
+                              aria-label={t("projectMap.relationship.graphResizeInspector")}
+                              onPointerDown={(event) => beginRelationshipGraphPaneResize("inspector", event)}
+                            />
+                          ) : null}
                           {!isRelationshipGraphInspectorCollapsed ? (
                             <aside className="project-map-relationship-graph-inspector">
                               <header className="project-map-relationship-graph-inspector-header">
