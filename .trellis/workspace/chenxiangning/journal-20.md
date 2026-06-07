@@ -566,3 +566,48 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 749: 补齐 FileViewPanel 预览读取 mock
+
+**Date**: 2026-06-07
+**Task**: 补齐 FileViewPanel 预览读取 mock
+**Branch**: `feature/v0.5.7`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+修复 FileViewPanel 测试中 tauri service mock 缺少新增 readWorkspaceFilePreview 导出的问题。
+
+改动：
+- src/features/files/components/FileViewPanel.test-utils.tsx：在 ../../../services/tauri mock 中加入 readWorkspaceFilePreview，默认返回空内容且 truncated=false。
+
+背景：
+- FileViewPanel 新增 preview-only 大 Markdown 读取路径后，组件 effect 会调用 readWorkspaceFilePreview。
+- FileViewPanel.test.tsx 使用完整 module mock，但没有同步新增导出，导致 Vitest 抛 unhandled error。
+
+验证：
+- 已运行：npx vitest run src/features/files/components/FileViewPanel.test.tsx
+- 结果：62 tests passed。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `dc6a56f1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
