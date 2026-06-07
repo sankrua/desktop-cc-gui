@@ -1242,12 +1242,6 @@ export function ProjectMapRelationshipSection({
     setRelationshipCanvasImportError(null);
   }, [inspectedRelationshipFile?.id, selectedRelationshipRelationId]);
 
-  const selectedRelationshipScopeWarnings = useMemo(() => (
-    relationshipDashboardData?.staleSummary?.reasons.filter(
-      (reason) => reason.kind === "scan-scope-warning",
-    ) ?? []
-  ), [relationshipDashboardData?.staleSummary?.reasons]);
-
   const apiEndpointById = useMemo(() => {
     const index = new Map<string, ProjectMapApiEndpoint>();
     relationshipDashboardData?.apiContracts?.endpoints.forEach((endpoint) => {

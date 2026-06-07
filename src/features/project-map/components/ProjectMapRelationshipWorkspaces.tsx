@@ -120,12 +120,6 @@ type ProjectMapRelationshipReadSourceMethod = {
   flowNodes: ProjectMapRelationshipReadChainNode[];
 };
 
-type ProjectMapRelationshipScopeWarning = {
-  kind: string;
-  path?: string | null;
-  message: string;
-};
-
 type ProjectMapRelationshipScanStatus = {
   status: "idle" | "running" | "success" | "failed";
 };
@@ -381,7 +375,7 @@ function getProjectMapReadMethodDeclarationName(line: string, language: ProjectM
       return null;
     }
     const withoutGenerics = trimmed.replace(/<[^>]+>/g, "");
-    const match = /(?:public|private|protected|static|final|synchronized|abstract|native|override|\s)+[\w\[\].?]+\s+([A-Za-z_$][\w$]*)\s*\(/.exec(withoutGenerics);
+    const match = /(?:public|private|protected|static|final|synchronized|abstract|native|override|\s)+[\w[\].?]+\s+([A-Za-z_$][\w$]*)\s*\(/.exec(withoutGenerics);
     return match?.[1] ?? null;
   }
   const genericMatch = /(?:function\s+|fn\s+|func\s+)([A-Za-z_$][\w$]*)\s*\(/.exec(trimmed);
