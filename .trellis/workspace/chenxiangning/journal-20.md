@@ -904,3 +904,55 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 757: 拆分 Project Map 关系视图工作区
+
+**Date**: 2026-06-08
+**Task**: 拆分 Project Map 关系视图工作区
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 说明 |
+|------|------|
+| P0 拆分 | 完成 Project Map relationship/API/read/graph 工作区拆分，降低巨型组件混合职责。 |
+| API workspace | 拆出 toolbar、group rail、endpoint stage、inspector 及 overview/parameter/response/evidence/method-chain sections。 |
+| Read/File/Graph | 拆出 read workspace、file workspace、graph workspace、graph rail，并提取 read model 与 projection hooks。 |
+| 门禁验证 | 已通过 typecheck、lint、目标 vitest、large-file check 与 diff whitespace check。 |
+
+**Code Commit**: `a85570b7 refactor(project-map): 拆分关系视图工作区组件`
+
+**Key Files**:
+- `src/features/project-map/components/ProjectMapRelationshipSection.tsx`
+- `src/features/project-map/components/ProjectMapRelationshipWorkspaces.tsx`
+- `src/features/project-map/components/ProjectMapRelationshipApiWorkspace.tsx`
+- `src/features/project-map/components/ProjectMapRelationshipGraphWorkspace.tsx`
+- `src/features/project-map/components/ProjectMapRelationshipReadWorkspace.tsx`
+- `src/features/project-map/components/projectMapRelationshipReadModel.ts`
+- `src/features/project-map/hooks/useProjectMapRelationshipApiProjection.ts`
+- `src/features/project-map/hooks/useProjectMapRelationshipFileProjection.ts`
+- `src/features/project-map/hooks/useProjectMapRelationshipGraphProjection.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a85570b7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

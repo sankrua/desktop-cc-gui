@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-20.md`
-- **Total Sessions**: 756
+- **Total Sessions**: 757
 - **Last Active**: 2026-06-08
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-20.md` | ~906 | Active |
+| `journal-20.md` | ~958 | Active |
 | `journal-19.md` | ~1989 | Archived |
 | `journal-18.md` | ~1966 | Archived |
 | `journal-17.md` | ~1971 | Archived |
@@ -48,6 +48,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 757 | 2026-06-08 | 拆分 Project Map 关系视图工作区 | `a85570b7` | `feature/v0.5.8` |
 | 756 | 2026-06-08 | Project Map API 合约大文件拆分 | `391a336d` | `feature/v0.5.8` |
 | 755 | 2026-06-08 | 收口 Project Map Read Path 提案与门禁修复 | `5a657356`, `4b916613` | `feature/v0.5.8` |
 | 754 | 2026-06-08 | 收口 Project Map 阅读路径与关系精度 | `346fcbf7` | `feature/v0.5.8` |
