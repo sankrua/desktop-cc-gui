@@ -85,6 +85,11 @@ const ALLOWED_LINE_PATTERNS = [
     path: /^src-tauri\/src\/project_map_relations\/file_classification\.rs$/,
     line: /^\s*\| "\.(?:mossx|codemoss)"$/,
   },
+  {
+    path: /^src\/features\/files\/components\/FileViewPanel\.tsx$/,
+    line:
+      /readBooleanStorageFlag\("ccgui\.fileMarkdown(?:Bounded)?FastHtml"\) \|\| readBooleanStorageFlag\("mossx\.fileMarkdown(?:Bounded)?FastHtml"\)/,
+  },
 ];
 
 function normalizeRelativePath(relativePath) {
