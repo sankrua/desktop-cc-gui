@@ -195,6 +195,7 @@ pub(crate) fn invoke_handler(
         crate::workspaces::search_workspace_text,
         crate::workspaces::list_external_spec_tree,
         crate::workspaces::read_workspace_file,
+        crate::workspaces::read_workspace_file_preview,
         crate::workspaces::read_external_spec_file,
         crate::workspaces::read_external_absolute_file,
         crate::workspaces::resolve_file_preview_handle,

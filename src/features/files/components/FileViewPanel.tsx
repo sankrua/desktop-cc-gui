@@ -40,6 +40,7 @@ import {
 import {
   getGitFileFullDiff,
   readLocalImageDataUrl,
+  readWorkspaceFilePreview,
 } from "../../../services/tauri";
 import { pushErrorToast } from "../../../services/toasts";
 import type { IntentCanvasCodeSelectionAnchor } from "../../intent-canvas/types";
@@ -95,6 +96,12 @@ import {
   DEFAULT_FILE_RENDER_PRESSURE,
   type FileRenderPressure,
 } from "../types/fileRenderPressure";
+import {
+  resolveFastMarkdownProfileInputs,
+  resolveFastMarkdownRendererProfile,
+  type FastMarkdownFeatureFlags,
+  type FastMarkdownRendererProfileId,
+} from "../../markdown/fastMarkdownRenderer";
 import {
   buildDetachedFileExplorerSession,
   openNewDetachedFileExplorerWindow,
@@ -162,6 +169,32 @@ type FileViewPanelProps = {
 };
 
 const EDITOR_LINE_RANGE_SYNC_DELAY_MS = 90;
+
+function isEnabledFlag(value: unknown) {
+  return typeof value === "string" && /^(1|true|yes|on)$/i.test(value.trim());
+}
+
+function readBooleanStorageFlag(key: string) {
+  try {
+    if (typeof window === "undefined") {
+      return false;
+    }
+    return isEnabledFlag(window.localStorage.getItem(key));
+  } catch {
+    return false;
+  }
+}
+
+function resolveFileMarkdownFastFeatureFlags(): FastMarkdownFeatureFlags {
+  return {
+    fastHtmlRendererEnabled:
+      isEnabledFlag(import.meta.env.VITE_MOSSX_FILE_MARKDOWN_FAST_HTML) ||
+      readBooleanStorageFlag("ccgui.fileMarkdownFastHtml") || readBooleanStorageFlag("mossx.fileMarkdownFastHtml"),
+    boundedFastHtmlRendererEnabled:
+      isEnabledFlag(import.meta.env.VITE_MOSSX_FILE_MARKDOWN_BOUNDED_FAST_HTML) ||
+      readBooleanStorageFlag("ccgui.fileMarkdownBoundedFastHtml") || readBooleanStorageFlag("mossx.fileMarkdownBoundedFastHtml"),
+  };
+}
 
 function formatEditorLineRangeKey(
   range: { startLine: number; endLine: number } | null,
@@ -915,6 +948,12 @@ export function FileViewPanel({
     source: "file-preview-mode" | "file-edit-mode";
     body: string;
   } | null>(null);
+  const [markdownPreviewOverride, setMarkdownPreviewOverride] = useState<{
+    key: string;
+    content: string;
+    truncated: boolean;
+  } | null>(null);
+  const markdownPreviewOverrideRequestRef = useRef(0);
   const [editorLocalLineRange, setEditorLocalLineRange] =
     useState<CodeAnnotationLineRange | null>(() => activeFileLineRange);
   const annotationDraftBodyRef = useRef("");
@@ -1664,15 +1703,83 @@ export function FileViewPanel({
     };
   }, [isLoading, mode, openFindPanelInEditor, truncated]);
 
+  useEffect(() => {
+    const shouldLoadPreviewOverride =
+      mode === "preview" &&
+      truncated &&
+      renderProfile.kind === "markdown" &&
+      fileReadTarget.domain === "workspace";
+    const overrideKey = `${workspaceId}:${workspaceRelativeFilePath}`;
+    if (!shouldLoadPreviewOverride) {
+      setMarkdownPreviewOverride(null);
+      return;
+    }
+
+    let cancelled = false;
+    markdownPreviewOverrideRequestRef.current += 1;
+    const requestId = markdownPreviewOverrideRequestRef.current;
+    readWorkspaceFilePreview(workspaceId, workspaceRelativeFilePath)
+      .then((response) => {
+        if (cancelled || requestId !== markdownPreviewOverrideRequestRef.current) {
+          return;
+        }
+        setMarkdownPreviewOverride({
+          key: overrideKey,
+          content: response.content ?? "",
+          truncated: Boolean(response.truncated),
+        });
+      })
+      .catch(() => {
+        if (cancelled || requestId !== markdownPreviewOverrideRequestRef.current) {
+          return;
+        }
+        setMarkdownPreviewOverride(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    fileReadTarget.domain,
+    mode,
+    renderProfile.kind,
+    truncated,
+    workspaceId,
+    workspaceRelativeFilePath,
+  ]);
+
+  const effectiveMarkdownPreviewContent = markdownPreviewOverride?.content ?? content;
+
   // Syntax highlighted lines for code preview
-  const previewMetrics = useMemo(
-    () => getFileDocumentSnapshotMetrics(documentSnapshot),
-    [documentSnapshot],
-  );
+  const previewMetrics = useMemo(() => {
+    if (
+      mode === "preview" &&
+      renderProfile.kind === "markdown" &&
+      markdownPreviewOverride?.content
+    ) {
+      return {
+        byteLength: 0,
+        lineCount: 0,
+        truncated: false,
+      };
+    }
+    return getFileDocumentSnapshotMetrics(documentSnapshot);
+  }, [documentSnapshot, markdownPreviewOverride, mode, renderProfile.kind]);
   const viewSurface = useMemo(
     () => resolveFileViewSurface(renderProfile, mode, previewMetrics),
     [mode, previewMetrics, renderProfile],
   );
+  const markdownFastFeatureFlags = useMemo(resolveFileMarkdownFastFeatureFlags, []);
+  const markdownRendererProfile = useMemo<FastMarkdownRendererProfileId | undefined>(() => {
+    if (viewSurface.kind !== "markdown-preview") {
+      return undefined;
+    }
+    return resolveFastMarkdownRendererProfile(
+      resolveFastMarkdownProfileInputs({
+        rawMarkdown: effectiveMarkdownPreviewContent,
+        featureFlags: markdownFastFeatureFlags,
+      }),
+    );
+  }, [effectiveMarkdownPreviewContent, markdownFastFeatureFlags, viewSurface.kind]);
   const previewPayloadEnabled =
     mode === "preview" &&
     (viewSurface.kind === "pdf-preview" ||
@@ -2327,6 +2434,9 @@ export function FileViewPanel({
         fileRenderPressure={fileRenderPressure}
         markdownPreviewSnapshotMode={markdownPreviewSnapshotMode}
         markdownPreviewRefreshKey={externalAutoSyncAt}
+        markdownPreviewContentOverride={markdownPreviewOverride?.content ?? null}
+        markdownRendererProfile={markdownRendererProfile}
+        markdownFastFeatureFlags={markdownFastFeatureFlags}
         cmRef={cmRef}
       handleCodeMirrorCreate={handleCodeMirrorCreate}
       onActiveFileLineRangeChange={handleEditorLineRangeChange}

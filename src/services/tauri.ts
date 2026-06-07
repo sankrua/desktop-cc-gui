@@ -1561,6 +1561,13 @@ export async function readWorkspaceFile(workspaceId: string, path: string): Prom
   });
 }
 
+export async function readWorkspaceFilePreview(workspaceId: string, path: string): Promise<{ content: string; truncated: boolean }> {
+  return invoke<{ content: string; truncated: boolean }>("read_workspace_file_preview", {
+    workspaceId,
+    path,
+  });
+}
+
 export async function readExternalSpecFile(workspaceId: string, specRoot: string, path: string): Promise<ExternalSpecFileResponse> {
   return invoke<ExternalSpecFileResponse>("read_external_spec_file", {
     workspaceId,
