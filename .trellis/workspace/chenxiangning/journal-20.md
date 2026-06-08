@@ -998,3 +998,49 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 759: 收口 ProjectMap 大文件拆分
+
+**Date**: 2026-06-08
+**Task**: 收口 ProjectMap 大文件拆分
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+将 ProjectMap 主面板、面板 surface、dataset 测试 fixture 与主 CSS 拆分到 feature-local 组件、hook、test support 与 CSS 分片；ProjectMap 相关原大于 2000 行文件均降到 2000 行以下，并完成批量验证。
+
+### Main Changes
+
+完成内容:
+- 拆分 ProjectMapPanelSurfaces 为导航、关系、证据文件、详情、设置与生成弹窗组件，保留 barrel 兼容既有 import。
+- 从 ProjectMapPanel 抽出 ProjectMapGraphCanvas、ProjectMapStorageSwitch、projectMapPanelModel、useProjectMapGraphInteractionHandlers、useProjectMapIntentCanvasHandlers。
+- 抽出 useProjectMapDataset.testSupport，降低 dataset hook 测试文件体积。
+- 将 project-map.css 中 graph canvas 与 evidence files 样式拆为 project-map.graph-canvas.css / project-map.evidence-files.css，并更新 CSS layout 测试读取分片。
+- ProjectMapPanel.tsx、useProjectMapDataset.test.tsx、project-map.css 均已降至 2000 行以下。
+
+验证:
+- npm run typecheck
+- npm run lint
+- npm run test
+- npm run check:large-files
+- git diff --check
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f64deaf2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
