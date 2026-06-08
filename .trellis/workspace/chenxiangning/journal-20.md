@@ -1044,3 +1044,36 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 760: 稳定实时对话幕布渲染
+
+**Date**: 2026-06-08
+**Task**: 稳定实时对话幕布渲染
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+为 realtime conversation message canvas 增加 OpenSpec 提案和实现：识别 live tail row，检测 virtualizer empty visible set / active live row missing，触发有界 measure 恢复并记录 privacy-safe diagnostics；同时为 streaming assistant row 增加局部渲染稳定 CSS，并补充 focused regression tests。验证通过：OpenSpec strict validate、focused Vitest 36 tests、targeted ESLint、typecheck、large-file check。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `241f5839` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
