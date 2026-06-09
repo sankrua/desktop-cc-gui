@@ -1639,3 +1639,36 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 774: 保留 provider home 会话侧栏连续性
+
+**Date**: 2026-06-09
+**Task**: 保留 provider home 会话侧栏连续性
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+前端按 engine/sourceKind 合并 catalog source status，provider-backed Codex rows 在 degraded refresh 中继续保留，并补齐 provider metadata 类型与回归测试。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d88fb69d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
