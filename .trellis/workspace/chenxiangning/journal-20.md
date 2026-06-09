@@ -1672,3 +1672,36 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 775: 收口 provider home 会话恢复提案
+
+**Date**: 2026-06-09
+**Task**: 收口 provider home 会话恢复提案
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+更新 OpenSpec proposal/tasks 与 Trellis workspace session catalog contract，明确 provider-home sourceKind 合同、自动化验证状态和剩余真实 app 手工验证项。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `8cd0c751` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
