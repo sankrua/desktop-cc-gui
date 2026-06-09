@@ -167,10 +167,21 @@ Editing a managed provider updates the stored profile and the materialization so
 The frontend in-flight guard must include:
 
 ```text
-workspaceId + folder/path + providerProfileId + selected model + launch mode/spec-root when present
+workspaceId + folder/path + providerProfileId + autoSession identity
 ```
 
-If the codebase cannot represent all dimensions at the guard site, it MUST document and enforce a first-request-wins rule for the omitted dimensions. Starts with different provider profiles must never share an in-flight promise.
+This reflects the current code: `start_thread` does not carry selected model, launch mode, or spec-root. Starts with different provider profiles must never share an in-flight promise. If future code adds selected model, launch mode, spec-root, or another material launch dimension to the start payload, the in-flight key MUST be extended in the same change.
+
+### Decision 9: Code-spec is the executable contract for provider-scoped runtime
+
+The implementation contract is also captured in:
+
+```text
+.trellis/spec/backend/codex-provider-scoped-runtime.md
+.trellis/spec/frontend/codex-provider-session-ui.md
+```
+
+These code-specs are the operational checklist for future edits. OpenSpec defines product behavior; Trellis code-spec defines current executable signatures, payload fields, validation matrices, and test points.
 
 ## Data Flow
 
@@ -178,11 +189,13 @@ If the codebase cannot represent all dimensions at the guard site, it MUST docum
 User clicks New Codex Conversation
   -> UI opens provider selector
   -> user selects disk or managed provider
-  -> frontend calls start_thread(workspaceId, model, providerProfileId)
-  -> backend resolves runtimeKey = codex::<workspaceId>::<providerProfileId>
+  -> frontend calls start_thread(workspaceId, providerProfileId, autoSession?)
+  -> backend resolves runtimeKey
+     - disk: legacy workspace runtime key
+     - managed: codex::<workspaceId>::<providerProfileId>
   -> if runtime missing, materialize provider CODEX_HOME and spawn codex app-server
   -> backend sends thread/start to selected runtime
-  -> created thread metadata stores providerProfileId/source/name/runtimeKey
+  -> created thread metadata stores providerProfileId/source/name/availability
   -> later turn/start resolves runtime from thread provider binding
 ```
 
@@ -211,8 +224,8 @@ User clicks Fork on Codex thread
 
 ## Error Handling
 
-- Missing provider id at creation: block with a structured error; do not fall back silently.
-- Missing provider id at fork: default to parent provider only when the caller explicitly requests inheritance; otherwise block with a structured error.
+- Missing provider id at creation: normalize to the disk profile `__disk__`; this is the intentional legacy/default launch path, not an error fallback.
+- Missing provider id at fork: default to the parent provider binding; the fork selector's inherit-parent state may serialize as a blank/omitted `providerProfileId`.
 - Provider deleted after thread creation: existing thread shows “provider unavailable”; sending a new turn is blocked until user chooses an explicit migration/rebind action in a future change.
 - Provider deleted before fork: inherit option is disabled/unavailable if the parent provider no longer exists; the user may fork to another available provider only if parent history is readable.
 - Cross-provider fork: keep native Codex fork semantics by forking in the parent provider runtime first, then rebind the child to the selected provider. The backend must not create a new selected-provider thread by sending a transcript seed as a user message.

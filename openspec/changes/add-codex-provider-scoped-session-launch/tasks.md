@@ -2,7 +2,7 @@
 
 - [x] 1.1 [P0][deps:none] Define `CodexProviderProfile` contract and disk default sentinel. Input: proposal/design. Output: shared frontend/backend profile id/source/name fields. Verification: typecheck and Rust serialization tests cover disk + managed variants.
 - [x] 1.2 [P0][deps:1.1] Add backend provider lookup and validation helper. Input: stored Codex providers and requested profile id. Output: resolved disk or managed profile with redacted diagnostics. Verification: unit tests cover missing provider, disk profile, and managed provider.
-- [x] 1.3 [P0][deps:1.1] Define thread metadata fields for provider binding. Input: session/thread catalog model. Output: `providerProfileId`, `providerProfileSource`, `providerProfileName`, and runtime key metadata. Verification: metadata survives creation and reload fixtures.
+- [x] 1.3 [P0][deps:1.1] Define thread metadata fields for provider binding. Input: session/thread catalog model. Output: `providerProfileId`, `providerProfileSource`, `providerProfileName`, and `providerAvailability` metadata. Verification: metadata survives creation and reload fixtures.
 - [x] 1.4 [P0][deps:1.1] Classify Codex command routing by provider behavior. Input: existing Codex commands. Output: routing matrix for thread-bound, provider-selected, disk-default, and provider-agnostic commands. Verification: tests or contract assertions fail for unclassified provider-sensitive commands.
 
 ## 2. Provider-Scoped Codex Home
@@ -15,7 +15,7 @@
 
 ## 3. Runtime Routing
 
-- [x] 3.1 [P0][deps:1.3,2.1] Extend Codex runtime key to include provider profile id. Input: workspace id and provider profile id. Output: stable key such as `codex::<workspaceId>::<providerProfileId>`. Verification: tests show two providers in one workspace produce distinct runtime keys.
+- [x] 3.1 [P0][deps:1.3,2.1] Extend Codex runtime key for managed providers while preserving disk legacy key. Input: workspace id and provider profile id. Output: managed key such as `codex::<workspaceId>::<providerProfileId>` and disk compatibility key `workspaceId`. Verification: tests show two providers in one workspace produce distinct runtime keys and disk remains legacy-compatible.
 - [x] 3.2 [P0][deps:3.1] Start provider-scoped app-server runtime for managed provider selection. Input: selected provider profile. Output: `codex app-server` launched with the matching `CODEX_HOME`. Verification: spawn test observes provider home passed as env.
 - [x] 3.3 [P0][deps:3.1] Route thread continuation commands by persisted thread provider binding. Input: thread id. Output: `turn/start`, resume, compaction, rewind, and thread status use the thread-bound runtime. Verification: tests cover two concurrent threads with different providers.
 - [x] 3.4 [P1][deps:3.3] Block turns for deleted/unavailable provider bindings. Input: existing thread bound to missing provider. Output: structured user-visible error, no silent fallback. Verification: unit/integration test asserts disk profile is not used as fallback.
@@ -32,6 +32,7 @@
 - [x] 4.3 [P0][deps:1.3] Show obvious provider binding on Codex conversation surfaces. Input: thread metadata. Output: visible provider label/badge in sidebar row and/or active conversation header. Verification: component test covers disk, managed, and unavailable labels, and asserts labels come from thread metadata.
 - [x] 4.4 [P0][deps:4.1] Cover all Codex conversation creation entrypoints. Input: sidebar action, empty state action, command action, keyboard/programmatic starts. Output: visible paths expose selector; non-interactive paths pass provider id or intentionally default to disk. Verification: tests cover at least one interactive and one non-interactive entrypoint.
 - [x] 4.5 [P0][deps:4.1,3.7] Add provider selector to Codex fork affordance. Input: parent thread provider binding and provider list. Output: selector defaults to inherit parent provider and allows disk/managed alternatives. Verification: component/service tests assert parent provider default, selected child provider payload, and parent metadata immutability.
+- [x] 4.6 [P0][deps:1.3,4.2] Calibrate frontend provider metadata propagation to current code. Input: start response, catalog projection, live turn events, sidebar snapshots, and active composer state. Output: reducer preserves provider metadata, sidebar/pinned/composer labels derive from thread metadata, and start in-flight key is documented as `workspaceId + providerProfileId + folder/root + autoSession identity`. Verification: `resolveCodexProviderLabel`, reducer, start/fork, pinned/sidebar, and composer provider label tests.
 
 ## 5. Supplier Management UI Semantics
 
@@ -46,5 +47,6 @@
 - [x] 6.2 [P0][deps:1-5] Run focused frontend tests for provider selector and vendor tab. Output: relevant Vitest suites pass.
 - [x] 6.3 [P0][deps:2-3] Run focused Rust tests for provider home materialization and runtime key routing. Output: relevant cargo tests pass.
 - [x] 6.4 [P1][deps:1-5] Run `npm run typecheck` and `npm run lint`. Output: frontend quality gates pass.
+- [x] 6.7 [P0][deps:1-5] Sync current executable contract into Trellis code-spec. Output: `.trellis/spec/backend/codex-provider-scoped-runtime.md`, `.trellis/spec/frontend/codex-provider-session-ui.md`, and updated spec indexes. Verification: future backend/frontend Codex provider edits have concrete signatures, payload fields, error matrix, and test points.
 - [ ] 6.5 [P1][deps:1-5] Record manual verification evidence. Input: two managed providers and disk default. Output: evidence that same workspace can run disk + provider A + provider B and disk + disk + disk without config/thread collision, provider labels are visible, same-provider fork creates a child while parent remains unchanged, and cross-provider fork creates a native child bound to the selected provider without a transcript seed turn.
 - [ ] 6.6 [P1][deps:2.3,3.6] Record manual verification for project `.codex/config.toml` conflict and app restart history restoration. Output: evidence that managed provider selection is not silently overridden and provider-bound history survives restart.

@@ -121,7 +121,8 @@ The system MUST isolate Codex runtime sessions by workspace and provider profile
 
 - **WHEN** the user creates two Codex conversations in the same workspace with two different provider profiles
 - **THEN** the backend MUST create or reuse distinct provider-scoped Codex runtimes
-- **AND** the runtime identity MUST include both workspace identity and provider profile identity
+- **AND** managed-provider runtime identity MUST include both workspace identity and provider profile identity
+- **AND** the disk provider MAY keep the legacy workspace-only runtime key as the compatibility representation of `providerProfileId="__disk__"`
 
 #### Scenario: same workspace can run multiple conversations with the same provider
 
@@ -253,3 +254,10 @@ The system MUST make the provider binding for each Codex conversation visible en
 - **WHEN** the user opens a Codex conversation
 - **THEN** the active conversation surface SHOULD show the bound provider label in the header, metadata area, or equivalent prominent location
 - **AND** the label MUST NOT be computed from a global active supplier state
+
+#### Scenario: frontend preserves provider metadata across thread updates
+
+- **WHEN** Codex thread metadata enters the frontend through start response, catalog projection, live turn events, sidebar snapshots, or fork response
+- **THEN** the frontend MUST preserve `providerProfileId`, `providerProfileSource`, `providerProfileName`, `providerAvailability`, and `sourceLabel` when present
+- **AND** later thread update actions that omit provider fields MUST NOT erase existing provider metadata
+- **AND** sidebar, pinned list, and composer provider labels MUST derive from thread metadata rather than supplier-management active state
