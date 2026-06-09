@@ -1782,3 +1782,41 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 778: 修复 Sidebar 子会话移动测试等待
+
+**Date**: 2026-06-09
+**Task**: 修复 Sidebar 子会话移动测试等待
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+修复 Sidebar subagent tree 测试在 CI 慢环境中的 act warning 和 timeout 风险。
+
+### Main Changes
+
+- `Sidebar.subagent-tree.test.tsx` 将 Move to folder submenu hover 纳入 async act。
+- 点击目标 folder 后用 `waitFor` 等待 batch assignment 调用和 Target folder DOM 渲染收敛。
+- 验证：`npx vitest run --maxWorkers 1 --minWorkers 1 src/features/app/components/Sidebar.subagent-tree.test.tsx`。
+- 验证：`npx vitest run --maxWorkers 1 --minWorkers 1 src/features/app/components/Sidebar.subagent-tree.test.tsx src/features/app/components/Sidebar.test.tsx src/features/app/components/sidebarCodexIconTone.test.ts src/features/app/components/SidebarWorkspaceMenuOverlay.test.tsx`。
+- 验证：`npx eslint src/features/app/components/Sidebar.subagent-tree.test.tsx`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d4a7ed63` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
