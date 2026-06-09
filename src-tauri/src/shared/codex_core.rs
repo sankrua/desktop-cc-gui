@@ -15,6 +15,9 @@ use crate::codex::args::{apply_codex_args, resolve_workspace_codex_args};
 use crate::codex::collaboration_policy::{apply_policy_to_collaboration_mode, resolve_policy};
 use crate::codex::config as codex_config;
 use crate::codex::home::{resolve_default_codex_home, resolve_workspace_codex_home};
+use crate::codex::provider_profile::{
+    codex_runtime_key, legacy_codex_runtime_key, CODEX_DISK_PROVIDER_PROFILE_ID,
+};
 use crate::rules;
 use crate::shared::account::{build_account_response, read_auth_account};
 use crate::shared::workspace_snapshot::{
@@ -269,13 +272,15 @@ fn extract_error_message_from_response(value: &Value) -> Option<String> {
 pub(crate) async fn thread_compact_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
 ) -> Result<Value, String> {
     let normalized_thread_id = thread_id.trim().to_string();
     if normalized_thread_id.is_empty() {
         return Err("thread_id is required".to_string());
     }
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
 
     let mut attempts = Vec::new();
     for method in THREAD_COMPACTION_METHOD_CANDIDATES {
@@ -366,13 +371,36 @@ fn inject_mode_fallback_prompt(input: &mut Vec<Value>, effective_mode: &str) {
 
 async fn get_session_clone(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
-    workspace_id: &str,
+    session_key: &str,
 ) -> Result<Arc<WorkspaceSession>, String> {
     let sessions = sessions.lock().await;
     sessions
-        .get(workspace_id)
+        .get(session_key)
         .cloned()
         .ok_or_else(|| "workspace not connected".to_string())
+}
+
+pub(crate) fn session_key_for_provider(
+    workspace_id: &str,
+    provider_profile_id: Option<&str>,
+) -> String {
+    let provider_profile_id = provider_profile_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(CODEX_DISK_PROVIDER_PROFILE_ID);
+    if provider_profile_id == CODEX_DISK_PROVIDER_PROFILE_ID {
+        legacy_codex_runtime_key(workspace_id)
+    } else {
+        codex_runtime_key(workspace_id, provider_profile_id)
+    }
+}
+
+pub(crate) fn normalize_provider_profile_id(provider_profile_id: Option<&str>) -> String {
+    provider_profile_id
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .unwrap_or(CODEX_DISK_PROVIDER_PROFILE_ID)
+        .to_string()
 }
 
 async fn resolve_codex_home_for_workspace_core(
@@ -388,9 +416,11 @@ async fn resolve_codex_home_for_workspace_core(
 pub(crate) async fn start_thread_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     model: Option<String>,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let timeout_duration = session.default_request_timeout();
     let mut params = Map::new();
     params.insert("cwd".to_string(), json!(session.entry.path));
@@ -422,9 +452,11 @@ pub(crate) async fn start_thread_core(
 pub(crate) async fn resume_thread_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "threadId": thread_id.clone() });
     let response = session.send_request("thread/resume", params).await?;
     if let Some(resolved_thread_id) = extract_thread_id_from_response(&response) {
@@ -450,10 +482,12 @@ pub(crate) async fn resume_thread_core(
 pub(crate) async fn fork_thread_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
     message_id: Option<String>,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let mut params = Map::new();
     params.insert("threadId".to_string(), json!(thread_id.clone()));
     if let Some(message_id) = message_id
@@ -478,10 +512,12 @@ pub(crate) async fn fork_thread_core(
 pub(crate) async fn list_threads_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     cursor: Option<String>,
     limit: Option<u32>,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "cursor": cursor, "limit": limit });
     session.send_request("thread/list", params).await
 }
@@ -489,10 +525,12 @@ pub(crate) async fn list_threads_core(
 pub(crate) async fn list_mcp_server_status_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     cursor: Option<String>,
     limit: Option<u32>,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "cursor": cursor, "limit": limit });
     session.send_request("mcpServerStatus/list", params).await
 }
@@ -500,9 +538,11 @@ pub(crate) async fn list_mcp_server_status_core(
 pub(crate) async fn archive_thread_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "threadId": thread_id.clone() });
     let response = session.send_request("thread/archive", params).await?;
     session.clear_thread_effective_mode(&thread_id).await;
@@ -512,10 +552,12 @@ pub(crate) async fn archive_thread_core(
 pub(crate) async fn archive_thread_best_effort_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
     timeout_duration: Duration,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "threadId": thread_id.clone() });
     let response = session
         .send_request_with_timeout("thread/archive", params, timeout_duration)
@@ -527,6 +569,7 @@ pub(crate) async fn archive_thread_best_effort_core(
 pub(crate) async fn send_user_message_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
     text: String,
     model: Option<String>,
@@ -538,7 +581,8 @@ pub(crate) async fn send_user_message_core(
     custom_spec_root: Option<String>,
     mode_enforcement_enabled: bool,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     session.set_mode_enforcement_enabled(mode_enforcement_enabled);
     let normalized_language = normalize_preferred_language(preferred_language.as_deref());
     let normalized_custom_spec_root = normalize_custom_spec_root(custom_spec_root.as_deref());
@@ -961,7 +1005,7 @@ pub(crate) async fn collaboration_mode_list_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session = get_session_clone(sessions, &legacy_codex_runtime_key(&workspace_id)).await?;
     session
         .send_request("collaborationMode/list", json!({}))
         .await
@@ -970,10 +1014,12 @@ pub(crate) async fn collaboration_mode_list_core(
 pub(crate) async fn turn_interrupt_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
     turn_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let params = json!({ "threadId": thread_id, "turnId": turn_id });
     session.send_request("turn/interrupt", params).await
 }
@@ -981,11 +1027,13 @@ pub(crate) async fn turn_interrupt_core(
 pub(crate) async fn start_review_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
+    provider_profile_id: Option<String>,
     thread_id: String,
     target: Value,
     delivery: Option<String>,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session_key = session_key_for_provider(&workspace_id, provider_profile_id.as_deref());
+    let session = get_session_clone(sessions, &session_key).await?;
     let mut params = Map::new();
     params.insert("threadId".to_string(), json!(thread_id));
     params.insert("target".to_string(), target);
@@ -1001,7 +1049,7 @@ pub(crate) async fn model_list_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session = get_session_clone(sessions, &legacy_codex_runtime_key(&workspace_id)).await?;
     session.send_request("model/list", json!({})).await
 }
 
@@ -1009,7 +1057,7 @@ pub(crate) async fn account_rate_limits_core(
     sessions: &Mutex<HashMap<String, Arc<WorkspaceSession>>>,
     workspace_id: String,
 ) -> Result<Value, String> {
-    let session = get_session_clone(sessions, &workspace_id).await?;
+    let session = get_session_clone(sessions, &legacy_codex_runtime_key(&workspace_id)).await?;
     session
         .send_request("account/rateLimits/read", Value::Null)
         .await
@@ -1022,7 +1070,9 @@ pub(crate) async fn account_read_core(
 ) -> Result<Value, String> {
     let session = {
         let sessions = sessions.lock().await;
-        sessions.get(&workspace_id).cloned()
+        sessions
+            .get(&legacy_codex_runtime_key(&workspace_id))
+            .cloned()
     };
     let response = if let Some(session) = session {
         session.send_request("account/read", Value::Null).await.ok()

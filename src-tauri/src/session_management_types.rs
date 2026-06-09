@@ -60,6 +60,14 @@ pub(crate) struct WorkspaceSessionCatalogEntry {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) source_label: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) provider_profile_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) provider_profile_source: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) provider_profile_name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub(crate) provider_availability: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) source_completeness: Option<WorkspaceSessionSourceCompleteness>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) source_status_reason: Option<String>,
@@ -91,6 +99,15 @@ pub(crate) struct WorkspaceSessionCatalogEntry {
     pub(crate) physical_path: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(crate) children_count: Option<usize>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct CodexProviderBinding {
+    pub(crate) provider_profile_id: String,
+    pub(crate) provider_profile_source: String,
+    pub(crate) provider_profile_name: String,
+    pub(crate) provider_availability: String,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -313,6 +330,8 @@ pub(crate) struct WorkspaceSessionCatalogMetadata {
     pub(crate) folder_id_by_session_id: HashMap<String, String>,
     #[serde(default)]
     pub(crate) auto_session_by_session_id: HashMap<String, AutoSessionMetadata>,
+    #[serde(default)]
+    pub(crate) codex_provider_binding_by_session_id: HashMap<String, CodexProviderBinding>,
 }
 
 #[derive(Debug, Clone)]

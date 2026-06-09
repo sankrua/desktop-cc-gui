@@ -652,6 +652,7 @@ pub(crate) async fn archive_workspace_sessions_core(
                 let _ = codex_core::archive_thread_best_effort_core(
                     sessions,
                     target.owner_workspace_id.clone(),
+                    target.provider_profile_id.clone(),
                     target.native_session_id.clone(),
                     Duration::from_millis(SESSION_CATALOG_ARCHIVE_TIMEOUT_MS),
                 )
@@ -1355,6 +1356,10 @@ fn build_metadata_orphan_entry(
         thread_kind: "native".to_string(),
         source: None,
         source_label: None,
+        provider_profile_id: None,
+        provider_profile_source: None,
+        provider_profile_name: None,
+        provider_availability: None,
         source_completeness: None,
         source_status_reason: None,
         size_bytes: None,
@@ -1391,6 +1396,7 @@ fn finalize_existing_catalog_entry(
     metadata_by_workspace_id: &HashMap<String, WorkspaceSessionCatalogMetadata>,
 ) -> WorkspaceSessionCatalogEntry {
     mark_entry_as_existing_on_disk(&mut entry);
+    apply_codex_provider_binding(&mut entry, metadata_by_workspace_id);
     apply_folder_assignment(&mut entry, metadata_by_workspace_id);
     apply_auto_session_metadata(&mut entry, metadata_by_workspace_id);
     entry
@@ -1525,6 +1531,13 @@ pub(crate) fn read_workspace_session_folder_assignments(
     workspace_id: &str,
 ) -> Result<HashMap<String, String>, String> {
     Ok(read_catalog_metadata(storage_path, workspace_id)?.folder_id_by_session_id)
+}
+
+pub(crate) fn read_codex_provider_bindings(
+    storage_path: &Path,
+    workspace_id: &str,
+) -> Result<HashMap<String, CodexProviderBinding>, String> {
+    Ok(read_catalog_metadata(storage_path, workspace_id)?.codex_provider_binding_by_session_id)
 }
 
 fn read_catalog_metadata_for_scope(
@@ -1797,6 +1810,43 @@ fn catalog_metadata_lookup_keys_for_session(
     keys
 }
 
+pub(crate) fn codex_provider_binding_for_session(
+    metadata: &WorkspaceSessionCatalogMetadata,
+    workspace_id: &str,
+    session_id: &str,
+) -> Option<CodexProviderBinding> {
+    catalog_metadata_lookup_keys_for_session(workspace_id, session_id, "codex")
+        .into_iter()
+        .find_map(|key| {
+            metadata
+                .codex_provider_binding_by_session_id
+                .get(&key)
+                .cloned()
+        })
+}
+
+fn apply_codex_provider_binding(
+    entry: &mut WorkspaceSessionCatalogEntry,
+    metadata_by_workspace_id: &HashMap<String, WorkspaceSessionCatalogMetadata>,
+) {
+    if !entry.engine.eq_ignore_ascii_case("codex") {
+        return;
+    }
+    let Some(metadata) = metadata_by_workspace_id.get(&entry.workspace_id) else {
+        return;
+    };
+    let Some(binding) =
+        codex_provider_binding_for_session(metadata, &entry.workspace_id, &entry.session_id)
+    else {
+        return;
+    };
+    entry.provider_profile_id = Some(binding.provider_profile_id);
+    entry.provider_profile_source = Some(binding.provider_profile_source);
+    entry.provider_profile_name = Some(binding.provider_profile_name.clone());
+    entry.provider_availability = Some(binding.provider_availability);
+    entry.source_label = Some(binding.provider_profile_name);
+}
+
 fn archived_at_for_entry(
     metadata: &WorkspaceSessionCatalogMetadata,
     entry: &WorkspaceSessionCatalogEntry,
@@ -1965,6 +2015,33 @@ pub(crate) async fn record_auto_session_metadata_core(
             stored
                 .auto_session_by_session_id
                 .insert(key, metadata.clone());
+        }
+        Ok(())
+    })
+}
+
+pub(crate) async fn record_codex_provider_binding_core(
+    workspaces: &Mutex<HashMap<String, WorkspaceEntry>>,
+    storage_path: &Path,
+    workspace_id: String,
+    session_id: String,
+    binding: CodexProviderBinding,
+) -> Result<(), String> {
+    let workspace_id = normalize_workspace_id(&workspace_id)?;
+    ensure_workspace_exists(workspaces, &workspace_id).await?;
+    let session_id = normalize_session_ids(vec![session_id])?
+        .into_iter()
+        .next()
+        .ok_or_else(|| "session_id is required".to_string())?;
+    let stable_key = metadata_stable_key_for_session_id(&workspace_id, &session_id);
+    with_catalog_metadata_mutation(storage_path, &workspace_id, |stored| {
+        stored
+            .codex_provider_binding_by_session_id
+            .insert(stable_key, binding.clone());
+        for key in folder_assignment_keys_for_session(&session_id, "codex") {
+            stored
+                .codex_provider_binding_by_session_id
+                .insert(key, binding.clone());
         }
         Ok(())
     })
@@ -2176,6 +2253,7 @@ struct WorkspaceSessionMutationTarget {
     owner_workspace_path: PathBuf,
     native_session_id: String,
     engine: String,
+    provider_profile_id: Option<String>,
     exists_on_disk: bool,
     delete_mode: Option<String>,
 }
@@ -2231,6 +2309,7 @@ fn resolve_session_mutation_target(
         owner_workspace_path: PathBuf::from(&owner_workspace.path),
         native_session_id,
         engine: entry.engine.clone(),
+        provider_profile_id: entry.provider_profile_id.clone(),
         exists_on_disk: entry.exists_on_disk,
         delete_mode: entry.delete_mode.clone(),
     })
@@ -2362,6 +2441,10 @@ async fn build_global_engine_catalog_entries(
                             thread_kind: "native".to_string(),
                             source: None,
                             source_label: None,
+                            provider_profile_id: None,
+                            provider_profile_source: None,
+                            provider_profile_name: None,
+                            provider_availability: None,
                             source_completeness: None,
                             source_status_reason: None,
                             size_bytes: session.file_size_bytes,
@@ -2440,6 +2523,10 @@ async fn build_global_engine_catalog_entries(
                             thread_kind: "native".to_string(),
                             source: None,
                             source_label: None,
+                            provider_profile_id: None,
+                            provider_profile_source: None,
+                            provider_profile_name: None,
+                            provider_availability: None,
                             source_completeness: None,
                             source_status_reason: None,
                             size_bytes: session.file_size_bytes,
@@ -2521,6 +2608,10 @@ fn build_global_codex_catalog_entry(
         thread_kind: "native".to_string(),
         source: summary.source.clone(),
         source_label,
+        provider_profile_id: None,
+        provider_profile_source: None,
+        provider_profile_name: None,
+        provider_availability: None,
         source_completeness: None,
         source_status_reason: None,
         size_bytes: summary.file_size_bytes,

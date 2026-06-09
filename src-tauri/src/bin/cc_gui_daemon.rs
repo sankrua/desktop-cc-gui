@@ -146,6 +146,23 @@ mod codex {
     pub(crate) mod launch_profile {
         pub(crate) use crate::codex_launch_profile::*;
     }
+    pub(crate) mod provider_profile {
+        pub(crate) const CODEX_DISK_PROVIDER_PROFILE_ID: &str = "__disk__";
+
+        pub(crate) fn codex_runtime_key(workspace_id: &str, provider_profile_id: &str) -> String {
+            let provider_profile_id = provider_profile_id.trim();
+            let provider_profile_id = if provider_profile_id.is_empty() {
+                CODEX_DISK_PROVIDER_PROFILE_ID
+            } else {
+                provider_profile_id
+            };
+            format!("codex::{workspace_id}::{provider_profile_id}")
+        }
+
+        pub(crate) fn legacy_codex_runtime_key(workspace_id: &str) -> String {
+            workspace_id.to_string()
+        }
+    }
     pub(crate) mod rewind {
         pub(crate) use crate::codex_rewind::*;
     }
@@ -877,7 +894,9 @@ async fn handle_rpc_request(
         "read_workspace_file_preview" => {
             let workspace_id = parse_string(&params, "workspaceId")?;
             let path = parse_string(&params, "path")?;
-            let response = state.read_workspace_file_preview(workspace_id, path).await?;
+            let response = state
+                .read_workspace_file_preview(workspace_id, path)
+                .await?;
             serde_json::to_value(response).map_err(|err| err.to_string())
         }
         "list_external_spec_tree" => {
