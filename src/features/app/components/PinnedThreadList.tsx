@@ -37,6 +37,7 @@ type PinnedThreadListProps = {
   activeThreadId: string | null;
   systemProxyEnabled?: boolean;
   systemProxyUrl?: string | null;
+  showProviderLabels?: boolean;
   threadStatusById: ThreadStatusMap;
   moveFolderTargetsByWorkspaceId?: Record<string, ThreadMoveFolderTarget[]>;
   getThreadTime: (thread: ThreadSummary) => string | null;
@@ -68,6 +69,7 @@ export function PinnedThreadList({
   activeThreadId,
   systemProxyEnabled = false,
   systemProxyUrl = null,
+  showProviderLabels = false,
   threadStatusById,
   moveFolderTargetsByWorkspaceId = {},
   getThreadTime,
@@ -216,7 +218,7 @@ export function PinnedThreadList({
                     {isAutoNaming && (
                       <span className="thread-auto-naming">{t("threads.autoNaming")}</span>
                     )}
-                    {providerLabel ? (
+                    {showProviderLabels && providerLabel ? (
                       <span
                         className={`thread-provider-label${
                           isProviderUnavailable ? " is-unavailable" : ""

@@ -61,6 +61,7 @@ type ThreadRowItemProps = {
   isPendingSubagent: boolean;
   isPinned: boolean;
   isProcessing: boolean;
+  showProviderLabels: boolean;
   isSharedThread: boolean;
   isSubagentParent: boolean;
   isSubagentParentCollapsed: boolean;
@@ -133,6 +134,7 @@ const ThreadRowItem = memo(function ThreadRowItem({
   isPendingSubagent,
   isPinned,
   isProcessing,
+  showProviderLabels,
   isSharedThread,
   isSubagentParent,
   isSubagentParentCollapsed,
@@ -280,7 +282,7 @@ const ThreadRowItem = memo(function ThreadRowItem({
               {isAutoNaming && (
                 <span className="thread-auto-naming">{t("threads.autoNaming")}</span>
               )}
-              {providerLabel ? (
+              {showProviderLabels && providerLabel ? (
                 <span
                   className={`thread-provider-label${
                     isProviderUnavailable ? " is-unavailable" : ""
@@ -337,6 +339,7 @@ export type ThreadListProps = {
   isPaging: boolean;
   nested?: boolean;
   showLoadOlder?: boolean;
+  showProviderLabels?: boolean;
   moveFolderTargets?: ThreadMoveFolderTarget[];
   hideExitedSessions?: boolean;
   activeWorkspaceId: string | null;
@@ -371,6 +374,7 @@ export function ThreadList({
   isPaging,
   nested,
   showLoadOlder = true,
+  showProviderLabels = false,
   moveFolderTargets = [],
   hideExitedSessions = false,
   activeWorkspaceId,
@@ -555,6 +559,7 @@ export function ThreadList({
         isPendingSubagent={isPendingSubagent}
         isPinned={isPinned}
         isProcessing={isProcessing}
+        showProviderLabels={showProviderLabels}
         isSharedThread={isSharedThread}
         isSubagentParent={isSubagentParent}
         isSubagentParentCollapsed={isSubagentParentCollapsed}

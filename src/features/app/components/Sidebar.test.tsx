@@ -231,6 +231,7 @@ describe("Sidebar", () => {
       name: "项目分析",
       updatedAt: 500,
       engineSource: "codex" as const,
+      providerProfileName: "Pinned Provider",
       isDegraded: true,
       partialSource: "local-session-scan-unavailable",
       degradedReason: "partial-thread-list",
@@ -240,9 +241,10 @@ describe("Sidebar", () => {
       name: "给我生成一张图",
       updatedAt: 400,
       engineSource: "codex" as const,
+      sourceLabel: "Regular Provider",
     };
 
-    const { container } = render(
+    const { container, rerender } = render(
       <Sidebar
         {...baseProps}
         workspaces={[workspace]}
@@ -273,6 +275,34 @@ describe("Sidebar", () => {
     expect(within(workspaceList as HTMLElement).getByText("给我生成一张图")).toBeTruthy();
     expect(screen.queryByText("Agent 20")).toBeNull();
     expect(screen.queryByText("Codex Session")).toBeNull();
+    expect(screen.queryByText("Pinned Provider")).toBeNull();
+    expect(screen.queryByText("Regular Provider")).toBeNull();
+
+    rerender(
+      <Sidebar
+        {...baseProps}
+        showProviderLabels
+        workspaces={[workspace]}
+        groupedWorkspaces={[
+          {
+            id: null,
+            name: "Ungrouped",
+            workspaces: [workspace],
+          },
+        ]}
+        threadsByWorkspace={{ "ws-1": [pinnedThread, regularThread] }}
+        getPinTimestamp={(workspaceId, threadId) =>
+          workspaceId === "ws-1" && threadId === "thread-pinned" ? 111 : null
+        }
+        isThreadPinned={(workspaceId, threadId) =>
+          workspaceId === "ws-1" && threadId === "thread-pinned"
+        }
+        pinnedThreadsVersion={1}
+      />,
+    );
+
+    expect(screen.getByText("Pinned Provider")).toBeTruthy();
+    expect(screen.getByText("Regular Provider")).toBeTruthy();
   });
 
   it("removes newly pinned thread from project list immediately", () => {

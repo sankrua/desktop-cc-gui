@@ -805,6 +805,7 @@ export type AppSettings = {
   userMsgColor: string;
   usageShowRemaining: boolean;
   showMessageAnchors: boolean;
+  showSidebarProviderLabels: boolean;
   performanceCompatibilityModeEnabled: boolean;
   uiFontFamily: string;
   codeFontFamily: string;

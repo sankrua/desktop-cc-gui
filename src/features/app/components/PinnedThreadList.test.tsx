@@ -233,10 +233,30 @@ describe("PinnedThreadList", () => {
     expect(badge?.classList.contains("proxy-status-badge--animated")).toBe(false);
   });
 
-  it("renders codex provider metadata in pinned rows without empty badges", () => {
+  it("hides codex provider metadata by default and keeps explicit pinned badges opt-in", () => {
     const { container, rerender } = render(
       <PinnedThreadList
         {...baseProps}
+        rows={[
+          {
+            thread: {
+              ...thread,
+              sourceLabel: "project/openai",
+            },
+            depth: 0,
+            workspaceId: "ws-1",
+            workspacePath: "/tmp/ws-1",
+          },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector(".thread-provider-label")).toBeNull();
+
+    rerender(
+      <PinnedThreadList
+        {...baseProps}
+        showProviderLabels
         rows={[
           {
             thread: {
@@ -256,6 +276,7 @@ describe("PinnedThreadList", () => {
     rerender(
       <PinnedThreadList
         {...baseProps}
+        showProviderLabels
         rows={[
           {
             thread: {
@@ -278,6 +299,7 @@ describe("PinnedThreadList", () => {
     rerender(
       <PinnedThreadList
         {...baseProps}
+        showProviderLabels
         rows={[
           {
             thread: {

@@ -487,6 +487,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
       systemProxyUrl={options.systemProxyUrl}
       accountRateLimits={options.activeRateLimits}
       usageShowRemaining={options.usageShowRemaining}
+      showProviderLabels={options.showSidebarProviderLabels}
       accountInfo={options.accountInfo}
       onSwitchAccount={options.onSwitchAccount}
       onCancelSwitchAccount={options.onCancelSwitchAccount}

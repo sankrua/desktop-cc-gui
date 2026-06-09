@@ -680,6 +680,7 @@ export function useAppShellLayoutNodesSection(ctx: any) {
     sessionRadarRecentCompletedSessions,
     activeRateLimits,
     usageShowRemaining: appSettings.usageShowRemaining,
+    showSidebarProviderLabels: appSettings.showSidebarProviderLabels,
     onRefreshAccountRateLimits: handleRefreshAccountRateLimits,
     showMessageAnchors: appSettings.showMessageAnchors,
     accountInfo: activeAccount,

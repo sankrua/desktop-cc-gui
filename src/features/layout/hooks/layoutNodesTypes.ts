@@ -144,6 +144,7 @@ export type LayoutNodesOptions = {
   sessionRadarRecentCompletedSessions: SessionRadarEntry[];
   activeRateLimits: RateLimitSnapshot | null;
   usageShowRemaining: boolean;
+  showSidebarProviderLabels: boolean;
   onRefreshAccountRateLimits?: () => Promise<void> | void;
   showMessageAnchors: boolean;
   accountInfo: AccountSnapshot | null;

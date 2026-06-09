@@ -1083,6 +1083,9 @@ const enPart1 = {
     displaySubtitle: "Display",
     displaySubDescription:
       "Adjust how the window renders backgrounds and effects.",
+    sidebarProviderLabels: "Show provider labels in session lists",
+    sidebarProviderLabelsDesc:
+      "Display Codex provider badges in the sidebar and pinned session lists.",
     clientUiVisibility: {
       title: "Client UI visibility",
       description:

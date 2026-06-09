@@ -1144,6 +1144,9 @@ const zhPart1 = {
     displayDescription: "根据您的偏好调整视觉效果和音频警报。",
     displaySubtitle: "显示",
     displaySubDescription: "调整窗口渲染背景和效果的方式。",
+    sidebarProviderLabels: "在会话列表显示供应商标签",
+    sidebarProviderLabelsDesc:
+      "在侧栏和置顶会话列表中显示 Codex provider badge。",
     clientUiVisibility: {
       title: "界面显示",
       description: "隐藏可选面板和 icon 按钮，但不关闭底层功能。",

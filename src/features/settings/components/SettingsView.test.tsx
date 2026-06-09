@@ -270,6 +270,7 @@ const baseSettings: AppSettings = {
   userMsgColor: "",
   usageShowRemaining: false,
   showMessageAnchors: true,
+  showSidebarProviderLabels: false,
   performanceCompatibilityModeEnabled: false,
   uiFontFamily:
     'Monaco, "SF Pro Text", "SF Pro Display", -apple-system, "Helvetica Neue", sans-serif',

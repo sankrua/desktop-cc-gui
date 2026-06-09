@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import LayoutList from "lucide-react/dist/esm/icons/layout-list";
 import PackagePlus from "lucide-react/dist/esm/icons/package-plus";
 import type { CodexCustomModel, CodexProviderConfig, VendorTab } from "../types";
 import { STORAGE_KEYS, validateCodexCustomModels } from "../types";
-import type { CodexUnifiedExecExternalStatus } from "../../../types";
+import type { AppSettings, CodexUnifiedExecExternalStatus } from "../../../types";
 import { useProviderManagement } from "../hooks/useProviderManagement";
 import { useCodexProviderManagement } from "../hooks/useCodexProviderManagement";
 import { usePluginModels } from "../hooks/usePluginModels";
@@ -31,6 +32,7 @@ import { pushErrorToast } from "../../../services/toasts";
 import { EngineIcon } from "../../engine/components/EngineIcon";
 import { Tabs, TabsList, TabsTab, TabsPanel } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 
 const LEGACY_CLAUDE_MAPPING_KEYS = [
   "mossx-claude-model-mapping",
@@ -44,9 +46,11 @@ type InlineNoticeState =
   | null;
 
 type VendorSettingsPanelProps = {
+  appSettings: AppSettings;
   codexReloadStatus: "idle" | "reloading" | "applied" | "failed";
   codexReloadMessage: string | null;
   handleReloadCodexRuntimeConfig: () => Promise<void>;
+  onUpdateAppSettings: (next: AppSettings) => Promise<void>;
 };
 
 function collectProviderCustomModels(
@@ -77,9 +81,11 @@ function collectProviderCustomModels(
 }
 
 export function VendorSettingsPanel({
+  appSettings,
   codexReloadStatus,
   codexReloadMessage,
   handleReloadCodexRuntimeConfig,
+  onUpdateAppSettings,
 }: VendorSettingsPanelProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<VendorTab>("claude");
@@ -668,6 +674,29 @@ export function VendorSettingsPanel({
                 <PackagePlus size={14} />
                 {t("settings.vendor.manageModels")}
               </Button>
+            </div>
+            <div className="vendor-plugin-model-entry vendor-provider-label-toggle">
+              <div className="vendor-plugin-model-entry-main">
+                <LayoutList size={16} />
+                <div>
+                  <span className="vendor-plugin-model-entry-title">
+                    {t("settings.sidebarProviderLabels")}
+                  </span>
+                  <div className="settings-help">
+                    {t("settings.sidebarProviderLabelsDesc")}
+                  </div>
+                </div>
+              </div>
+              <Switch
+                checked={appSettings.showSidebarProviderLabels === true}
+                aria-label={t("settings.sidebarProviderLabels")}
+                onCheckedChange={(checked) =>
+                  void onUpdateAppSettings({
+                    ...appSettings,
+                    showSidebarProviderLabels: checked,
+                  })
+                }
+              />
             </div>
             <CodexProviderList
               providers={codex.codexProviders}

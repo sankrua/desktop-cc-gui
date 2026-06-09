@@ -360,6 +360,7 @@ function createLayoutOptions(
     sessionRadarRecentCompletedSessions: [],
     activeRateLimits: null,
     usageShowRemaining: false,
+    showSidebarProviderLabels: false,
     showMessageAnchors: true,
     accountInfo: null,
     onSwitchAccount: noop,

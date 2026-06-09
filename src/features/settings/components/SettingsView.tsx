@@ -2186,9 +2186,11 @@ export function SettingsView({
           )}
           {activeSection === "providers" && (
             <VendorSettingsPanel
+              appSettings={appSettings}
               codexReloadStatus={codexRuntimeReloadState.status}
               codexReloadMessage={codexRuntimeReloadState.message}
               handleReloadCodexRuntimeConfig={handleReloadCodexRuntimeConfig}
+              onUpdateAppSettings={onUpdateAppSettings}
             />
           )}
           {activeSection === "mcp" && (

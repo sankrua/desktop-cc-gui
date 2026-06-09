@@ -617,10 +617,28 @@ describe("ThreadList", () => {
     expect(badge?.classList.contains("proxy-status-badge--animated")).toBe(false);
   });
 
-  it("renders codex provider metadata without leaving an empty badge", () => {
+  it("hides codex provider metadata by default and keeps explicit badges opt-in", () => {
     const { container, rerender } = render(
       <ThreadList
         {...baseProps}
+        unpinnedRows={[
+          {
+            thread: {
+              ...thread,
+              sourceLabel: "custom/openai",
+            },
+            depth: 0,
+          },
+        ]}
+      />,
+    );
+
+    expect(container.querySelector(".thread-provider-label")).toBeNull();
+
+    rerender(
+      <ThreadList
+        {...baseProps}
+        showProviderLabels
         unpinnedRows={[
           {
             thread: {
@@ -638,6 +656,7 @@ describe("ThreadList", () => {
     rerender(
       <ThreadList
         {...baseProps}
+        showProviderLabels
         unpinnedRows={[
           {
             thread: {

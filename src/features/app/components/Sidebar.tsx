@@ -122,6 +122,7 @@ type SidebarProps = {
   systemProxyUrl?: string | null;
   accountRateLimits: RateLimitSnapshot | null;
   usageShowRemaining: boolean;
+  showProviderLabels?: boolean;
   accountInfo: AccountSnapshot | null;
   onSwitchAccount: () => void;
   onCancelSwitchAccount: () => void;
@@ -222,6 +223,7 @@ export function Sidebar({
   activeThreadId,
   systemProxyEnabled = false,
   systemProxyUrl = null,
+  showProviderLabels = false,
   accountInfo: _accountInfo,
   onSwitchAccount: _onSwitchAccount,
   onCancelSwitchAccount: _onCancelSwitchAccount,
@@ -1659,6 +1661,7 @@ export function Sidebar({
             activeThreadId={activeThreadId}
             systemProxyEnabled={systemProxyEnabled}
             systemProxyUrl={systemProxyUrl}
+            showProviderLabels={showProviderLabels}
             moveFolderTargetsByWorkspaceId={moveFolderTargetsByWorkspaceId}
             getThreadRows={getThreadRows}
             getThreadTime={getThreadTime}
@@ -1708,6 +1711,7 @@ export function Sidebar({
               activeThreadId,
               systemProxyEnabled,
               systemProxyUrl,
+              showProviderLabels,
               threadStatusById,
               getThreadTime,
               isThreadPinned,
@@ -1745,6 +1749,7 @@ export function Sidebar({
             activeThreadId={activeThreadId}
             systemProxyEnabled={systemProxyEnabled}
             systemProxyUrl={systemProxyUrl}
+            showProviderLabels={showProviderLabels}
             threadStatusById={threadStatusById}
             getThreadTime={getThreadTime}
             isThreadPinned={isThreadPinned}
@@ -1809,6 +1814,7 @@ export function Sidebar({
     showWorktreeMenu,
     systemProxyEnabled,
     systemProxyUrl,
+    showProviderLabels,
     onToggleWorkspaceCollapse,
     renderHighlightedName,
     hydratedThreadListWorkspaceIds,
@@ -1915,6 +1921,7 @@ export function Sidebar({
                   activeThreadId={activeThreadId}
                   systemProxyEnabled={systemProxyEnabled}
                   systemProxyUrl={systemProxyUrl}
+                  showProviderLabels={showProviderLabels}
                   threadStatusById={threadStatusById}
                   moveFolderTargetsByWorkspaceId={moveFolderTargetsByWorkspaceId}
                   getThreadTime={getThreadTime}

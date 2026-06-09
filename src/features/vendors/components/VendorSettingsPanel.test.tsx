@@ -15,6 +15,7 @@ import {
   restoreCodexUnifiedExecOfficialDefault,
   setCodexUnifiedExecOfficialOverride,
 } from "../../../services/tauri";
+import type { AppSettings } from "../../../types";
 import { VendorSettingsPanel } from "./VendorSettingsPanel";
 
 const mockState = vi.hoisted(() => ({
@@ -147,25 +148,36 @@ const setCodexUnifiedExecOfficialOverrideMock = vi.mocked(
 
 function renderPanel(
   options: {
+    appSettings?: Partial<AppSettings>;
     handleReloadCodexRuntimeConfig?: () => Promise<void>;
     codexReloadStatus?: "idle" | "reloading" | "applied" | "failed";
     codexReloadMessage?: string | null;
+    onUpdateAppSettings?: (next: AppSettings) => Promise<void>;
   } = {},
 ) {
   const handleReloadCodexRuntimeConfig =
     options.handleReloadCodexRuntimeConfig ??
     vi.fn().mockResolvedValue(undefined);
+  const appSettings = {
+    showSidebarProviderLabels: false,
+    ...options.appSettings,
+  } as AppSettings;
+  const onUpdateAppSettings =
+    options.onUpdateAppSettings ?? vi.fn().mockResolvedValue(undefined);
 
   render(
     <VendorSettingsPanel
+      appSettings={appSettings}
       codexReloadStatus={options.codexReloadStatus ?? "idle"}
       codexReloadMessage={options.codexReloadMessage ?? null}
       handleReloadCodexRuntimeConfig={handleReloadCodexRuntimeConfig}
+      onUpdateAppSettings={onUpdateAppSettings}
     />,
   );
 
   return {
     handleReloadCodexRuntimeConfig,
+    onUpdateAppSettings,
   };
 }
 
@@ -230,6 +242,24 @@ describe("VendorSettingsPanel", () => {
     expect(
       runtimeCardQueries.getByText("Official default on this platform: enabled."),
     ).toBeTruthy();
+  });
+
+  it("toggles sidebar provider labels from the Codex provider tab", async () => {
+    const { onUpdateAppSettings } = renderPanel();
+
+    await openCodexTab();
+
+    fireEvent.click(
+      screen.getByRole("switch", {
+        name: "Show provider labels in session lists",
+      }),
+    );
+
+    await waitFor(() => {
+      expect(onUpdateAppSettings).toHaveBeenCalledWith(
+        expect.objectContaining({ showSidebarProviderLabels: true }),
+      );
+    });
   });
 
   it("restores official default without extra confirm dialog", async () => {

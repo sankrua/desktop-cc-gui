@@ -501,6 +501,9 @@ vi.mock("react-i18next", () => ({
         "settings.displayDescription": "Tune visuals and audio alerts to your preferences.",
         "settings.displaySubtitle": "Display",
         "settings.displaySubDescription": "Adjust how the window renders backgrounds and effects.",
+        "settings.sidebarProviderLabels": "Show provider labels in session lists",
+        "settings.sidebarProviderLabelsDesc":
+          "Display Codex provider badges in the sidebar and pinned session lists.",
         "settings.clientUiVisibility.title": "Client UI visibility",
         "settings.clientUiVisibility.description": "Hide optional panels and icon buttons without disabling the underlying features.",
         "settings.clientUiVisibility.reset": "Restore default visibility",
