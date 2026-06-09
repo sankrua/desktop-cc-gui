@@ -1421,3 +1421,36 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 769: 修复 Codex 磁盘会话 stale thread 重试
+
+**Date**: 2026-06-09
+**Task**: 修复 Codex 磁盘会话 stale thread 重试
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+修复磁盘 .codex 模式创建/发送时 app-server 返回 thread not found 的恢复路径：同 provider runtime 内先 thread/resume 再 bounded retry turn/start；补齐 daemon providerProfileId 解析和 managed provider unsupported guard；同步回写 provider-scoped session launch OpenSpec，并通过 openspec validate、Rust focused tests、cargo no-run 和 runtime contract 检查。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `24b92415` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
