@@ -17,6 +17,7 @@ import {
   Composer,
   type ComposerRewindDialogRequest,
 } from "../../composer/components/Composer";
+import { resolveCodexProviderLabel } from "../../app/utils/codexProviderLabel";
 import { GitDiffViewer } from "../../git/components/GitDiffViewer";
 import { buildCanonicalGitChanges } from "../../git/utils/gitChangeModel";
 import { FileTreePanel } from "../../files/components/FileTreePanel";
@@ -205,6 +206,9 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
           (thread) => thread.id === options.activeThreadId,
         ) ?? null
       : null;
+  const activeProviderProfileLabel = activeThreadSummary
+    ? resolveCodexProviderLabel(activeThreadSummary)
+    : null;
   useEffect(() => {
     let cancelled = false;
     getCodexProviders()
@@ -957,6 +961,7 @@ export function useLayoutNodes(options: LayoutNodesOptions): LayoutNodesResult {
         isSharedSession={isSharedSession}
         engines={options.engines}
         selectedEngine={options.selectedEngine}
+        providerProfileLabel={activeProviderProfileLabel}
         onSelectEngine={options.onSelectEngine}
         models={options.models}
         selectedModelId={options.selectedModelId}
