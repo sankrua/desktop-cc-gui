@@ -198,6 +198,13 @@ vi.mock("react-i18next", () => ({
         "git.semanticDiff.risk.exceptionContract":
           `${String(params?.exception ?? "")} response mapping is now part of the API error contract.`,
         "git.semanticDiff.evidence.pathLine": `Evidence: ${String(params?.evidence ?? "")}`,
+        "git.semanticDiff.validation.commandPassed":
+          `${String(params?.kind ?? "")} validation command completed: ${String(params?.command ?? "")}.`,
+        "git.semanticDiff.validation.commandFailed":
+          `${String(params?.kind ?? "")} validation command failed: ${String(params?.command ?? "")}.`,
+        "git.semanticDiff.validation.notConnected":
+          "External validation evidence is not connected to this summary yet.",
+        "git.semanticDiff.evidence.command": "Evidence: command execution result",
         "messages.generatedImageTitle": "Generated image",
         "messages.generatedImageProcessing": "Making",
         "messages.generatedImageCompleted": "Completed",

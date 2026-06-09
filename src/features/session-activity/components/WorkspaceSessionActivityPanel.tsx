@@ -19,8 +19,10 @@ import { resolveWorkspaceRelativePath } from "../../../utils/workspacePaths";
 import { WorkspaceEditableDiffReviewSurface } from "../../git/components/WorkspaceEditableDiffReviewSurface";
 import {
   buildSemanticDiffSummary,
+  type SemanticEvidenceRef,
   type SemanticDiffSummary,
   type SemanticDiffSummaryItem,
+  type TurnValidationEvidence,
 } from "../../git/utils/semanticDiffSummary";
 import type { CodeAnnotationBridgeProps } from "../../code-annotations/types";
 import { Markdown } from "../../messages/components/Markdown";
@@ -551,6 +553,17 @@ function mergeStatusLetter(
   return "M";
 }
 
+function buildTurnValidationEvidence(events: SessionActivityEvent[]): TurnValidationEvidence[] {
+  return events
+    .filter((event) => event.kind === "command" && event.commandText?.trim())
+    .map((event) => ({
+      eventId: event.eventId,
+      commandText: event.commandText?.trim() ?? "",
+      commandDescription: event.commandDescription?.trim() || event.summary,
+      status: event.status,
+    }));
+}
+
 function buildTurnArtifactSummary(events: SessionActivityEvent[]): TurnArtifactSummary | null {
   const filesByPath = new Map<string, SessionActivityFileChangeEntry>();
   const turnSemantic =
@@ -594,13 +607,14 @@ function buildTurnArtifactSummary(events: SessionActivityEvent[]): TurnArtifactS
   if (files.length === 0) {
     return null;
   }
-  const semanticSummary = buildSemanticDiffSummary(
-    files.map((file) => ({
+  const semanticSummary = buildSemanticDiffSummary({
+    entries: files.map((file) => ({
       path: file.filePath,
       status: file.statusLetter,
       diff: file.diff ?? "",
     })),
-  );
+    validationEvidence: buildTurnValidationEvidence(events),
+  });
   return {
     files,
     semanticSummary,
@@ -647,6 +661,18 @@ function confidenceLabelKey(confidence: SemanticDiffSummaryItem["confidence"]) {
     case "low":
       return "git.semanticDiff.confidenceLow";
   }
+}
+
+function semanticEvidenceRefLabel(ref: SemanticEvidenceRef) {
+  const baseLabel = ref.label ?? ref.commandText ?? ref.path ?? ref.id;
+  if (ref.path && ref.line && !baseLabel.endsWith(`:${ref.line}`)) {
+    return `${baseLabel}:${ref.line}`;
+  }
+  return baseLabel;
+}
+
+function primarySemanticEvidenceRef(item: SemanticDiffSummaryItem) {
+  return item.evidenceRefs?.[0] ?? null;
 }
 
 export function WorkspaceSessionActivityPanel({
@@ -1339,6 +1365,14 @@ export function WorkspaceSessionActivityPanel({
     onEnsureEditorFileMaximized?.();
   };
 
+  const openSemanticEvidenceRef = (ref: SemanticEvidenceRef) => {
+    if (!ref.path) {
+      return;
+    }
+    onOpenDiffPath(ref.path, ref.line ? { line: ref.line, column: 1 } : undefined, undefined);
+    onEnsureEditorFileMaximized?.();
+  };
+
   const handleOpenDiffPreview = (entry: SessionActivityFileChangeEntry) => {
     if (!entry.diff?.trim() && !workspaceId) {
       return;
@@ -1643,19 +1677,57 @@ export function WorkspaceSessionActivityPanel({
     sectionKey: keyof Pick<SemanticDiffSummary, "intent" | "behavior" | "risks" | "validation">,
   ) => (
     <ul className="session-activity-semantic-list">
-      {summary[sectionKey].map((item) => (
-        <li key={`${sectionKey}-${item.textKey}-${JSON.stringify(item.values ?? {})}`}>
-          <span className="session-activity-semantic-text">
-            {t(item.textKey, item.values)}
-          </span>
-          <span className="session-activity-semantic-meta">
-            <span>{t(item.evidenceKey, item.values)}</span>
-            <span className="session-activity-semantic-confidence">
-              {t(confidenceLabelKey(item.confidence))}
+      {summary[sectionKey].map((item) => {
+        const primaryRef = primarySemanticEvidenceRef(item);
+        const evidenceLabel = primaryRef
+          ? semanticEvidenceRefLabel(primaryRef)
+          : t(item.evidenceKey, item.values);
+        const extraEvidenceCount = Math.max((item.evidenceRefs?.length ?? 0) - 1, 0);
+        return (
+          <li key={`${sectionKey}-${item.textKey}-${JSON.stringify(item.values ?? {})}-${item.source ?? "rule"}`}>
+            <span className="session-activity-semantic-text">
+              {t(item.textKey, item.values)}
             </span>
-          </span>
-        </li>
-      ))}
+            <span className="session-activity-semantic-meta">
+              <span className="session-activity-semantic-evidence-label">
+                <span>{t("git.semanticDiff.evidence.prefix")}</span>
+                {primaryRef?.path ? (
+                  <button
+                    type="button"
+                    className="session-activity-semantic-evidence-link"
+                    title={evidenceLabel}
+                    onClick={(clickEvent) => {
+                      clickEvent.stopPropagation();
+                      openSemanticEvidenceRef(primaryRef);
+                    }}
+                  >
+                    {evidenceLabel}
+                  </button>
+                ) : (
+                  <span>{evidenceLabel}</span>
+                )}
+                {extraEvidenceCount > 0 ? (
+                  <span className="session-activity-semantic-evidence-more">
+                    {t("git.semanticDiff.evidence.moreRefs", { count: extraEvidenceCount })}
+                  </span>
+                ) : null}
+              </span>
+              <span className="session-activity-semantic-confidence">
+                {t(confidenceLabelKey(item.confidence))}
+              </span>
+              {item.source === "ai" ? (
+                <span className="session-activity-semantic-source">
+                  {t("git.semanticDiff.source.ai")}
+                </span>
+              ) : item.source === "command" ? (
+                <span className="session-activity-semantic-source">
+                  {t("git.semanticDiff.source.command")}
+                </span>
+              ) : null}
+            </span>
+          </li>
+        );
+      })}
     </ul>
   );
 
@@ -1788,19 +1860,19 @@ export function WorkspaceSessionActivityPanel({
                 </p>
               </div>
             ) : null}
-            <div className="session-activity-turn-semantic-section">
+            <div className="session-activity-turn-semantic-section is-intent">
               <h5>{t("git.semanticDiff.intentTitle")}</h5>
               {renderSemanticSummaryList(artifactSummary.semanticSummary, "intent")}
             </div>
-            <div className="session-activity-turn-semantic-section">
+            <div className="session-activity-turn-semantic-section is-behavior">
               <h5>{t("git.semanticDiff.behaviorTitle")}</h5>
               {renderSemanticSummaryList(artifactSummary.semanticSummary, "behavior")}
             </div>
-            <div className="session-activity-turn-semantic-section">
+            <div className="session-activity-turn-semantic-section is-risk">
               <h5>{t("git.semanticDiff.riskTitle")}</h5>
               {renderSemanticSummaryList(artifactSummary.semanticSummary, "risks")}
             </div>
-            <div className="session-activity-turn-semantic-section">
+            <div className="session-activity-turn-semantic-section is-validation">
               <h5>{t("git.semanticDiff.validationTitle")}</h5>
               {renderSemanticSummaryList(artifactSummary.semanticSummary, "validation")}
             </div>

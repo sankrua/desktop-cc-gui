@@ -1552,6 +1552,12 @@
 }
 
 .session-activity-turn-semantic-section {
+  --session-activity-semantic-accent: var(--text-muted);
+  --session-activity-semantic-accent-soft: color-mix(
+    in srgb,
+    var(--session-activity-semantic-accent) 16%,
+    transparent
+  );
   display: grid;
   grid-template-columns: 1fr;
   gap: 6px;
@@ -1562,10 +1568,48 @@
   box-shadow: none;
 }
 
+.session-activity-turn-semantic-section.is-turn-meaning {
+  --session-activity-semantic-accent: var(--text-muted);
+}
+
+.session-activity-turn-semantic-section.is-intent {
+  --session-activity-semantic-accent: var(--status-info, #3b82f6);
+}
+
+.session-activity-turn-semantic-section.is-behavior {
+  --session-activity-semantic-accent: var(--status-success, #22c55e);
+}
+
+.session-activity-turn-semantic-section.is-risk {
+  --session-activity-semantic-accent: var(--status-warning, #f59e0b);
+}
+
+.session-activity-turn-semantic-section.is-validation {
+  --session-activity-semantic-accent: color-mix(
+    in srgb,
+    var(--status-info, #3b82f6) 58%,
+    var(--status-success, #22c55e)
+  );
+}
+
 .session-activity-turn-semantic-section h5 {
-  color: var(--text-strong);
+  position: relative;
+  padding-left: 10px;
+  color: color-mix(in srgb, var(--text-strong) 76%, var(--session-activity-semantic-accent));
   font-size: 11px;
   font-weight: 700;
+}
+
+.session-activity-turn-semantic-section h5::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.28em;
+  width: 4px;
+  height: 0.9em;
+  border-radius: 999px;
+  background: var(--session-activity-semantic-accent);
+  opacity: 0.86;
 }
 
 .session-activity-turn-semantic-text {
@@ -1594,7 +1638,9 @@
 
 .session-activity-semantic-text {
   display: block;
-  color: var(--text-strong);
+  color: color-mix(in srgb, var(--text-strong) 86%, var(--session-activity-semantic-accent));
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .session-activity-semantic-meta {
@@ -1606,14 +1652,60 @@
   color: var(--text-muted);
 }
 
+.session-activity-semantic-evidence-label {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.session-activity-semantic-evidence-link {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  color: color-mix(in srgb, var(--text-muted) 72%, var(--session-activity-semantic-accent));
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--session-activity-semantic-accent) 36%, transparent);
+  text-underline-offset: 2px;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  background: transparent;
+  cursor: pointer;
+}
+
+.session-activity-semantic-evidence-link:hover {
+  color: color-mix(in srgb, var(--text-strong) 68%, var(--session-activity-semantic-accent));
+  text-decoration-color: currentColor;
+}
+
+.session-activity-semantic-evidence-link:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--session-activity-semantic-accent) 48%, transparent);
+  outline-offset: 2px;
+}
+
+.session-activity-semantic-evidence-more {
+  color: color-mix(in srgb, var(--text-muted) 72%, var(--session-activity-semantic-accent));
+}
+
 .session-activity-semantic-confidence {
   display: inline-flex;
   align-items: center;
   padding: 1px 5px;
-  border: 1px solid var(--border-subtle);
+  border: 1px solid color-mix(in srgb, var(--session-activity-semantic-accent) 34%, var(--border-subtle));
   border-radius: 999px;
-  color: var(--text-muted);
-  background: var(--surface-card, #ffffff);
+  color: color-mix(in srgb, var(--text-muted) 62%, var(--session-activity-semantic-accent));
+  background: var(--session-activity-semantic-accent-soft);
+}
+
+.session-activity-semantic-source {
+  color: color-mix(in srgb, var(--text-muted) 72%, var(--session-activity-semantic-accent));
 }
 
 .session-activity-file-row {

@@ -83,6 +83,8 @@ const zhPart5 = {
         springEndpoint: "新增 `{{httpMethod}}` endpoint handler `{{method}}` {{route}}。",
         declaration: "新增 public declaration `{{symbol}}`。",
         export: "新增 exported symbol `{{symbol}}`。",
+        reactComponent: "新增 React component `{{component}}`。",
+        reactHook: "新增 React hook `{{hook}}`。",
         noConcreteFacts: "没有抽取到具体代码事实；需要直接看 hunk。",
       },
       behavior: {
@@ -90,6 +92,9 @@ const zhPart5 = {
         deleted_other: "从审查范围中删除 {{count}} 个文件。",
         springExceptionStatus: "`{{exception}}` 现在通过 `{{method}}` 映射为 HTTP `{{status}}`。",
         apiResponseError: "`{{method}}` 返回 `ApiResponse.error({{code}}, ...)`。",
+        reactState: "新增 React state `{{state}}`。",
+        eventHandler: "新增交互 handler `{{handler}}`。",
+        configKey: "配置项 `{{key}}` 发生变更。",
         requiresLineReview: "没有从 +{{additions}} / -{{deletions}} 行中抽取到具体行为事实。",
       },
       risk: {
@@ -99,13 +104,20 @@ const zhPart5 = {
         largeChange: "diff 规模较大，review 和回归风险更高。",
         exceptionContract: "`{{exception}}` 的响应映射现在属于 API error contract。",
         reviewEvidence: "仅从路径未发现高信号风险；请继续审查行级 diff。",
+        validationFailed: "验证命令失败，当前改动需要继续处理。",
       },
       validation: {
         testFiles: "检测到测试文件改动，但这里未展示命令执行结果。",
         specFiles: "检测到 spec artifact 改动，但这里未展示 strict validation 结果。",
         notConnected: "外部验证证据尚未接入这份摘要。",
+        commandPassed: "`{{kind}}` 验证命令已完成：{{command}}。",
+        commandFailed: "`{{kind}}` 验证命令失败：{{command}}。",
+        commandObserved: "检测到 `{{kind}}` 验证命令正在进行或待完成：{{command}}。",
+        testCase: "新增测试用例 `{{name}}`。",
+        assertion: "新增断言证据。",
       },
       evidence: {
+        prefix: "证据：",
         source: "证据：源码路径",
         ui: "证据：组件/样式路径",
         config: "证据：配置或脚本路径",
@@ -121,6 +133,16 @@ const zhPart5 = {
         noTests: "证据：源码路径中未包含测试路径",
         validationNotConnected: "证据：无验证结果来源",
         pathLine: "证据：{{evidence}}",
+        command: "证据：命令执行结果",
+        ai: "证据：AI review 引用",
+        moreRefs: "+{{count}} 条证据",
+      },
+      source: {
+        ai: "AI",
+        command: "命令",
+      },
+      ai: {
+        fact: "{{text}}",
       },
     },
     // 文件操作

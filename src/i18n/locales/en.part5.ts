@@ -83,6 +83,8 @@ const enPart5 = {
         springEndpoint: "Adds `{{httpMethod}}` endpoint handler `{{method}}` {{route}}.",
         declaration: "Adds public declaration `{{symbol}}`.",
         export: "Adds exported symbol `{{symbol}}`.",
+        reactComponent: "Adds React component `{{component}}`.",
+        reactHook: "Adds React hook `{{hook}}`.",
         noConcreteFacts: "No concrete code-level fact was extracted; inspect the hunk directly.",
       },
       behavior: {
@@ -90,6 +92,9 @@ const enPart5 = {
         deleted_other: "Removes {{count}} files from the reviewed surface.",
         springExceptionStatus: "`{{exception}}` now maps to HTTP `{{status}}` through `{{method}}`.",
         apiResponseError: "`{{method}}` returns `ApiResponse.error({{code}}, ...)`.",
+        reactState: "Adds React state `{{state}}`.",
+        eventHandler: "Adds interaction handler `{{handler}}`.",
+        configKey: "Changes config key `{{key}}`.",
         requiresLineReview: "No concrete behavior fact was extracted from +{{additions}} / -{{deletions}} lines.",
       },
       risk: {
@@ -99,13 +104,20 @@ const enPart5 = {
         largeChange: "Large diff size increases review and regression risk.",
         exceptionContract: "`{{exception}}` response mapping is now part of the API error contract.",
         reviewEvidence: "No high-signal risk found from paths alone; inspect the line diff.",
+        validationFailed: "A validation command failed; this change needs follow-up.",
       },
       validation: {
         testFiles: "Test files changed, but command results are not shown here.",
         specFiles: "Spec artifacts changed, but strict validation result is not shown here.",
         notConnected: "External validation evidence is not connected to this summary yet.",
+        commandPassed: "`{{kind}}` validation command completed: {{command}}.",
+        commandFailed: "`{{kind}}` validation command failed: {{command}}.",
+        commandObserved: "Detected `{{kind}}` validation command still running or pending: {{command}}.",
+        testCase: "Adds test case `{{name}}`.",
+        assertion: "Adds assertion evidence.",
       },
       evidence: {
+        prefix: "Evidence:",
         source: "Evidence: source paths",
         ui: "Evidence: component/style paths",
         config: "Evidence: config or script paths",
@@ -121,6 +133,16 @@ const enPart5 = {
         noTests: "Evidence: source paths without test paths",
         validationNotConnected: "Evidence: no validation-result source",
         pathLine: "Evidence: {{evidence}}",
+        command: "Evidence: command execution result",
+        ai: "Evidence: AI review reference",
+        moreRefs: "+{{count}} evidence refs",
+      },
+      source: {
+        ai: "AI",
+        command: "command",
+      },
+      ai: {
+        fact: "{{text}}",
       },
     },
     // File operations

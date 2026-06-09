@@ -6,6 +6,8 @@ export type SemanticDiffSummaryItem = {
   textKey: string;
   evidenceKey: string;
   confidence: SemanticDiffConfidence;
+  source?: "rule" | "command" | "ai";
+  evidenceRefs?: SemanticEvidenceRef[];
   values?: Record<string, string | number>;
 };
 
@@ -28,6 +30,42 @@ export type SemanticDiffEntry = {
   isImage?: boolean;
 };
 
+export type SemanticEvidenceRef = {
+  type: "file" | "diffHunk" | "command" | "userMessage" | "ai";
+  id: string;
+  label?: string;
+  path?: string;
+  line?: number;
+  status?: "running" | "completed" | "failed" | "pending";
+  commandText?: string;
+};
+
+export type TurnValidationEvidence = {
+  eventId: string;
+  commandText: string;
+  status: "running" | "completed" | "failed" | "pending";
+  commandDescription?: string;
+};
+
+export type TurnSemanticReviewFact = {
+  category: "intent" | "behavior" | "risk" | "validation";
+  text: string;
+  confidence: SemanticDiffConfidence;
+  evidenceRefs: SemanticEvidenceRef[];
+};
+
+export type TurnSemanticReview = {
+  source: "ai";
+  generatedAt: number;
+  facts: TurnSemanticReviewFact[];
+};
+
+export type SemanticDiffSummaryInput = {
+  entries: SemanticDiffEntry[];
+  validationEvidence?: TurnValidationEvidence[];
+  aiReview?: TurnSemanticReview | null;
+};
+
 type EntryClassification = {
   source: SemanticDiffEntry[];
   tests: SemanticDiffEntry[];
@@ -40,6 +78,8 @@ type AddedLine = {
   text: string;
   lineNumber: number;
 };
+
+type ValidationCommandKind = "test" | "lint" | "typecheck" | "spec" | "contract" | "largeFiles";
 
 const CODE_EXTENSIONS = new Set([
   "c",
@@ -294,6 +334,92 @@ function evidencePath(path: string, lineNumber?: number) {
   return lineNumber ? `${path}:${lineNumber}` : path;
 }
 
+function fileEvidenceRef(path: string): SemanticEvidenceRef {
+  return {
+    type: "file",
+    id: normalizeGitChangePath(path),
+    path: normalizeGitChangePath(path),
+  };
+}
+
+function hunkEvidenceRef(path: string, lineNumber: number): SemanticEvidenceRef {
+  return {
+    type: "diffHunk",
+    id: `${normalizeGitChangePath(path)}:${lineNumber}`,
+    path: normalizeGitChangePath(path),
+    line: lineNumber,
+  };
+}
+
+function commandEvidenceRef(evidence: TurnValidationEvidence): SemanticEvidenceRef {
+  return {
+    type: "command",
+    id: evidence.eventId,
+    label: evidence.commandDescription || evidence.commandText,
+    status: evidence.status,
+    commandText: evidence.commandText,
+  };
+}
+
+function classifyValidationCommand(commandText: string): ValidationCommandKind | null {
+  const normalized = commandText.toLowerCase();
+  if (
+    /\bopenspec\s+validate\b/.test(normalized) ||
+    normalized.includes("doctor:strict")
+  ) {
+    return "spec";
+  }
+  if (
+    normalized.includes("check:runtime-contracts") ||
+    normalized.includes("check:heavy-test-noise")
+  ) {
+    return "contract";
+  }
+  if (normalized.includes("check:large-files")) {
+    return "largeFiles";
+  }
+  if (
+    /\b(?:vitest|jest|pytest)\b/.test(normalized) ||
+    /\bnpm\s+(?:run\s+)?test\b/.test(normalized) ||
+    /\bpnpm\s+(?:run\s+)?test\b/.test(normalized) ||
+    /\byarn\s+test\b/.test(normalized) ||
+    /\bcargo\s+test\b/.test(normalized) ||
+    /\bgo\s+test\b/.test(normalized) ||
+    /\bmvn\s+test\b/.test(normalized) ||
+    /\bgradle\s+test\b/.test(normalized)
+  ) {
+    return "test";
+  }
+  if (/\b(?:eslint|npm\s+run\s+lint|pnpm\s+run\s+lint|yarn\s+lint)\b/.test(normalized)) {
+    return "lint";
+  }
+  if (
+    /\b(?:tsc|vue-tsc)\b/.test(normalized) ||
+    normalized.includes("typecheck") ||
+    normalized.includes("type-check")
+  ) {
+    return "typecheck";
+  }
+  return null;
+}
+
+function validationKindLabel(kind: ValidationCommandKind) {
+  switch (kind) {
+    case "test":
+      return "test";
+    case "lint":
+      return "lint";
+    case "typecheck":
+      return "typecheck";
+    case "spec":
+      return "spec";
+    case "contract":
+      return "contract";
+    case "largeFiles":
+      return "large-file";
+  }
+}
+
 function extractSpringFacts(
   entry: SemanticDiffEntry,
   lines: AddedLine[],
@@ -322,6 +448,8 @@ function extractSpringFacts(
         method,
         evidence: evidencePath(entry.path, line.lineNumber),
       },
+      source: "rule",
+      evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
     });
     if (httpStatus.statusName || httpStatus.statusCode) {
       pushUnique(summary.behavior, {
@@ -334,6 +462,8 @@ function extractSpringFacts(
           status: statusLabel,
           evidence: evidencePath(entry.path, line.lineNumber),
         },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
       });
     }
     if (apiErrorCode != null) {
@@ -346,6 +476,8 @@ function extractSpringFacts(
           code: apiErrorCode,
           evidence: evidencePath(entry.path, line.lineNumber),
         },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
       });
     }
     pushUnique(summary.risks, {
@@ -356,6 +488,8 @@ function extractSpringFacts(
         exception,
         evidence: evidencePath(entry.path, line.lineNumber),
       },
+      source: "rule",
+      evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
     });
   }
 
@@ -378,6 +512,8 @@ function extractSpringFacts(
         method,
         evidence: evidencePath(entry.path, line.lineNumber),
       },
+      source: "rule",
+      evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
     });
   }
 }
@@ -400,6 +536,8 @@ function extractDeclarationFacts(
           symbol: javaDeclaration[2],
           evidence: evidencePath(entry.path, line.lineNumber),
         },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
       });
       continue;
     }
@@ -416,8 +554,153 @@ function extractDeclarationFacts(
           symbol: tsExport[1],
           evidence: evidencePath(entry.path, line.lineNumber),
         },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
       });
     }
+  }
+}
+
+function extractTypeScriptReactFacts(
+  entry: SemanticDiffEntry,
+  lines: AddedLine[],
+  summary: SemanticDiffSummary,
+) {
+  const ext = extensionOf(entry.path);
+  if (ext !== "ts" && ext !== "tsx" && ext !== "js" && ext !== "jsx") {
+    return;
+  }
+  for (const line of lines) {
+    const componentMatch =
+      /(?:export\s+)?function\s+([A-Z][A-Za-z0-9_]*)\s*\(/.exec(line.text) ||
+      /(?:export\s+)?const\s+([A-Z][A-Za-z0-9_]*)\s*[:=]/.exec(line.text);
+    if (componentMatch && ext.includes("x")) {
+      pushUnique(summary.intent, {
+        textKey: "git.semanticDiff.intent.reactComponent",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "high",
+        values: {
+          component: componentMatch[1],
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+
+    const hookMatch =
+      /(?:export\s+)?function\s+(use[A-Z][A-Za-z0-9_]*)\s*\(/.exec(line.text) ||
+      /(?:export\s+)?const\s+(use[A-Z][A-Za-z0-9_]*)\s*[:=]/.exec(line.text);
+    if (hookMatch) {
+      pushUnique(summary.intent, {
+        textKey: "git.semanticDiff.intent.reactHook",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "high",
+        values: {
+          hook: hookMatch[1],
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+
+    const stateMatch = /const\s+\[\s*([A-Za-z_$][\w$]*)\s*,\s*set[A-Za-z_$][\w$]*\s*\]\s*=\s*useState\b/.exec(
+      line.text,
+    );
+    if (stateMatch) {
+      pushUnique(summary.behavior, {
+        textKey: "git.semanticDiff.behavior.reactState",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "medium",
+        values: {
+          state: stateMatch[1],
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+
+    const handlerMatch = /\b(?:const|function)\s+(handle[A-Z][A-Za-z0-9_]*)\b/.exec(line.text);
+    if (handlerMatch) {
+      pushUnique(summary.behavior, {
+        textKey: "git.semanticDiff.behavior.eventHandler",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "medium",
+        values: {
+          handler: handlerMatch[1],
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+  }
+}
+
+function extractTestFacts(
+  entry: SemanticDiffEntry,
+  lines: AddedLine[],
+  summary: SemanticDiffSummary,
+) {
+  if (!isTestPath(entry.path)) {
+    return;
+  }
+  for (const line of lines) {
+    const testMatch = /\b(?:it|test)\(\s*['"`]([^'"`]+)['"`]/.exec(line.text);
+    if (testMatch) {
+      pushUnique(summary.validation, {
+        textKey: "git.semanticDiff.validation.testCase",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "medium",
+        values: {
+          name: testMatch[1],
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+    if (/\bexpect\(|\bassert\.|\bassert\(/.test(line.text)) {
+      pushUnique(summary.validation, {
+        textKey: "git.semanticDiff.validation.assertion",
+        evidenceKey: "git.semanticDiff.evidence.pathLine",
+        confidence: "medium",
+        values: {
+          evidence: evidencePath(entry.path, line.lineNumber),
+        },
+        source: "rule",
+        evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+      });
+    }
+  }
+}
+
+function extractConfigFacts(
+  entry: SemanticDiffEntry,
+  lines: AddedLine[],
+  summary: SemanticDiffSummary,
+) {
+  if (!isConfigPath(entry.path)) {
+    return;
+  }
+  for (const line of lines) {
+    const keyMatch = /^\s*["']?([A-Za-z0-9_.:-]+)["']?\s*[:=]/.exec(line.text);
+    if (!keyMatch) {
+      continue;
+    }
+    pushUnique(summary.behavior, {
+      textKey: "git.semanticDiff.behavior.configKey",
+      evidenceKey: "git.semanticDiff.evidence.pathLine",
+      confidence: "medium",
+      values: {
+        key: keyMatch[1],
+        evidence: evidencePath(entry.path, line.lineNumber),
+      },
+      source: "rule",
+      evidenceRefs: [hunkEvidenceRef(entry.path, line.lineNumber)],
+    });
   }
 }
 
@@ -431,12 +714,91 @@ function addConcreteFacts(entries: SemanticDiffEntry[], summary: SemanticDiffSum
       extractSpringFacts(entry, lines, summary);
     }
     extractDeclarationFacts(entry, lines, summary);
+    extractTypeScriptReactFacts(entry, lines, summary);
+    extractTestFacts(entry, lines, summary);
+    extractConfigFacts(entry, lines, summary);
+  }
+}
+
+function addValidationCommandEvidence(
+  evidence: TurnValidationEvidence[] | undefined,
+  summary: SemanticDiffSummary,
+) {
+  const validationEvidence = evidence?.filter((entry) => classifyValidationCommand(entry.commandText)) ?? [];
+  for (const entry of validationEvidence) {
+    const kind = classifyValidationCommand(entry.commandText);
+    if (!kind) {
+      continue;
+    }
+    const values = {
+      kind: validationKindLabel(kind),
+      command: entry.commandDescription || entry.commandText,
+    };
+    if (entry.status === "failed") {
+      pushUnique(summary.validation, {
+        textKey: "git.semanticDiff.validation.commandFailed",
+        evidenceKey: "git.semanticDiff.evidence.command",
+        confidence: "high",
+        values,
+        source: "command",
+        evidenceRefs: [commandEvidenceRef(entry)],
+      });
+      pushUnique(summary.risks, {
+        textKey: "git.semanticDiff.risk.validationFailed",
+        evidenceKey: "git.semanticDiff.evidence.command",
+        confidence: "high",
+        values,
+        source: "command",
+        evidenceRefs: [commandEvidenceRef(entry)],
+      });
+      continue;
+    }
+    if (entry.status === "completed") {
+      pushUnique(summary.validation, {
+        textKey: "git.semanticDiff.validation.commandPassed",
+        evidenceKey: "git.semanticDiff.evidence.command",
+        confidence: "high",
+        values,
+        source: "command",
+        evidenceRefs: [commandEvidenceRef(entry)],
+      });
+      continue;
+    }
+    pushUnique(summary.validation, {
+      textKey: "git.semanticDiff.validation.commandObserved",
+      evidenceKey: "git.semanticDiff.evidence.command",
+      confidence: "medium",
+      values,
+      source: "command",
+      evidenceRefs: [commandEvidenceRef(entry)],
+    });
+  }
+}
+
+function addAiReviewFacts(aiReview: TurnSemanticReview | null | undefined, summary: SemanticDiffSummary) {
+  if (!aiReview) {
+    return;
+  }
+  for (const fact of aiReview.facts) {
+    if (!fact.evidenceRefs.length) {
+      continue;
+    }
+    const target = summary[fact.category === "risk" ? "risks" : fact.category];
+    pushUnique(target, {
+      textKey: "git.semanticDiff.ai.fact",
+      evidenceKey: "git.semanticDiff.evidence.ai",
+      confidence: fact.confidence,
+      values: { text: fact.text },
+      source: "ai",
+      evidenceRefs: fact.evidenceRefs,
+    });
   }
 }
 
 export function buildSemanticDiffSummary(
-  rawEntries: SemanticDiffEntry[],
+  input: SemanticDiffEntry[] | SemanticDiffSummaryInput,
 ): SemanticDiffSummary {
+  const rawEntries = Array.isArray(input) ? input : input.entries;
   const entries = rawEntries
     .map((entry) => ({
       ...entry,
@@ -455,6 +817,8 @@ export function buildSemanticDiffSummary(
   };
 
   addConcreteFacts(entries, summary);
+  addValidationCommandEvidence(Array.isArray(input) ? undefined : input.validationEvidence, summary);
+  addAiReviewFacts(Array.isArray(input) ? null : input.aiReview, summary);
 
   if (classification.deleted.length > 0) {
     pushUnique(summary.behavior, {
@@ -462,6 +826,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.deleted",
       confidence: "high",
       values: { count: classification.deleted.length },
+      source: "rule",
+      evidenceRefs: classification.deleted.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
 
@@ -471,6 +837,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.config",
       confidence: "medium",
       values: { count: classification.config.length },
+      source: "rule",
+      evidenceRefs: classification.config.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (classification.deleted.length > 0) {
@@ -479,6 +847,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.deleted",
       confidence: "high",
       values: { count: classification.deleted.length },
+      source: "rule",
+      evidenceRefs: classification.deleted.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (classification.source.length > 0 && classification.tests.length === 0) {
@@ -486,6 +856,8 @@ export function buildSemanticDiffSummary(
       textKey: "git.semanticDiff.risk.noTests",
       evidenceKey: "git.semanticDiff.evidence.noTests",
       confidence: "medium",
+      source: "rule",
+      evidenceRefs: classification.source.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (stats.files >= 8 || stats.additions + stats.deletions >= 500) {
@@ -498,6 +870,8 @@ export function buildSemanticDiffSummary(
         additions: stats.additions,
         deletions: stats.deletions,
       },
+      source: "rule",
+      evidenceRefs: entries.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
 
@@ -507,6 +881,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.tests",
       confidence: "medium",
       values: { count: classification.tests.length },
+      source: "rule",
+      evidenceRefs: classification.tests.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (classification.specs.length > 0) {
@@ -515,13 +891,18 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.spec",
       confidence: "medium",
       values: { count: classification.specs.length },
+      source: "rule",
+      evidenceRefs: classification.specs.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
-  pushUnique(summary.validation, {
-    textKey: "git.semanticDiff.validation.notConnected",
-    evidenceKey: "git.semanticDiff.evidence.validationNotConnected",
-    confidence: "high",
-  });
+  if (!summary.validation.some((item) => item.source === "command")) {
+    pushUnique(summary.validation, {
+      textKey: "git.semanticDiff.validation.notConnected",
+      evidenceKey: "git.semanticDiff.evidence.validationNotConnected",
+      confidence: "high",
+      source: "rule",
+    });
+  }
 
   if (summary.intent.length === 0) {
     pushUnique(summary.intent, {
@@ -529,6 +910,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.files",
       confidence: "low",
       values: { count: entries.length },
+      source: "rule",
+      evidenceRefs: entries.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (summary.behavior.length === 0) {
@@ -541,6 +924,8 @@ export function buildSemanticDiffSummary(
         additions: stats.additions,
         deletions: stats.deletions,
       },
+      source: "rule",
+      evidenceRefs: entries.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
   if (summary.risks.length === 0) {
@@ -549,6 +934,8 @@ export function buildSemanticDiffSummary(
       evidenceKey: "git.semanticDiff.evidence.files",
       confidence: "low",
       values: { count: entries.length },
+      source: "rule",
+      evidenceRefs: entries.map((entry) => fileEvidenceRef(entry.path)),
     });
   }
 

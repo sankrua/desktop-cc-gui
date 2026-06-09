@@ -285,11 +285,15 @@ describe("WorkspaceSessionActivityPanel", () => {
       ],
     };
 
+    const onOpenDiffPath = vi.fn();
+    const onEnsureEditorFileMaximized = vi.fn();
+
     render(
       <WorkspaceSessionActivityPanel
         workspaceId="workspace-1"
         viewModel={viewModel}
-        onOpenDiffPath={vi.fn()}
+        onOpenDiffPath={onOpenDiffPath}
+        onEnsureEditorFileMaximized={onEnsureEditorFileMaximized}
         onSelectThread={vi.fn()}
       />,
     );
@@ -318,6 +322,77 @@ describe("WorkspaceSessionActivityPanel", () => {
         "handleOperationLogNotFoundException returns ApiResponse.error(404, ...).",
       ),
     ).toBeTruthy();
+
+    const evidenceLink = screen.getAllByRole("button", {
+      name: "src/main/java/com/example/demo/exception/GlobalExceptionHandler.java:80",
+    })[0];
+    fireEvent.click(evidenceLink);
+    expect(onOpenDiffPath).toHaveBeenCalledWith(
+      "src/main/java/com/example/demo/exception/GlobalExceptionHandler.java",
+      { line: 80, column: 1 },
+      undefined,
+    );
+    expect(onEnsureEditorFileMaximized).toHaveBeenCalledTimes(1);
+    expect(document.querySelectorAll(".session-activity-semantic-evidence-refs")).toHaveLength(0);
+  });
+
+  it("shows same-turn validation command evidence in semantic diff", () => {
+    const viewModel = createViewModel();
+    const primaryFileChangeEvent = getPrimaryFileChangeEvent(viewModel);
+    viewModel.timeline = [
+      {
+        ...primaryFileChangeEvent,
+        turnId: "turn-validation",
+        turnIndex: 3,
+        threadId: "root-thread",
+        threadName: "Root session",
+        fileChanges: [
+          {
+            filePath: "src/App.tsx",
+            fileName: "App.tsx",
+            statusLetter: "M",
+            additions: 1,
+            deletions: 1,
+            diff: "@@ -1 +1 @@\n-export const oldValue = 1;\n+export const newValue = 2;",
+          },
+        ],
+      },
+      {
+        eventId: "command:vitest",
+        turnId: "turn-validation",
+        turnIndex: 3,
+        threadId: "root-thread",
+        threadName: "Root session",
+        sessionRole: "root",
+        relationshipSource: "directParent",
+        kind: "command",
+        occurredAt: 31,
+        summary: "Test · npx vitest run src/App.test.tsx",
+        status: "completed",
+        commandText: "npx vitest run src/App.test.tsx",
+        commandDescription: "Run focused tests",
+      },
+    ];
+
+    render(
+      <WorkspaceSessionActivityPanel
+        workspaceId="workspace-1"
+        viewModel={viewModel}
+        onOpenDiffPath={vi.fn()}
+        onSelectThread={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("tab", { name: "activityPanel.artifacts.tabs.semantic" }));
+
+    expect(screen.getByText("test validation command completed: Run focused tests.")).toBeTruthy();
+    expect(
+      Array.from(document.querySelectorAll(".session-activity-semantic-evidence-label")).some((node) =>
+        node.textContent?.includes("Run focused tests"),
+      ),
+    ).toBe(true);
+    expect(screen.getAllByText("Run focused tests").length).toBeGreaterThan(0);
+    expect(screen.queryByText("External validation evidence is not connected to this summary yet.")).toBeNull();
   });
 
   it("counts artifacts by deduped files instead of raw file-change events", () => {
