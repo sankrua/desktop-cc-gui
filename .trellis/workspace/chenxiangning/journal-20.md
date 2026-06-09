@@ -1744,3 +1744,41 @@ Codex app-server 对话链路切换为 codex-tui 兼容身份，补 terminal env
 ### Next Steps
 
 - None - task complete
+
+
+## Session 777: 兼容 Codex provider-home 会话归属恢复错误
+
+**Date**: 2026-06-09
+**Task**: 兼容 Codex provider-home 会话归属恢复错误
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| Summary | 将 Sidebar 的 `isSessionCatalogNotReadyError` 扩展为同时识别 legacy `session does not belong to target workspace` 与新的 `Codex session target could not be resolved safely` 错误。 |
+| Tests | 在 `Sidebar.test.tsx` 中覆盖 legacy 与 Codex provider-home unresolved 错误都被判定为 retryable。 |
+| Validation | `npm exec vitest run src/features/app/components/Sidebar.test.tsx`; `npm run typecheck`; `npm run lint -- --quiet src/features/app/components/Sidebar.test.tsx src/features/app/components/sidebarInternals.ts`; `git diff --check`。 |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f464ef6c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
