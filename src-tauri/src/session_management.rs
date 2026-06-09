@@ -2964,6 +2964,13 @@ include!("session_management_catalog_projection.rs");
 
 #[cfg(test)]
 mod tests {
+    include!("session_management_test_support.rs");
     include!("session_management_tests.rs");
+    include!("session_management_metadata_provider_tests.rs");
+    include!("session_management_folder_tests.rs");
+    include!("session_management_folder_assignment_tests.rs");
+    include!("session_management_archive_delete_tests.rs");
+    include!("session_management_workspace_scope_tests.rs");
+    include!("session_management_projection_tests.rs");
     include!("session_management_attribution_tests.rs");
 }
