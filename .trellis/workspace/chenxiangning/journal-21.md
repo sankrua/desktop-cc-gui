@@ -445,3 +445,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 793: 修复接口探索面板高度
+
+**Date**: 2026-06-10
+**Task**: 修复接口探索面板高度
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+修复 Project Map API Explorer 面板局部高度不随 focused 面板伸展的问题。将 API workspace、dashboard 和三列 grid 改为可继承剩余高度，并移除 rail/inspector 固定 590px 截断，避免底部出现大块空白。验证：check:large-files、lint、typecheck 通过；全量 test 在 121/159 批次因 realtimeBoundaryGuard 批量运行 5s 超时中断，单独重跑该 guard 通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7b649ea6` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
