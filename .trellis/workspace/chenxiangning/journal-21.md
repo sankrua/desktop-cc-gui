@@ -617,3 +617,43 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 797: 修复消息 Fork 改写工作区
+
+**Date**: 2026-06-10
+**Task**: 修复消息 Fork 改写工作区
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| Root cause | Message-tail Fork reused rewind flow without explicit mode, so missing mode defaulted to `messages-and-files` and could run workspace restore. |
+| Fix | `onForkFromMessage` now passes `mode: "messages-only"` to `forkSessionFromMessageForWorkspace`, making message Fork a session-only operation. |
+| Spec | Added OpenSpec change `fix-message-fork-workspace-mutation` documenting that message-tail Fork must not restore, delete, revert, or overwrite workspace files. |
+| Test | Extended adapter contract coverage to assert the message Fork path includes `mode: "messages-only"`. |
+| Verification | Ran targeted Vitest, OpenSpec strict validate, typecheck, lint, large-file check, and `git diff --check`; all passed. |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `88d6d494` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
