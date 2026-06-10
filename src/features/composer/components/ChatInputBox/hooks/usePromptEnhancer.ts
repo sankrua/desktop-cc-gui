@@ -450,7 +450,6 @@ export function usePromptEnhancer({
       }
     })();
   }, [
-    currentProvider,
     enhancerTimeoutSeconds,
     isEnhancing,
     modelGroups,

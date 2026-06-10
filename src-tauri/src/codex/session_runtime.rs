@@ -97,7 +97,8 @@ fn summarize_fallback_failure(error: &str) -> String {
     if normalized.len() <= 320 {
         return normalized;
     }
-    format!("{}...", &normalized[..320])
+    let truncated = normalized.chars().take(320).collect::<String>();
+    format!("{truncated}...")
 }
 
 async fn reuse_existing_session_if_healthy<FProbe, FutProbe, FTouch, FutTouch, FStop, FutStop>(
@@ -494,7 +495,7 @@ mod tests {
         attach_hook_safe_fallback_metadata, create_session_runtime_recovering_error,
         is_hook_safe_fallback_trigger, is_stopping_runtime_race_error,
         load_workspace_entries_for_runtime_start, reuse_existing_session_if_healthy,
-        CREATE_SESSION_RUNTIME_RECOVERING_ERROR_PREFIX,
+        summarize_fallback_failure, CREATE_SESSION_RUNTIME_RECOVERING_ERROR_PREFIX,
     };
     use crate::runtime::{RuntimeAcquireGate, RuntimeManager};
     use crate::types::WorkspaceEntry;
@@ -638,6 +639,14 @@ mod tests {
         assert!(!is_hook_safe_fallback_trigger(
             "Codex CLI is not app-server capable"
         ));
+    }
+
+    #[test]
+    fn fallback_failure_summary_truncates_multibyte_text_without_panicking() {
+        let summary = summarize_fallback_failure(&"权限".repeat(200));
+
+        assert!(summary.ends_with("..."));
+        assert_eq!(summary.trim_end_matches("...").chars().count(), 320);
     }
 
     #[test]

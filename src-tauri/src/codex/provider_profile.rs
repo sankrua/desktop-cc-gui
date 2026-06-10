@@ -188,11 +188,29 @@ fn normalize_profile_id(profile_id: Option<&str>) -> String {
 
 fn sanitize_provider_path_segment(provider_id: &str) -> Result<String, String> {
     let trimmed = provider_id.trim();
+    let windows_reserved_stem = trimmed
+        .split('.')
+        .next()
+        .unwrap_or(trimmed)
+        .to_ascii_uppercase();
+    let is_windows_reserved_name = matches!(
+        windows_reserved_stem.as_str(),
+        "CON" | "PRN" | "AUX" | "NUL"
+    ) || (windows_reserved_stem.len() == 4
+        && (windows_reserved_stem.starts_with("COM") || windows_reserved_stem.starts_with("LPT"))
+        && windows_reserved_stem[3..]
+            .chars()
+            .all(|ch| ('1'..='9').contains(&ch)));
     if trimmed.is_empty()
         || trimmed == "."
+        || trimmed.ends_with('.')
         || trimmed.contains('/')
         || trimmed.contains('\\')
         || trimmed.contains("..")
+        || trimmed
+            .chars()
+            .any(|ch| ch.is_control() || matches!(ch, '<' | '>' | ':' | '"' | '|' | '?' | '*'))
+        || is_windows_reserved_name
     {
         return Err("invalid Codex provider id".to_string());
     }
@@ -471,5 +489,25 @@ model_provider = "openai"
             materialize_codex_provider_profile_in_root(profile, &root).expect_err("invalid id");
         assert!(error.contains("invalid Codex provider id"));
         assert!(!root.join("provider-a").exists());
+    }
+
+    #[test]
+    fn materialize_managed_provider_rejects_windows_unsafe_provider_id() {
+        let root =
+            std::env::temp_dir().join(format!("ccgui-codex-provider-profile-{}", Uuid::new_v4()));
+        for provider_id in ["CON", "com1", "provider:a", "provider*", "provider."] {
+            let profile = CodexProviderProfile::Managed {
+                id: provider_id.to_string(),
+                name: "Provider A".to_string(),
+                config_toml: "model = \"gpt-5\"".to_string(),
+                auth_json: None,
+            };
+            let error =
+                materialize_codex_provider_profile_in_root(profile, &root).expect_err("invalid id");
+            assert!(
+                error.contains("invalid Codex provider id"),
+                "provider id {provider_id:?} should be rejected before filesystem access",
+            );
+        }
     }
 }
