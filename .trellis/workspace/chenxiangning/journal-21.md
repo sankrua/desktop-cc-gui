@@ -269,3 +269,45 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 789: 拆分 AppShell 运行态编排边界
+
+**Date**: 2026-06-10
+**Task**: 拆分 AppShell 运行态编排边界
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| AppShell boundary | Completed split-app-shell-runtime-boundaries OpenSpec implementation and committed the architecture safety-door refactor. |
+| Action contracts | Added typed runtime/task-run/navigation/context AppShell action boundary factories with focused tests. |
+| Thread runtime | Extracted session lifecycle and message runtime controllers behind existing compatibility facades. |
+| Type safety | Removed @ts-nocheck from app-shell.tsx, renderAppShell.tsx, and useAppShellSections.ts through typed context seams. |
+| Validation | Passed OpenSpec strict validation, focused Vitest suites, npm run typecheck, and npm run lint with only an existing warning. |
+| Trellis | Archived the completed split AppShell runtime boundaries task. |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6837f5a5` | (see git log) |
+| `09126ce7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
