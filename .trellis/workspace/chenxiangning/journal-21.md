@@ -344,3 +344,52 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 791: Review 两日提交并修复跨平台边界
+
+**Date**: 2026-06-10
+**Task**: Review 两日提交并修复跨平台边界
+**Branch**: `feature/v0.5.8`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| Runtime boundary | Fixed UTF-8 unsafe byte slicing in fallback failure summary and added multibyte regression coverage. |
+| Provider profile | Hardened managed provider id validation for Windows-invalid path segments and added regression coverage. |
+| Frontend lint | Removed stale prompt enhancer callback dependency after review validation. |
+
+**Validation**:
+- `npm run check:large-files:near-threshold`
+- `npm run check:large-files:gate`
+- `node --test scripts/check-large-files.test.mjs scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs`
+- `pnpm vitest run src/features/composer/components/ChatInputBox/hooks/usePromptEnhancer.test.tsx src/features/git/utils/semanticDiffSummary.test.ts src/app-shell-parts/appShellActionBoundaries.test.ts`
+- `npm run lint`
+- `npm run typecheck`
+- `cargo fmt --manifest-path src-tauri/Cargo.toml`
+- `cargo test --manifest-path src-tauri/Cargo.toml provider_profile::tests`
+- `cargo test --manifest-path src-tauri/Cargo.toml fallback_failure_summary_truncates_multibyte_text_without_panicking`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `011247f7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
