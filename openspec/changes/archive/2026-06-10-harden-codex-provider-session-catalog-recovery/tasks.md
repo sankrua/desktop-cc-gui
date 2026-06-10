@@ -53,4 +53,4 @@
 - [x] 7.2 Run focused frontend sidebar/thread-list tests. / 运行聚焦 frontend sidebar/thread-list tests。
 - [x] 7.3 Run `npm run typecheck`. / 运行 TypeScript typecheck。
 - [x] 7.4 Update Trellis code-specs if implementation changes executable contracts for Codex provider-home scanning or catalog source status. / 如果实现改变 Codex provider-home scanning 或 catalog source status 的 executable contract，更新 Trellis code-specs。
-- [ ] 7.5 Record manual verification: create managed-provider Codex session, restart app, confirm left sidebar still shows the session with provider label and archive/delete/folder actions work. / 记录手工验证：创建 managed-provider Codex session，重启 app，确认左侧栏仍显示该 session，并且 provider label、archive/delete/folder actions 可用。
+- [x] 7.5 Record manual verification: create managed-provider Codex session, restart app, confirm left sidebar still shows the session with provider label and archive/delete/folder actions work. / 记录手工验证：创建 managed-provider Codex session，重启 app，确认左侧栏仍显示该 session，并且 provider label、archive/delete/folder actions 可用。

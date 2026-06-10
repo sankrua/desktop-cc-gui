@@ -17,4 +17,4 @@
 
 - [x] 3.1 Update focused hook tests for manual open/run behavior; depends on 2.1; input: mocked `engineSendMessageSync`; output: tests for no-auto-run and configured engine/timeout; validation: focused Vitest target.
 - [x] 3.2 Mark implementation tasks complete after code changes; depends on 2.1-3.1; input: changed files; output: updated `tasks.md`; validation: tasks reflect actual completion state.
-- [ ] 3.3 Optional verification on request; depends on 3.1; input: user approval to run checks; output: focused test/typecheck results; validation: commands recorded in final response.
+- [x] 3.3 Optional verification on request; depends on 3.1; input: user approval to run checks; output: focused test/typecheck results; validation: commands recorded in final response.

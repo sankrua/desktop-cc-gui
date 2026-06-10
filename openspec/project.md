@@ -1,9 +1,9 @@
 # Project Context
 
 - Type: OpenSpec Workspace
-- Updated At: 2026-06-10T00:00:00+08:00
+- Updated At: 2026-06-10T21:19:34+08:00
 - Scope: governance snapshot for the current `mossx` repository workspace
-- Product version fact: `ccgui@0.5.8` from `package.json` and `src-tauri/tauri.conf.json`
+- Product version fact: `ccgui@0.5.9` from `package.json` and `src-tauri/tauri.conf.json`
 
 ## Domain
 
@@ -20,7 +20,7 @@ The product in this repository is `ccgui`: a Tauri 2 desktop AI engineering work
 - Change workflow artifacts: `openspec/changes/<change-id>/{proposal,design,tasks,verification}.md`
 - Archive: `openspec/changes/archive/*`
 - Implementation rules: `.trellis/spec/**`
-- Current workspace state: tracked active changes = `5`, archive changes = `451`, main specs = `320`
+- Current workspace state: tracked active changes = `8`, archive changes = `459`, main specs = `325`
 
 ## Entry Surfaces
 
@@ -54,20 +54,13 @@ The product in this repository is `ccgui`: a Tauri 2 desktop AI engineering work
 
 ## Current Inventory
 
-- Active changes: `5`
-- Archive changes: `451`
-- Main specs: `320`
+- Active changes: `8`
+- Archive changes: `459`
+- Main specs: `325`
 - Completed task sets still active: `0`
-- In-progress task sets: `5`
+- In-progress task sets: `7`
 
 ## Active Changes
-
-### `add-codex-provider-scoped-session-launch`
-
-- Task state: in progress (`32/35`).
-- Current artifact fact: provider-scoped Codex launch implementation is largely complete; remaining closure work covers final manual evidence and cleanup follow-through.
-- Product boundary: Codex provider selection is a creation/fork-time launch profile, not a global active provider switch.
-- Action: keep active until remaining validation and archive closure are complete.
 
 ### `add-custom-theme-palette-presets`
 
@@ -75,11 +68,17 @@ The product in this repository is `ccgui`: a Tauri 2 desktop AI engineering work
 - Current artifact fact: custom theme palette preset work is mostly complete and pending its final closure item.
 - Action: keep active until final verification and archive decision.
 
-### `harden-codex-provider-session-catalog-recovery`
+### `add-intent-change-review-workflow`
 
-- Task state: in progress (`27/28`).
-- Current artifact fact: provider-home session catalog recovery is implemented with one manual restart verification item remaining.
-- Action: keep active until the managed-provider restart/manual mutation evidence is recorded.
+- Task state: no `tasks.md`.
+- Current artifact fact: active directory exists but `openspec validate add-intent-change-review-workflow --strict --no-interactive` currently reports `Unknown item`, so this is not an archive candidate.
+- Action: either complete the OpenSpec artifact set or remove the stray active directory after confirming intent.
+
+### `enforce-bundle-budget-gate`
+
+- Task state: not started (`0/9`).
+- Current artifact fact: proposal/design/spec/tasks artifacts validate strictly, but implementation tasks have not started.
+- Action: keep active as planning/execution work.
 
 ### `harden-codex-tui-compatible-user-agent`
 
@@ -93,6 +92,24 @@ The product in this repository is `ccgui`: a Tauri 2 desktop AI engineering work
 - Current artifact fact: active performance hardening proposal currently lacks spec deltas, so `openspec validate --all --strict --no-interactive` reports this change as invalid until deltas are added or the change is explicitly scoped as no-spec.
 - Action: keep active and resolve the no-delta validation blocker before archive.
 
+### `parallelize-bootstrap-locale-loading`
+
+- Task state: not started (`0/17`).
+- Current artifact fact: startup parallelization artifacts validate strictly, but implementation tasks have not started.
+- Action: keep active as planning/execution work.
+
+### `refresh-v059-performance-baseline`
+
+- Task state: not started (`0/12`).
+- Current artifact fact: performance baseline refresh artifacts validate strictly, but generated evidence and baseline artifacts have not been produced.
+- Action: keep active until baseline capture, generated docs, and validation are complete.
+
+### `split-startup-css-loading`
+
+- Task state: not started (`0/17`).
+- Current artifact fact: startup CSS loading split artifacts validate strictly, but implementation tasks have not started.
+- Action: keep active as planning/execution work.
+
 ## Recent Archive / Sync Snapshot
 
 ### 2026-05-30 Closure Baseline
@@ -105,7 +122,7 @@ The earlier closure pass archived 51 explicitly verified active changes across c
 
 ### 2026-06-10 Closure Batch
 
-Archived 7 verified changes and synced their delta specs into main specs:
+Archived 15 verified changes across two closure passes and synced their delta specs into main specs:
 
 - `extend-client-font-size-coverage`
 - `add-semantic-diff-review`
@@ -114,8 +131,16 @@ Archived 7 verified changes and synced their delta specs into main specs:
 - `polish-project-map-files-api-mvp`
 - `refine-project-map-api-contract-detail-view`
 - `harden-file-markdown-preview-rendering`
+- `add-codex-provider-scoped-session-launch`
+- `add-prompt-enhancer-manual-provider-timeout`
+- `harden-codex-provider-session-catalog-recovery`
+- `fix-message-fork-workspace-mutation`
+- `fix-browser-context-light-theme-contrast`
+- `fix-windows-titlebar-controls-overlap`
+- `split-app-shell-runtime-boundaries`
+- `unify-client-workflow-runtime-model`
 
-Validation: `openspec validate --specs --strict --no-interactive` passed for all 320 main specs. Full `openspec validate --all --strict --no-interactive` is currently blocked by the pre-existing active change `harden-realtime-composer-status-panel-performance`, which has no spec delta.
+Validation: `openspec validate --specs --strict --no-interactive` passed for all 325 main specs. Full `openspec validate --all --strict --no-interactive` is currently blocked by the pre-existing active change `harden-realtime-composer-status-panel-performance`, which has no spec delta.
 
 ## Code Fact Snapshot
 
@@ -179,8 +204,9 @@ npm run check:large-files
 
 ## Update History
 
-- 2026-06-06: Stage-writeback refresh. Active change list corrected to the current seven active directories. `add-project-map-api-contract-view` and `add-intent-canvas-workspace-files` proposal/design artifacts received stage assessment and implementation calibration notes. Archive/main spec counts were intentionally not refreshed in this pass.
+- 2026-06-10: Archived 8 additional verified changes and synced their deltas into main specs. Current tracked counts are active=8, archive=459, specs=325. Spec-only strict validation passed; full strict validation remains blocked by active change `harden-realtime-composer-status-panel-performance` missing deltas.
 - 2026-06-10: Archived 7 verified changes and synced their deltas into main specs. Current tracked counts are active=5, archive=451, specs=320. Spec-only strict validation passed; full strict validation remains blocked by active change `harden-realtime-composer-status-panel-performance` missing deltas.
+- 2026-06-06: Stage-writeback refresh. Active change list corrected to the current seven active directories. `add-project-map-api-contract-view` and `add-intent-canvas-workspace-files` proposal/design artifacts received stage assessment and implementation calibration notes. Archive/main spec counts were intentionally not refreshed in this pass.
 - 2026-06-01: Refreshed project documentation snapshot. Current counts were active=2, archive=402, specs=303. Active changes were `add-agent-task-orchestration-center` and `harden-model-structured-output-normalization`; the former remained 0.5.5 planning/execution work, while the latter was completed active work pending archive/closure decision.
 - 2026-05-30: Archived 13 completed 0.5.4 changes after syncing delta specs into main specs. Previous workspace counts were active=2, archive=391, specs=299.
 - 2026-05-28: Archived `fix-user-input-dismiss-settlement` after strict OpenSpec validation, focused Vitest coverage, typecheck, and lint. Previous workspace counts were active=4, archive=370, specs=291.
