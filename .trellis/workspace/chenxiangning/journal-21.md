@@ -791,3 +791,44 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 801: 批量落地 v0.5.9 性能优化
+
+**Date**: 2026-06-11
+**Task**: 批量落地 v0.5.9 性能优化
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+批量提交 v0.5.9 性能优化与对应 OpenSpec/Trellis 文档：覆盖 AppShell lazy boundaries、startup i18n/bootstrap、startup CSS split、Markdown lazy runtime、FileView typing latency、search bounded hydration、runtime evidence gates 与 perf baseline 刷新。
+
+### Main Changes
+
+- 落地 AppShell performance boundaries 与 lazy view boundaries，降低 startup 主路径负载。
+- 并行化 bootstrap locale/i18n 初始化，并补充 `src/i18n/index.test.ts` 与 bootstrap 回归测试。
+- 拆分 startup CSS loading，新增 feature style loader hook。
+- 引入 Markdown full runtime lazy loading，并把相关异步渲染测试改为 `waitFor` 断言。
+- 强化 file preview/editor typing latency 路径，补充 CodeMirror language extension 与 typing diagnostics 测试。
+- 更新 search unified index / bounded hydration 指标和 runtime performance evidence gate。
+- 刷新 `docs/perf` baseline/history 与 OpenSpec archive/active changes。
+- 验证已通过：`git diff --check`、`npm run typecheck`、`npm run lint`、`npm run build`、`npm run check:bundle-chunking`、focused Vitest suites、`npm run test`、`openspec validate --all --strict --no-interactive`。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6e005ebb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

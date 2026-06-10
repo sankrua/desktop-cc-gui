@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-21.md`
-- **Total Sessions**: 800
-- **Last Active**: 2026-06-10
+- **Total Sessions**: 801
+- **Last Active**: 2026-06-11
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-21.md` | ~793 | Active |
+| `journal-21.md` | ~834 | Active |
 | `journal-20.md` | ~1997 | Archived |
 | `journal-19.md` | ~1989 | Archived |
 | `journal-18.md` | ~1966 | Archived |
@@ -49,6 +49,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 801 | 2026-06-11 | 批量落地 v0.5.9 性能优化 | `6e005ebb` | `feature/v0.5.9` |
 | 800 | 2026-06-10 | 归档阻塞 OpenSpec 提案 | `2a09c927` | `feature/v0.5.9` |
 | 799 | 2026-06-10 | 归档已验证 OpenSpec 提案 | `f4dfba2d` | `feature/v0.5.9` |
 | 798 | 2026-06-10 | 补充消息 Fork 文件保护回归测试 | `5e155324` | `feature/v0.5.8` |
