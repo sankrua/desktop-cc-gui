@@ -1019,3 +1019,49 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 806: 提交 OpenSpec 性能预算提案
+
+**Date**: 2026-06-11
+**Task**: 提交 OpenSpec 性能预算提案
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| Commit | `41ffa534 docs(openspec): 新增渲染与资源预算优化提案` |
+| Summary | 新增 5 个 OpenSpec change，覆盖 composer/message row 渲染预算、workspace tree/large file listing、backend IO cache/bridge payload、renderer resource backpressure、markdown off-main-thread pipeline。 |
+| Scope | 仅提交 `openspec/changes/**` 下指定 5 个提案目录，未纳入当前工作区其他源码改动。 |
+| Notes | 每个 change 包含 proposal、tasks、design 与对应 spec delta；提交前做了明显占位词扫描。 |
+
+**Updated Files**:
+- `openspec/changes/composer-and-message-row-render-budget/**`
+- `openspec/changes/workspace-tree-and-large-file-listing-budget/**`
+- `openspec/changes/backend-io-cache-and-bridge-payload-budget/**`
+- `openspec/changes/renderer-resource-backpressure/**`
+- `openspec/changes/markdown-off-main-thread-pipeline/**`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `41ffa534` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
