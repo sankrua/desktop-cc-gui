@@ -874,3 +874,58 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 803: 完善 search index review 修复
+
+**Date**: 2026-06-11
+**Task**: 完善 search index review 修复
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次按用户要求对当前工作区进行全面 review，并重点检查 search index、large-file governance、heavy-test-noise gate、边界条件与跨平台写法。
+
+主要变更：
+- 修复 search index invalidation 从 count-only 改为 content-aware numeric fingerprint，覆盖 same-count file replacement、thread rename、message text edit。
+- 补强 `isIndexStale` 的 workspace/provider identity 校验，避免跨 workspace/provider 相同 version 误判 fresh。
+- 新增 `searchQueryToken`，让 query token 在 render 阶段幂等推进，并在 `useUnifiedSearch` 中接入 stale guard。
+- 新增 search indexing/equivalence/invalidation/perf evidence regression tests。
+- 为 `check-heavy-test-noise.mjs` 增加 repo-boundary output path guard，防止治理 artifact 写出仓库。
+- 同步 `openspec/changes/search-index-and-bounded-hydration/design.md` 与 `tasks.md`，记录 content-aware invalidation 和验证结果。
+
+验证：
+- `npx vitest run src/features/search/indexing/ src/features/search/hooks/searchQueryToken.test.tsx src/features/search/hooks/useUnifiedSearch.test.ts src/features/search/perf/`：94/94 pass。
+- `node --test scripts/check-large-files.test.mjs`：12/12 pass。
+- `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs`：20/20 pass。
+- `npm run check:large-files:near-threshold && npm run check:large-files:gate`：hard gate pass，fail scope found=0。
+- `npm run typecheck`：pass。
+- `npm run lint`：pass。
+- `openspec validate search-index-and-bounded-hydration --strict --no-interactive`：valid。
+- `npm run check:heavy-test-noise`：651 test files completed；act warnings 0，stdout payload 0，stderr payload 0。
+
+备注：
+- `npm warn Unknown user config "electron_mirror"` 属于环境告警，heavy-test-noise gate 识别为 environment warning，不算 repo-owned violation。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `905c6a37` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
