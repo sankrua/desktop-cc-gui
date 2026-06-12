@@ -1312,3 +1312,56 @@ During verification, `TaskCreateModal.test.tsx` exposed an async state assertion
 ### Next Steps
 
 - None - task complete
+
+
+## Session 812: 收口实时输入与前端 prop 链稳定性阶段校准
+
+**Date**: 2026-06-12
+**Task**: 收口实时输入与前端 prop 链稳定性阶段校准
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+提交 realtime-input-and-io-isolation 与 frontend-prop-chain-stability 的阶段性代码、任务状态和 runtime evidence 校准；两个 change 保持未归档，作为后续提案输入。
+
+### Main Changes
+
+本次收口内容：
+- 提交 layout nodes / AppShell layout section 的阶段性拆分与测试更新。
+- 同步 realtime-input-and-io-isolation-2026-06 与 frontend-prop-chain-stability-2026-06 的 tasks 状态。
+- 刷新 runtime evidence gates、realtime extended baseline、turn trace artifact。
+- 保留未完成判断：仍存在残余 threadStatusById map 传播，Sidebar virtualization / Composer split 仍需 evidence 决策，手动双 session 5 分钟无 visible jank 验证未达成。
+
+验证结果：
+- npm run typecheck: passed
+- npm run lint: passed
+- npm run test: passed
+- cargo check: passed
+- openspec validate realtime-input-and-io-isolation-2026-06 --strict --no-interactive: passed
+- openspec validate frontend-prop-chain-stability-2026-06 --strict --no-interactive: passed
+- npm run perf:realtime:boundary-guard: passed
+- npm run perf:realtime:extended-baseline: passed
+- npm run check:runtime-evidence-gates: passed
+- git diff --check: passed
+
+人工观察：
+- 卡顿有减轻但仍存在；不归档现有 change，后续建议重开提案继续处理残余卡顿。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `46b3f61a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
