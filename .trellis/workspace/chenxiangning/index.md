@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-21.md`
-- **Total Sessions**: 809
+- **Total Sessions**: 810
 - **Last Active**: 2026-06-12
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-21.md` | ~1227 | Active |
+| `journal-21.md` | ~1260 | Active |
 | `journal-20.md` | ~1997 | Archived |
 | `journal-19.md` | ~1989 | Archived |
 | `journal-18.md` | ~1966 | Archived |
@@ -49,6 +49,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 810 | 2026-06-12 | 收口事件批处理与文件 I/O 隔离 | `7cc4a284` | `feature/v0.5.9` |
 | 809 | 2026-06-12 | 落地 P1 性能预算链路 | `f7ae0a99` | `feature/v0.5.9` |
 | 808 | 2026-06-12 | 收口本迭代已完成任务 | `c646bcc0` | `feature/v0.5.9` |
 | 807 | 2026-06-12 | 为 5 个 P1 提案补串行执行顺序 | `944e3536` | `feature/v0.5.9` |

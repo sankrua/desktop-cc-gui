@@ -1225,3 +1225,36 @@ During verification, `TaskCreateModal.test.tsx` exposed an async state assertion
 ### Next Steps
 
 - None - task complete
+
+
+## Session 810: 收口事件批处理与文件 I/O 隔离
+
+**Date**: 2026-06-12
+**Task**: 收口事件批处理与文件 I/O 隔离
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+完成 realtime input / file I/O isolation OpenSpec 实施收口：修复 app-server batch FIFO 串行调度、file external sync batch coalesce、Rust event/file I/O isolation 与 runtime evidence gates；复核 large-file/heavy-test-noise workflow，本地全量测试与门禁通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `7cc4a284` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
