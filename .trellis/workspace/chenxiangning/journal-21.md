@@ -1258,3 +1258,57 @@ During verification, `TaskCreateModal.test.tsx` exposed an async state assertion
 ### Next Steps
 
 - None - task complete
+
+
+## Session 811: 收口实时输入与前端 prop 链稳定性阶段实现
+
+**Date**: 2026-06-12
+**Task**: 收口实时输入与前端 prop 链稳定性阶段实现
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| OpenSpec | `realtime-input-and-io-isolation-2026-06` / `frontend-prop-chain-stability-2026-06` 阶段性 checkpoint |
+| 前端稳定性 | 拆出 `appShellDomainContexts` 6 域结构，收窄 `renderAppShell` / section hook 输入边界，并集中 legacy flat context adapter |
+| Realtime / IO | 补齐 batch consumer、file external sync batch coalesce、thread reducer profiler evidence、Rust blocking file I/O wall time metric |
+| Review 修复 | 将 `appShellDomainContextsRef.current` 写入移到 `useEffect`，避免 render-phase mutation；移除迁移链路中的 `as unknown as` 连环断言 |
+| Evidence | 更新 runtime evidence report 与 OpenSpec task 进度；保留未完成手动 2-session 5min jank 验收 |
+
+**验证**:
+- `npm run typecheck`
+- `npm run lint`
+- `npm run test`（661 test files passed）
+- `npm run check:runtime-evidence-gates`
+- `npx openspec validate frontend-prop-chain-stability-2026-06 --strict`
+- `npx openspec validate realtime-input-and-io-isolation-2026-06 --strict`
+- `git diff --check`
+- `cargo check`
+
+**下一步**:
+- 单独推进 `useAppShellLayoutNodesSection -> useLayoutNodes` options 分组收窄。
+- 做手动 2 个 codex session 跑 5 分钟无明显卡顿验证。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `25d101a0` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
