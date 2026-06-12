@@ -32,6 +32,21 @@
 - Modify realtime / app-shell boundary contracts so file surfaces consume only narrow pressure signals and are protected from whole `threadStatusById` map propagation.
 - Add validation expectations for file-open, tab-switch, typing, line-change, and concurrent realtime pressure scenarios.
 
+## Implementation Closeout Notes
+
+2026-06-13 最后一轮修复针对用户复测指出的“文件已打开后，编辑模式里点行、切光标、输入仍顿挫”重新校准了根因：普通 cursor movement 不直接触发文件系统读取或 code intelligence 请求，主要剩余压力来自 renderer hot path。
+
+本轮最终实现追加了以下收口点：
+
+- `FileViewBody.handleEditorContentChange` 不再对每次输入调用 `setEditorContent(nextContent)`；CodeMirror 拥有即时输入，React document snapshot 只接收 debounced / explicit publish。
+- `FileViewPanel.handleEditorLineRangeChange` 不再每次 selection 变化立即更新 React line range state；line label 与 Composer/global publish 统一走 latest-only debounce。
+- `activeDeclarationCodeAnchor` derivation 从 `content` 依赖中拆出，改为基于当前 editor draft 与 line range 的 deferred/epoch-guarded derivation，避免每次输入 publish 都重新扫描 full content。
+- CodeMirror extension composition 使用 `useMemo` 保持引用稳定，降低 React render 后的 editor reconfiguration 风险。
+- `useFileDocumentState` 增加 lightweight session cache，覆盖 clean snapshot reuse、dirty draft retention、large file fallback 和 test cleanup。
+- git marker / markdown preview side channels 使用 file render token 防止 tab switch 后 stale async result 写回。
+
+用户复测反馈“有重大改善”。因此本 change 收口判断为：本轮主要解决 frontend editor/render hot path 污染；暂不开 Rust/Tauri file IO cache follow-up。若后续 measured evidence 指向 raw file read、file tree polling 或 native command backlog，再单独开 backend cache 提案。
+
 ## 技术方案选项
 
 ### Option A: Patch current hooks in place
