@@ -1641,7 +1641,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
           pushError={options.pushError}
           syncError={options.syncError}
           commitsAhead={options.commitsAhead}
-          onRefreshGitStatus={options.queueGitStatusRefresh}
           onRefreshGitDiffs={options.refreshGitDiffs}
           onCreateCodeAnnotation={handleCreateCodeAnnotation}
           onRemoveCodeAnnotation={handleRemoveCodeAnnotation}
