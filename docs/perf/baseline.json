@@ -231,7 +231,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeMain",
       "value": 1121481,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "notes": "App-GOSdMQOY.js",
       "evidenceClass": "measured",
       "budget": {
@@ -248,7 +248,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeVendor",
       "value": 741552,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "notes": "subset-shared.chunk-BukY6QKG.js",
       "evidenceClass": "measured",
       "budget": {
@@ -572,7 +572,7 @@
       {
         "scenario": "S-CS-COLD",
         "metric": "bundleSizeMain",
-        "unit": "bytes",
+        "unit": "bytes-gzip",
         "previousValue": 1284244,
         "currentValue": 1121481,
         "delta": -162763,
@@ -583,7 +583,7 @@
       {
         "scenario": "S-CS-COLD",
         "metric": "bundleSizeVendor",
-        "unit": "bytes",
+        "unit": "bytes-gzip",
         "previousValue": 672901,
         "currentValue": 741552,
         "delta": 68651,

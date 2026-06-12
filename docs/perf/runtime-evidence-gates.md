@@ -1,6 +1,6 @@
 # Runtime Evidence Gates
 
-Generated at: 2026-06-12T16:51:24.241Z
+Generated at: 2026-06-12T19:44:59.000Z
 
 ## Performance Evidence
 
@@ -30,8 +30,8 @@ Generated at: 2026-06-12T16:51:24.241Z
 | docs/perf/realtime-extended-baseline.json | S-RS-RA | reducerAmplificationMedian | 4 | ratio | proxy | 2 | 4 | Replay-derived reducer amplification median; reflects fixture batch grouping. | Cross-check with renderer-side reducer commit count under live Tauri session. |
 | docs/perf/realtime-extended-baseline.json | S-RS-FD | batchFlushDurationP95 | 13.33 | ms | proxy | 8 | 16 | Replay-derived batch flush duration P95; replay group window is the surrogate. | Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path. |
 | docs/perf/realtime-extended-baseline.json | S-RS-TS | terminalSettlementP95 | 60 | ms | proxy | 100 | 250 | Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted). | Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured. |
-| docs/perf/baseline.json | S-CS-COLD | bundleSizeMain | 1121481 | bytes | measured | 950000 | 1100000 | App-GOSdMQOY.js | Track for regression. |
-| docs/perf/baseline.json | S-CS-COLD | bundleSizeVendor | 741552 | bytes | measured | 680000 | 760000 | subset-shared.chunk-BukY6QKG.js | Track for regression. |
+| docs/perf/baseline.json | S-CS-COLD | bundleSizeMain | 1121481 | bytes-gzip | measured | 950000 | 1100000 | App-GOSdMQOY.js | Track for regression. |
+| docs/perf/baseline.json | S-CS-COLD | bundleSizeVendor | 741552 | bytes-gzip | measured | 680000 | 760000 | subset-shared.chunk-BukY6QKG.js | Track for regression. |
 | docs/perf/baseline.json | S-CS-COLD | firstPaintMs | unsupported | ms | unsupported |  |  | Tauri webview headless cold-start timing is not available in this script; bundle baseline is recorded. | Collect real Tauri webview cold-start timing on a supported runner. |
 | docs/perf/baseline.json | S-CS-COLD | firstInteractiveMs | unsupported | ms | unsupported |  |  | Tauri webview headless cold-start timing is not available in this script; bundle baseline is recorded. | Collect real Tauri webview cold-start timing on a supported runner. |
 | docs/perf/composer-baseline.json | S-CI-50 | keystrokeToCommitP95 | 0.08 | ms | proxy |  |  | Fixture or replay evidence; useful for regression comparison, not release-grade runtime proof. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
@@ -150,3 +150,52 @@ Generated at: 2026-06-12T16:51:24.241Z
 - First interactive evidence: unsupported
 - Reason: Tauri webview headless cold-start timing is not available in this script; bundle baseline is recorded.
 - Next action: Collect Tauri webview timing on supported macOS/Windows/Linux runners.
+
+## Archive Readiness
+
+- Source: `openspec list --json`
+- Currently completed active changes: 0
+  - Only the closure change (`close-performance-iteration-2026-06`) is active.
+- In-progress active changes: 0
+- Error: null
+
+### Previous Archive Context (history, not current)
+
+The 8 performance changes already archived on 2026-06-12 are preserved here as
+history. They are NOT part of the current `archiveReadiness.completed` list;
+they are recorded as `previousArchiveContext` so future iterations can trace
+which iterations shipped.
+
+| Archived change (directory) | Archived at | Tasks | Recommendation |
+|---|---|---|---|
+| 2026-06-12-realtime-input-and-io-isolation-2026-06 | 2026-06-12 | 68/68 | archive-candidate-after-qualifier-review |
+| 2026-06-12-frontend-prop-chain-stability-2026-06 | 2026-06-12 | 45/45 | archive-candidate-after-qualifier-review |
+| 2026-06-12-file-editor-io-render-isolation-2026-06 | 2026-06-12 | 24/24 | archive-candidate-after-qualifier-review |
+| 2026-06-12-workspace-tree-and-large-file-listing-budget | 2026-06-12 | 26/26 | archive-candidate-after-qualifier-review |
+| 2026-06-12-markdown-off-main-thread-pipeline | 2026-06-12 | 27/27 | archive-candidate-after-qualifier-review |
+| 2026-06-12-backend-io-cache-and-bridge-payload-budget | 2026-06-12 | 27/27 | archive-candidate-after-qualifier-review |
+| 2026-06-12-renderer-resource-backpressure | 2026-06-12 | 33/33 | archive-candidate-after-qualifier-review |
+| 2026-06-12-composer-and-message-row-render-budget | 2026-06-12 | 20/20 | archive-candidate-after-qualifier-review |
+
+## Large-File Structural Debt Ownership
+
+Every P0/P1 large-file candidate carries explicit `owner` and `followUp` metadata.
+This is structural debt, not completed optimization work. Records of debt must
+keep the file path, line count, priority, owner, and follow-up change visible.
+
+| Path | Lines | Priority | Headroom | Owner | Follow-up |
+|---|---:|---|---:|---|---|
+| src/services/tauri.ts | 2514 | P0 | 86 | backend-modularization-debt | Split Tauri service adapter; preserve hook/component contracts and web/Tauri fallback semantics. |
+| src-tauri/src/engine/claude_history.rs | 2505 | P0 | 95 | backend-modularization-debt | Split Claude history module while preserving command registration, payload shape, and cross-platform paths. |
+| src-tauri/src/codex/mod.rs | 2484 | P0 | 116 | backend-modularization-debt | Split Codex facade into per-concern submodules; preserve Tauri command surface. |
+| src-tauri/src/git/mod.rs | 2379 | P0 | 221 | backend-modularization-debt | Split Git module; preserve command registration, payload shape, and platform paths. |
+| src-tauri/src/runtime/mod.rs | 2371 | P0 | 229 | backend-modularization-debt | Split runtime module; preserve bridge runtime contracts and payload compatibility. |
+| src-tauri/src/engine/commands.rs | 2286 | P0 | 314 | backend-modularization-debt | Split engine command dispatch; preserve Tauri command facade and payload shape. |
+| src-tauri/src/engine/claude.rs | 2272 | P0 | 328 | backend-modularization-debt | Split engine claude module; preserve command registration and cross-platform paths. |
+| src-tauri/src/session_management.rs | 2976 | P1 | 24 | backend-modularization-debt | Split session management; preserve Tauri command facade and payload compatibility. |
+| src/features/threads/hooks/useThreadEventHandlers.ts | 2747 | P1 | 53 | frontend-modularization-debt | Split useThreadEventHandlers; preserve hook input/output shape and async cleanup semantics. |
+| src-tauri/src/bin/cc_gui_daemon/daemon_state.rs | 2936 | P1 | 64 | backend-modularization-debt | Split cc_gui_daemon state; preserve command registration and cross-platform paths. |
+
+Next action: pick one coherent runtime boundary per owner; do not batch
+unrelated hot paths together. Splitting must not change hook/component
+contracts or Tauri command facade/payload compatibility.

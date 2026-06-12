@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-06-12T16:51:24.241Z",
+  "generatedAt": "2026-06-12T19:44:59.000Z",
   "sources": {
     "perfBaseline": "docs/perf/baseline.json",
     "composerBaseline": "docs/perf/composer-baseline.json",
@@ -280,7 +280,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 2000,
-        "hardFail": 5000
+        "hardFail": 5000,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived first-delta -> first-visible-text P95; jsdom/PerformanceObserver path is the follow-up.",
       "nextAction": "Wire PerformanceObserver in Tauri webview to record first visible text growth and bring this to measured."
@@ -294,7 +295,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 2,
-        "hardFail": 4
+        "hardFail": 4,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived reducer amplification median; reflects fixture batch grouping.",
       "nextAction": "Cross-check with renderer-side reducer commit count under live Tauri session."
@@ -308,7 +310,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 8,
-        "hardFail": 16
+        "hardFail": 16,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived batch flush duration P95; replay group window is the surrogate.",
       "nextAction": "Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path."
@@ -322,7 +325,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 100,
-        "hardFail": 250
+        "hardFail": 250,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted).",
       "nextAction": "Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured."
@@ -332,7 +336,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeMain",
       "value": 1121481,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "evidenceClass": "measured",
       "budget": {
         "observed": 1121481,
@@ -351,7 +355,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeVendor",
       "value": 741552,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "evidenceClass": "measured",
       "budget": {
         "observed": 741552,
@@ -1060,7 +1064,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 2000,
-        "hardFail": 5000
+        "hardFail": 5000,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived first-delta -> first-visible-text P95; jsdom/PerformanceObserver path is the follow-up.",
       "nextAction": "Wire PerformanceObserver in Tauri webview to record first visible text growth and bring this to measured."
@@ -1074,7 +1079,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 2,
-        "hardFail": 4
+        "hardFail": 4,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived reducer amplification median; reflects fixture batch grouping.",
       "nextAction": "Cross-check with renderer-side reducer commit count under live Tauri session."
@@ -1088,7 +1094,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 8,
-        "hardFail": 16
+        "hardFail": 16,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived batch flush duration P95; replay group window is the surrogate.",
       "nextAction": "Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path."
@@ -1102,7 +1109,8 @@
       "evidenceClass": "proxy",
       "budget": {
         "target": 100,
-        "hardFail": 250
+        "hardFail": 250,
+        "rollout": "advisory-until-runtime-trace"
       },
       "reason": "Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted).",
       "nextAction": "Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured."
@@ -1112,7 +1120,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeMain",
       "value": 1121481,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "evidenceClass": "measured",
       "budget": {
         "observed": 1121481,
@@ -1131,7 +1139,7 @@
       "scenario": "S-CS-COLD",
       "metric": "bundleSizeVendor",
       "value": 741552,
-      "unit": "bytes",
+      "unit": "bytes-gzip",
       "evidenceClass": "measured",
       "budget": {
         "observed": 741552,
@@ -1253,58 +1261,79 @@
   },
   "archiveReadiness": {
     "source": "openspec list --json",
-    "completed": [
-      {
-        "name": "realtime-input-and-io-isolation-2026-06",
-        "tasks": "68/68",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "frontend-prop-chain-stability-2026-06",
-        "tasks": "45/45",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "file-editor-io-render-isolation-2026-06",
-        "tasks": "24/24",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "workspace-tree-and-large-file-listing-budget",
-        "tasks": "26/26",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "markdown-off-main-thread-pipeline",
-        "tasks": "27/27",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "backend-io-cache-and-bridge-payload-budget",
-        "tasks": "27/27",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "renderer-resource-backpressure",
-        "tasks": "33/33",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      },
-      {
-        "name": "composer-and-message-row-render-budget",
-        "tasks": "20/20",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
-      }
-    ],
+    "completed": [],
     "inProgress": [],
-    "error": null
+    "error": null,
+    "previousArchiveContext": {
+      "source": "git log + openspec/changes/archive/",
+      "note": "Changes already archived in the 2026-06-12 closure batch. Preserved here as history; not part of the current active completed set.",
+      "changes": [
+        {
+          "name": "realtime-input-and-io-isolation-2026-06",
+          "tasks": "68/68",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-realtime-input-and-io-isolation-2026-06",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "frontend-prop-chain-stability-2026-06",
+          "tasks": "45/45",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-frontend-prop-chain-stability-2026-06",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "file-editor-io-render-isolation-2026-06",
+          "tasks": "24/24",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-file-editor-io-render-isolation-2026-06",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "workspace-tree-and-large-file-listing-budget",
+          "tasks": "26/26",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-workspace-tree-and-large-file-listing-budget",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "markdown-off-main-thread-pipeline",
+          "tasks": "27/27",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-markdown-off-main-thread-pipeline",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "backend-io-cache-and-bridge-payload-budget",
+          "tasks": "27/27",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-backend-io-cache-and-bridge-payload-budget",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "renderer-resource-backpressure",
+          "tasks": "33/33",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-renderer-resource-backpressure",
+          "archivedAt": "2026-06-12"
+        },
+        {
+          "name": "composer-and-message-row-render-budget",
+          "tasks": "20/20",
+          "recommendation": "archive-candidate-after-qualifier-review",
+          "qualifier": "Review validation and platform qualifiers before archive.",
+          "archivedAs": "2026-06-12-composer-and-message-row-render-budget",
+          "archivedAt": "2026-06-12"
+        }
+      ]
+    }
   },
   "compatibilityPaths": [
     {
@@ -1343,7 +1372,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 86,
-        "facade": "Preserve service exports, payload mapping, and web/Tauri fallback semantics."
+        "facade": "Preserve service exports, payload mapping, and web/Tauri fallback semantics.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split Tauri service adapter; preserve hook/component contracts and web/Tauri fallback semantics."
       },
       {
         "path": "src-tauri/src/engine/claude_history.rs",
@@ -1351,7 +1382,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 95,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split Claude history module while preserving command registration, payload shape, and cross-platform paths."
       },
       {
         "path": "src-tauri/src/codex/mod.rs",
@@ -1359,7 +1392,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 116,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split Codex facade into per-concern submodules; preserve Tauri command surface."
       },
       {
         "path": "src-tauri/src/git/mod.rs",
@@ -1367,7 +1402,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 221,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split Git module; preserve command registration, payload shape, and platform paths."
       },
       {
         "path": "src-tauri/src/runtime/mod.rs",
@@ -1375,7 +1412,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 229,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split runtime module; preserve bridge runtime contracts and payload compatibility."
       },
       {
         "path": "src-tauri/src/engine/commands.rs",
@@ -1383,7 +1422,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 314,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split engine command dispatch; preserve Tauri command facade and payload shape."
       },
       {
         "path": "src-tauri/src/engine/claude.rs",
@@ -1391,7 +1432,9 @@
         "priority": "P0",
         "policyId": "bridge-runtime-critical",
         "headroom": 328,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split engine claude module; preserve command registration and cross-platform paths."
       },
       {
         "path": "src-tauri/src/session_management.rs",
@@ -1399,7 +1442,9 @@
         "priority": "P1",
         "policyId": "default-source",
         "headroom": 24,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split session management; preserve Tauri command facade and payload compatibility."
       },
       {
         "path": "src/features/threads/hooks/useThreadEventHandlers.ts",
@@ -1407,7 +1452,9 @@
         "priority": "P1",
         "policyId": "feature-hotpath",
         "headroom": 53,
-        "facade": "Preserve hook input/output shape and async cleanup semantics."
+        "facade": "Preserve hook input/output shape and async cleanup semantics.",
+        "owner": "frontend-modularization-debt",
+        "followUp": "Split useThreadEventHandlers; preserve hook input/output shape and async cleanup semantics."
       },
       {
         "path": "src-tauri/src/bin/cc_gui_daemon/daemon_state.rs",
@@ -1415,7 +1462,9 @@
         "priority": "P1",
         "policyId": "default-source",
         "headroom": 64,
-        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths."
+        "facade": "Preserve command registration, Rust module facade, payload shape, and cross-platform paths.",
+        "owner": "backend-modularization-debt",
+        "followUp": "Split cc_gui_daemon state; preserve command registration and cross-platform paths."
       }
     ],
     "nextAction": "Pick one coherent runtime boundary; do not batch unrelated hot paths together."

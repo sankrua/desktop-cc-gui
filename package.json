@@ -52,6 +52,7 @@
     "perf:cold-start:baseline": "node scripts/perf-cold-start-baseline.mjs",
     "perf:baseline:aggregate": "node scripts/perf-aggregate.mjs",
     "perf:baseline:all": "npm run perf:long-list:baseline && npm run perf:composer:baseline && npm run perf:realtime:extended-baseline && npm run perf:cold-start:baseline && npm run perf:baseline:aggregate",
+    "perf:archive-readiness": "node scripts/perf-archive-readiness.mjs",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "node scripts/test-batched.mjs",
     "test:integration": "node scripts/test-batched.mjs --include-heavy",
