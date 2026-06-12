@@ -9,16 +9,11 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  createContext,
   memo,
   useCallback,
-  useContext,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
-  useSyncExternalStore,
 } from "react";
 import type { CSSProperties, KeyboardEvent, MouseEvent } from "react";
 import { useTranslation } from "react-i18next";
@@ -31,19 +26,11 @@ import { SharedSessionIcon } from "../../shared-session/components/SharedSession
 import { ThreadDeleteConfirmBubble } from "../../threads/components/ThreadDeleteConfirmBubble";
 import { resolveCodexProviderLabel } from "../utils/codexProviderLabel";
 import { getExitedSessionRowVisibility } from "../utils/exitedSessionRows";
-
-type ThreadStatusMap = Record<
-  string,
-  { isProcessing: boolean; hasUnread: boolean; isReviewing: boolean }
->;
-
-type ThreadRowStatus = ThreadStatusMap[string];
-
-type ThreadRowStatusStore = {
-  getSnapshot: (threadId: string) => ThreadRowStatus | undefined;
-  setStatusMap: (nextStatusById: ThreadStatusMap) => void;
-  subscribe: (threadId: string, listener: () => void) => () => void;
-};
+import {
+  ThreadRowStatusProvider,
+  useThreadRowStatus,
+  type ThreadStatusMap,
+} from "./threadRowStatusStore";
 
 type ThreadRow = {
   thread: ThreadSummary;
@@ -102,81 +89,7 @@ type ThreadRowItemProps = {
   onThreadRowRender?: (threadId: string) => void;
 };
 
-const ThreadRowStatusStoreContext = createContext<ThreadRowStatusStore | null>(null);
 const EMPTY_MOVE_FOLDER_TARGETS: ThreadMoveFolderTarget[] = [];
-
-function areThreadRowStatusesEqual(
-  left: ThreadRowStatus | undefined,
-  right: ThreadRowStatus | undefined,
-) {
-  return (
-    left?.isProcessing === right?.isProcessing &&
-    left?.hasUnread === right?.hasUnread &&
-    left?.isReviewing === right?.isReviewing
-  );
-}
-
-function createThreadRowStatusStore(
-  initialStatusById: ThreadStatusMap,
-): ThreadRowStatusStore {
-  let statusById = initialStatusById;
-  const listenersByThreadId = new Map<string, Set<() => void>>();
-
-  return {
-    getSnapshot(threadId) {
-      return statusById[threadId];
-    },
-    setStatusMap(nextStatusById) {
-      if (Object.is(statusById, nextStatusById)) {
-        return;
-      }
-      const previousStatusById = statusById;
-      statusById = nextStatusById;
-      const changedThreadIds = new Set([
-        ...Object.keys(previousStatusById),
-        ...Object.keys(nextStatusById),
-      ]);
-
-      changedThreadIds.forEach((threadId) => {
-        if (
-          areThreadRowStatusesEqual(
-            previousStatusById[threadId],
-            nextStatusById[threadId],
-          )
-        ) {
-          return;
-        }
-        listenersByThreadId.get(threadId)?.forEach((listener) => listener());
-      });
-    },
-    subscribe(threadId, listener) {
-      const listeners = listenersByThreadId.get(threadId) ?? new Set<() => void>();
-      listeners.add(listener);
-      listenersByThreadId.set(threadId, listeners);
-      return () => {
-        listeners.delete(listener);
-        if (listeners.size === 0) {
-          listenersByThreadId.delete(threadId);
-        }
-      };
-    },
-  };
-}
-
-export function useThreadRowStatus(threadId: string): ThreadRowStatus | undefined {
-  const store = useContext(ThreadRowStatusStoreContext);
-  if (!store) {
-    throw new Error("useThreadRowStatus must be used within ThreadList");
-  }
-
-  const subscribe = useCallback(
-    (listener: () => void) => store.subscribe(threadId, listener),
-    [store, threadId],
-  );
-  const getSnapshot = useCallback(() => store.getSnapshot(threadId), [store, threadId]);
-
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
 
 function isPendingSubagentThread(thread: ThreadSummary) {
   return thread.id.startsWith("claude-pending-subagent:");
@@ -514,14 +427,6 @@ export function ThreadList({
   onThreadRowRender,
 }: ThreadListProps) {
   const { t } = useTranslation();
-  const threadRowStatusStoreRef = useRef<ThreadRowStatusStore | null>(null);
-  if (threadRowStatusStoreRef.current === null) {
-    threadRowStatusStoreRef.current = createThreadRowStatusStore(threadStatusById);
-  }
-  const threadRowStatusStore = threadRowStatusStoreRef.current;
-  useLayoutEffect(() => {
-    threadRowStatusStore.setStatusMap(threadStatusById);
-  }, [threadRowStatusStore, threadStatusById]);
   const indentUnit = nested ? 10 : 14;
   const [collapsedParentThreadIds, setCollapsedParentThreadIds] = useState<Set<string>>(
     () => new Set(),
@@ -699,7 +604,7 @@ export function ThreadList({
   };
 
   return (
-    <ThreadRowStatusStoreContext.Provider value={threadRowStatusStore}>
+    <ThreadRowStatusProvider threadStatusById={threadStatusById}>
       <div className={`thread-list${nested ? " thread-list-nested" : ""}`}>
         {displayedPinnedRows.map((row) => renderThreadRow(row))}
         {displayedPinnedRows.length > 0 && displayedUnpinnedRows.length > 0 && (
@@ -741,6 +646,6 @@ export function ThreadList({
           </button>
         )}
       </div>
-    </ThreadRowStatusStoreContext.Provider>
+    </ThreadRowStatusProvider>
   );
 }

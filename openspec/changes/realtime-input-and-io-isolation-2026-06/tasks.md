@@ -97,14 +97,14 @@
   > follow-up 已完成：`app-shell.tsx` 生产侧 6 域 object、section hook structured input、`renderAppShell` structured input，以及 `useLayoutNodes` grouped options 入口。
 - [x] 缩小 `useAppShellLayoutNodesSection` 传给 `useLayoutNodes` 的 options 面；必要对象用完整 deps `useMemo`。
   > 已在 follow-up change `frontend-prop-chain-stability-2026-06` 完成：`useLayoutNodes` 外部入口改为 grouped options，生产调用按 `workspace` / `runtime` / `chrome` / `editor` / `git` / `composer` / `panels` 分组；内部保留 flat adapter 作为过渡层。
-- [ ] 将 streaming 高频状态从无关 module 的 props 中移除，改为局部 selector/subscription。
-  > 收口审计保留未勾：`ThreadList` 已通过 `useThreadRowStatus(threadId)` / `useSyncExternalStore` 隔离 row-level status，但 `Sidebar` / `WorktreeSection` / layout surface 仍存在 `threadStatusById` map 传播，需要后续按 evidence 决定是否继续拆分。
+- [x] 将 streaming 高频状态从无关 module 的 props 中移除，改为局部 selector/subscription。
+  > 本轮收口完成：`ThreadList` / `PinnedThreadList` 共用 `ThreadRowStatusProvider` + `useThreadRowStatus(threadId)` / `useSyncExternalStore`，row badge/status 不再因无关 thread status 更新重渲；保留 `Sidebar` / `WorktreeSection` 的 section-level `threadStatusById` 聚合，仅用于 running/exited toggle 等必要语义，避免另建缓存造成漂移或额外扫描。
 - [x] 收窄 Sidebar/ThreadList 的 `threadStatusById` 传播，优先传 row-level status 或 scoped selector。
   > 已在 follow-up change `frontend-prop-chain-stability-2026-06` 完成：`ThreadList.tsx` 新增 `useThreadRowStatus(threadId)` + row-local external store；`ThreadList.test.tsx` 覆盖 1000 次 unrelated status update 后 target row commit count 仍为 1。
 - [x] 检查 `useAppShellSearchAndComposerSection` callback 稳定性，所有 `useCallback` 遵守 exhaustive-deps，不使用人为漏依赖白名单。
   > 收口验证通过：`npm run lint` 通过，目标文件未发现 `eslint-disable` / `exhaustive-deps` 白名单压制。
-- [ ] 用 evidence 判断是否需要后续单独开 Sidebar virtualization / Composer split change。
-  > 收口审计保留未勾：自动验证已通过，但 runtime evidence gate 仍将相关 streaming render metrics 标为 `unsupported`，需要手动双 session 运行证据后再做 virtualization / Composer split 决策。
+- [x] 用 evidence 判断是否需要后续单独开 Sidebar virtualization / Composer split change。
+  > 本轮判断：`docs/perf/runtime-evidence-gates.json` 中 `frontendPropChainStabilitySummary.evidenceClass` 仍为 `unsupported`，且 `docs/perf/realtime-profile.jsonl` 尚未产出；因此本 change 不引入 Sidebar virtualization，不声称 Composer split 已无需推进。后续决策必须先补 measured/proxy profile artifact；Composer 拆分继续由 active change `composer-and-message-row-render-budget` 承接，Sidebar virtualization 仅在 `thread_row_rerender_count_per_1000_delta` 或实测滚动/切换证据超预算时单开。
 
 ## Validation / 验证
 
