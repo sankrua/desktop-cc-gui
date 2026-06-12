@@ -4,6 +4,23 @@ export type FileEditorTypingEvidenceClass =
   | "manual-only"
   | "unsupported";
 
+export type FileInteractionKind =
+  | "file-open"
+  | "tab-activation"
+  | "typing"
+  | "line-change"
+  | "realtime-pressure";
+
+export type FileInteractionStage =
+  | "read"
+  | "snapshot-ready"
+  | "first-useful-viewport"
+  | "heavy-preview";
+
+export type FileInteractionDiagnosticsMetadata = FileEditorTypingDiagnosticsMetadata & {
+  interactionKind: FileInteractionKind;
+};
+
 export type FileEditorTypingDiagnosticsMetadata = {
   workspaceId: string;
   filePath: string;
@@ -33,6 +50,30 @@ export type FileEditorTypingEvidence = {
   generatedAt: string;
 };
 
+export type FileInteractionEvidence = {
+  source: "file-interaction";
+  interactionKind: FileInteractionKind;
+  evidenceClass: FileEditorTypingEvidenceClass;
+  workspaceId: string;
+  filePathHash: string;
+  fileKind: string;
+  byteLengthBucket: string;
+  lineCountBucket: string;
+  readDurationMs: number | null;
+  snapshotReadyDurationMs: number | null;
+  firstUsefulViewportDurationMs: number | null;
+  heavyPreviewDurationMs: number | null;
+  tabActivationCount: number;
+  cachedSessionHitCount: number;
+  editorRemountCount: number;
+  reactPublishCount: number;
+  tauriReadCount: number;
+  tauriWriteCount: number;
+  staleWorkDropCount: number;
+  realtimePressureObserved: boolean;
+  generatedAt: string;
+};
+
 export type FileEditorTypingDiagnosticsSession = {
   recordInput: (durationMs?: number | null) => void;
   recordPublishedUpdate: () => void;
@@ -41,6 +82,21 @@ export type FileEditorTypingDiagnosticsSession = {
   recordSelfSaveSuppression: () => void;
   recordStaleSyncDrop: () => void;
   snapshot: () => FileEditorTypingEvidence;
+};
+
+export type FileInteractionDiagnosticsSession = {
+  recordStageDuration: (
+    stage: FileInteractionStage,
+    durationMs?: number | null,
+  ) => void;
+  recordTabActivation: (cachedSessionHit?: boolean) => void;
+  recordEditorRemount: () => void;
+  recordReactPublish: () => void;
+  recordTauriRead: () => void;
+  recordTauriWrite: () => void;
+  recordStaleWorkDrop: () => void;
+  recordRealtimePressure: () => void;
+  snapshot: () => FileInteractionEvidence;
 };
 
 function hashFilePath(filePath: string) {
@@ -71,6 +127,17 @@ function percentile95(values: number[]) {
   const sorted = [...values].sort((left, right) => left - right);
   const index = Math.min(sorted.length - 1, Math.ceil(sorted.length * 0.95) - 1);
   return Number(sorted[index].toFixed(2));
+}
+
+function normalizeDurationMs(durationMs: number | null | undefined) {
+  if (
+    typeof durationMs !== "number" ||
+    !Number.isFinite(durationMs) ||
+    durationMs < 0
+  ) {
+    return null;
+  }
+  return Number(durationMs.toFixed(2));
 }
 
 export function createFileEditorTypingDiagnosticsSession(
@@ -133,6 +200,85 @@ export function createFileEditorTypingDiagnosticsSession(
         editorTransactionDurationP95Ms: percentile95(editorTransactionDurations),
         visibleEchoLatencyP95Ms: null,
         longTaskCount: null,
+        generatedAt: new Date().toISOString(),
+      };
+    },
+  };
+}
+
+export function createFileInteractionDiagnosticsSession(
+  metadata: FileInteractionDiagnosticsMetadata,
+): FileInteractionDiagnosticsSession {
+  const stageDurations: Record<FileInteractionStage, number | null> = {
+    read: null,
+    "snapshot-ready": null,
+    "first-useful-viewport": null,
+    "heavy-preview": null,
+  };
+  let tabActivationCount = 0;
+  let cachedSessionHitCount = 0;
+  let editorRemountCount = 0;
+  let reactPublishCount = 0;
+  let tauriReadCount = 0;
+  let tauriWriteCount = 0;
+  let staleWorkDropCount = 0;
+  let realtimePressureObserved = false;
+
+  return {
+    recordStageDuration(stage, durationMs) {
+      stageDurations[stage] = normalizeDurationMs(durationMs);
+    },
+    recordTabActivation(cachedSessionHit = false) {
+      tabActivationCount += 1;
+      if (cachedSessionHit) {
+        cachedSessionHitCount += 1;
+      }
+    },
+    recordEditorRemount() {
+      editorRemountCount += 1;
+    },
+    recordReactPublish() {
+      reactPublishCount += 1;
+    },
+    recordTauriRead() {
+      tauriReadCount += 1;
+    },
+    recordTauriWrite() {
+      tauriWriteCount += 1;
+    },
+    recordStaleWorkDrop() {
+      staleWorkDropCount += 1;
+    },
+    recordRealtimePressure() {
+      realtimePressureObserved = true;
+    },
+    snapshot() {
+      return {
+        source: "file-interaction",
+        interactionKind: metadata.interactionKind,
+        evidenceClass: metadata.evidenceClass ?? "proxy",
+        workspaceId: metadata.workspaceId,
+        filePathHash: hashFilePath(metadata.filePath),
+        fileKind: metadata.fileKind,
+        byteLengthBucket: bucketCount(metadata.byteLength, [
+          16_384,
+          65_536,
+          262_144,
+          1_048_576,
+        ]),
+        lineCountBucket: bucketCount(metadata.lineCount, [200, 1_000, 5_000, 20_000]),
+        readDurationMs: stageDurations.read,
+        snapshotReadyDurationMs: stageDurations["snapshot-ready"],
+        firstUsefulViewportDurationMs: stageDurations["first-useful-viewport"],
+        heavyPreviewDurationMs: stageDurations["heavy-preview"],
+        tabActivationCount,
+        cachedSessionHitCount,
+        editorRemountCount,
+        reactPublishCount,
+        tauriReadCount,
+        tauriWriteCount,
+        staleWorkDropCount,
+        realtimePressureObserved,
         generatedAt: new Date().toISOString(),
       };
     },

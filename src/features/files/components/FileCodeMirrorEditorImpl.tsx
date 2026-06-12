@@ -197,19 +197,29 @@ export const FileCodeMirrorEditorImpl = forwardRef<
     ],
   );
 
-  const composedExtensions: ReactCodeMirrorProps["extensions"] = [
-    saveKeymapExt,
-    editorNavigationKeymapExt,
-    ctrlClickDefinitionExt,
-    persistentSearchExtension,
-    annotationWidgetsExt,
-    gitLineMarkersExtension(),
-    ...(Array.isArray(languageExtensions)
-      ? languageExtensions
-      : languageExtensions
-        ? [languageExtensions]
-        : []),
-  ];
+  const composedExtensions: ReactCodeMirrorProps["extensions"] = useMemo(
+    () => [
+      saveKeymapExt,
+      editorNavigationKeymapExt,
+      ctrlClickDefinitionExt,
+      persistentSearchExtension,
+      annotationWidgetsExt,
+      gitLineMarkersExtension(),
+      ...(Array.isArray(languageExtensions)
+        ? languageExtensions
+        : languageExtensions
+          ? [languageExtensions]
+          : []),
+    ],
+    [
+      annotationWidgetsExt,
+      ctrlClickDefinitionExt,
+      editorNavigationKeymapExt,
+      languageExtensions,
+      persistentSearchExtension,
+      saveKeymapExt,
+    ],
+  );
 
   const clearNavigationFlash = () => {
     const view = codeMirrorRef.current?.view;

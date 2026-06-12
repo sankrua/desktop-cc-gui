@@ -22,6 +22,60 @@ type UseFileDocumentStateArgs = {
   externalAbsoluteReadOnlyMessage: string;
 };
 
+type FileDocumentSessionCacheEntry = {
+  documentSnapshot: FileDocumentSnapshot;
+  savedContent: string;
+  externalDiskSnapshot: { content: string; truncated: boolean } | null;
+  updatedAt: number;
+};
+
+const FILE_DOCUMENT_SESSION_CACHE_MAX_ENTRIES = 24;
+const FILE_DOCUMENT_SESSION_CACHE_MAX_CONTENT_LENGTH = 1_048_576;
+const fileDocumentSessionCache = new Map<string, FileDocumentSessionCacheEntry>();
+
+function canCacheFileDocumentSession(snapshot: FileDocumentSnapshot) {
+  return snapshot.content.length <= FILE_DOCUMENT_SESSION_CACHE_MAX_CONTENT_LENGTH;
+}
+
+function writeFileDocumentSessionCache(
+  key: string,
+  entry: Omit<FileDocumentSessionCacheEntry, "updatedAt">,
+) {
+  if (!canCacheFileDocumentSession(entry.documentSnapshot)) {
+    fileDocumentSessionCache.delete(key);
+    return;
+  }
+  fileDocumentSessionCache.set(key, {
+    ...entry,
+    updatedAt: Date.now(),
+  });
+  if (fileDocumentSessionCache.size <= FILE_DOCUMENT_SESSION_CACHE_MAX_ENTRIES) {
+    return;
+  }
+  const [oldestKey] = [...fileDocumentSessionCache.entries()].sort(
+    (left, right) => left[1].updatedAt - right[1].updatedAt,
+  )[0] ?? [];
+  if (oldestKey) {
+    fileDocumentSessionCache.delete(oldestKey);
+  }
+}
+
+function readFileDocumentSessionCache(key: string) {
+  const cached = fileDocumentSessionCache.get(key);
+  if (!cached) {
+    return null;
+  }
+  fileDocumentSessionCache.set(key, {
+    ...cached,
+    updatedAt: Date.now(),
+  });
+  return cached;
+}
+
+export function clearFileDocumentSessionCacheForTests() {
+  fileDocumentSessionCache.clear();
+}
+
 export function useFileDocumentState({
   workspaceId,
   customSpecRoot,
@@ -45,6 +99,7 @@ export function useFileDocumentState({
   const saveRequestIdRef = useRef(0);
   const saveInFlightRef = useRef(false);
   const latestContentRef = useRef(content);
+  const latestDocumentSnapshotRef = useRef(documentSnapshot);
   const fileReadTargetDomain = fileReadTarget.domain;
   const fileReadNormalizedInputPath = fileReadTarget.normalizedInputPath;
   const fileReadExternalSpecLogicalPath =
@@ -65,6 +120,7 @@ export function useFileDocumentState({
   );
 
   latestContentRef.current = content;
+  latestDocumentSnapshotRef.current = documentSnapshot;
   const isDirty = useMemo(() => content !== savedContentRef.current, [content]);
   latestIsDirtyRef.current = isDirty;
 
@@ -88,13 +144,34 @@ export function useFileDocumentState({
       if (current.content === nextContent) {
         return current;
       }
-      return createFileDocumentSnapshot(
+      const nextSnapshot = createFileDocumentSnapshot(
         nextContent,
         current.truncated,
         current.snapshotVersion + 1,
       );
+      writeFileDocumentSessionCache(fileReadTargetKey, {
+        documentSnapshot: nextSnapshot,
+        savedContent: savedContentRef.current,
+        externalDiskSnapshot: externalDiskSnapshotRef.current,
+      });
+      return nextSnapshot;
     });
-  }, []);
+  }, [fileReadTargetKey]);
+
+  const cacheDraftContent = useCallback((nextContent: string) => {
+    latestContentRef.current = nextContent;
+    latestIsDirtyRef.current = nextContent !== savedContentRef.current;
+    const currentSnapshot = latestDocumentSnapshotRef.current;
+    writeFileDocumentSessionCache(fileReadTargetKey, {
+      documentSnapshot: createFileDocumentSnapshot(
+        nextContent,
+        currentSnapshot.truncated,
+        currentSnapshot.snapshotVersion + 1,
+      ),
+      savedContent: savedContentRef.current,
+      externalDiskSnapshot: externalDiskSnapshotRef.current,
+    });
+  }, [fileReadTargetKey]);
 
   const setTruncated = useCallback((nextTruncated: boolean) => {
     setDocumentSnapshot((current) => {
@@ -140,6 +217,19 @@ export function useFileDocumentState({
       return;
     }
 
+    const cachedSession = readFileDocumentSessionCache(fileReadTargetKey);
+    if (cachedSession) {
+      setDocumentSnapshot(cachedSession.documentSnapshot);
+      latestContentRef.current = cachedSession.documentSnapshot.content;
+      savedContentRef.current = cachedSession.savedContent;
+      latestIsDirtyRef.current =
+        cachedSession.documentSnapshot.content !== cachedSession.savedContent;
+      externalDiskSnapshotRef.current = cachedSession.externalDiskSnapshot;
+      setLoadedFileReadTargetKey(fileReadTargetKey);
+      setIsLoading(false);
+      return;
+    }
+
     const readPromise =
       fileReadTargetDomain === "external-spec" && customSpecRoot && fileReadExternalSpecLogicalPath
         ? readExternalSpecFile(
@@ -167,12 +257,25 @@ export function useFileDocumentState({
         if (cancelled || currentRequest !== requestIdRef.current) return;
         const nextContent = response.content ?? "";
         const nextTruncated = Boolean(response.truncated);
-        replaceDocumentSnapshot(nextContent, nextTruncated);
+        latestContentRef.current = nextContent;
         savedContentRef.current = nextContent;
         externalDiskSnapshotRef.current = {
           content: nextContent,
           truncated: nextTruncated,
         };
+        setDocumentSnapshot((current) => {
+          const nextSnapshot = createFileDocumentSnapshot(
+            nextContent,
+            nextTruncated,
+            current.snapshotVersion + 1,
+          );
+          writeFileDocumentSessionCache(fileReadTargetKey, {
+            documentSnapshot: nextSnapshot,
+            savedContent: nextContent,
+            externalDiskSnapshot: externalDiskSnapshotRef.current,
+          });
+          return nextSnapshot;
+        });
         setLoadedFileReadTargetKey(fileReadTargetKey);
       })
       .catch((readError) => {
@@ -238,6 +341,15 @@ export function useFileDocumentState({
         content: contentToSave,
         truncated,
       };
+      writeFileDocumentSessionCache(fileReadTargetKey, {
+        documentSnapshot: createFileDocumentSnapshot(
+          contentToSave,
+          truncated,
+          documentSnapshot.snapshotVersion + 1,
+        ),
+        savedContent: contentToSave,
+        externalDiskSnapshot: externalDiskSnapshotRef.current,
+      });
       return true;
     } catch (saveError) {
       if (saveRequestId !== saveRequestIdRef.current) {
@@ -258,8 +370,10 @@ export function useFileDocumentState({
     customSpecRoot,
     externalAbsoluteReadOnlyMessage,
     fileReadExternalSpecLogicalPath,
+    fileReadTargetKey,
     fileReadTargetDomain,
     isSaving,
+    documentSnapshot.snapshotVersion,
     truncated,
     workspaceId,
     workspaceRelativeFilePath,
@@ -268,6 +382,7 @@ export function useFileDocumentState({
   return {
     content,
     setContent,
+    cacheDraftContent,
     documentSnapshot,
     replaceDocumentSnapshot,
     isLoading: isLoading || loadedFileReadTargetKey !== fileReadTargetKey,

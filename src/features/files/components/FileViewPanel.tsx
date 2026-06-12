@@ -267,9 +267,13 @@ export function FileViewPanel({
     activeFileLineRange,
   );
   const editorLineRangeSyncTimerRef = useRef<number | null>(null);
+  const activeCodeAnchorResolveTimerRef = useRef<number | null>(null);
+  const activeCodeAnchorResolveEpochRef = useRef(0);
   const lastPublishedEditorLineRangeKeyRef = useRef(
     formatEditorLineRangeKey(activeFileLineRange),
   );
+  const [activeDeclarationCodeAnchor, setActiveDeclarationCodeAnchor] =
+    useState<IntentCanvasCodeSelectionAnchor | null>(null);
   const cmRef = useRef<FileCodeMirrorEditorHandle | null>(null);
   const lastReportedLineRangeRef = useRef<string>("");
   const tabsContainerRef = useRef<HTMLDivElement | null>(null);
@@ -351,6 +355,12 @@ export function FileViewPanel({
       editorLineRangeSyncTimerRef.current = null;
     }
   }, []);
+  const clearPendingActiveCodeAnchorResolve = useCallback(() => {
+    if (activeCodeAnchorResolveTimerRef.current !== null) {
+      window.clearTimeout(activeCodeAnchorResolveTimerRef.current);
+      activeCodeAnchorResolveTimerRef.current = null;
+    }
+  }, []);
   const scheduleEditorLineRangePublish = useCallback(
     (lineRange: CodeAnnotationLineRange | null) => {
       pendingEditorLineRangeRef.current = lineRange;
@@ -364,6 +374,9 @@ export function FileViewPanel({
         }
         lastPublishedEditorLineRangeKeyRef.current = pendingKey;
         startTransition(() => {
+          setEditorLocalLineRange((current) =>
+            isSameEditorLineRange(current, pendingLineRange) ? current : pendingLineRange,
+          );
           onActiveFileLineRangeChange?.(pendingLineRange);
         });
       }, EDITOR_LINE_RANGE_SYNC_DELAY_MS);
@@ -376,11 +389,6 @@ export function FileViewPanel({
         return;
       }
       editorLocalLineRangeRef.current = lineRange;
-      startTransition(() => {
-        setEditorLocalLineRange((current) =>
-          isSameEditorLineRange(current, lineRange) ? current : lineRange,
-        );
-      });
       scheduleEditorLineRangePublish(lineRange);
     },
     [scheduleEditorLineRangePublish],
@@ -484,6 +492,7 @@ export function FileViewPanel({
   const {
     content,
     setContent,
+    cacheDraftContent,
     documentSnapshot,
     replaceDocumentSnapshot,
     error,
@@ -503,6 +512,17 @@ export function FileViewPanel({
     skipTextRead,
     externalAbsoluteReadOnlyMessage: t("files.externalAbsoluteReadOnly"),
   });
+  const currentFileRenderToken = useMemo(
+    () =>
+      [
+        workspaceId,
+        workspaceRelativeFilePath,
+        documentSnapshot.snapshotVersion,
+      ].join("\u001f"),
+    [documentSnapshot.snapshotVersion, workspaceId, workspaceRelativeFilePath],
+  );
+  const latestFileRenderTokenRef = useRef(currentFileRenderToken);
+  latestFileRenderTokenRef.current = currentFileRenderToken;
   const editorDraftContentRef = useRef(content);
   const [editorDraftDirty, setEditorDraftDirty] = useState(false);
   const effectiveIsDirty = isDirty || editorDraftDirty;
@@ -535,11 +555,14 @@ export function FileViewPanel({
   const handleEditorContentDraftChange = useCallback(
     (nextContent: string) => {
       editorDraftContentRef.current = nextContent;
+      if (!isLoading) {
+        cacheDraftContent(nextContent);
+      }
       const nextIsDirty = nextContent !== savedContentRef.current;
       latestIsDirtyRef.current = nextIsDirty;
       setEditorDraftDirty((current) => (current === nextIsDirty ? current : nextIsDirty));
     },
-    [latestIsDirtyRef, savedContentRef],
+    [cacheDraftContent, isLoading, latestIsDirtyRef, savedContentRef],
   );
 
   const flushEditorDraftToDocument = useCallback(() => {
@@ -554,19 +577,41 @@ export function FileViewPanel({
     typingDiagnosticsRef.current.recordInput(durationMs);
   }, []);
 
-  const activeDeclarationCodeAnchor = useMemo(
-    () => resolveDeclarationCodeSelectionAnchor({
-      filePath,
-      content,
-      lineRange: editorLocalLineRange ?? activeFileLineRange,
-    }),
-    [
-      activeFileLineRange,
-      content,
-      editorLocalLineRange,
-      filePath,
-    ],
-  );
+  const activeDeclarationLineRange = editorLocalLineRange ?? activeFileLineRange;
+
+  useEffect(() => {
+    const resolveEpoch = activeCodeAnchorResolveEpochRef.current + 1;
+    activeCodeAnchorResolveEpochRef.current = resolveEpoch;
+    clearPendingActiveCodeAnchorResolve();
+
+    if (!activeDeclarationLineRange) {
+      startTransition(() => {
+        setActiveDeclarationCodeAnchor(null);
+      });
+      return;
+    }
+
+    activeCodeAnchorResolveTimerRef.current = window.setTimeout(() => {
+      activeCodeAnchorResolveTimerRef.current = null;
+      if (activeCodeAnchorResolveEpochRef.current !== resolveEpoch) {
+        return;
+      }
+      const nextAnchor = resolveDeclarationCodeSelectionAnchor({
+        filePath,
+        content: editorDraftContentRef.current,
+        lineRange: activeDeclarationLineRange,
+      });
+      startTransition(() => {
+        setActiveDeclarationCodeAnchor(nextAnchor);
+      });
+    }, EDITOR_LINE_RANGE_SYNC_DELAY_MS);
+
+    return clearPendingActiveCodeAnchorResolve;
+  }, [
+    activeDeclarationLineRange,
+    clearPendingActiveCodeAnchorResolve,
+    filePath,
+  ]);
 
   useEffect(() => {
     onActiveCodeAnchorChange?.(activeDeclarationCodeAnchor);
@@ -796,15 +841,16 @@ export function FileViewPanel({
     }
 
     let cancelled = false;
+    const requestRenderToken = latestFileRenderTokenRef.current;
     getGitFileFullDiff(workspaceId, gitDiffTargetPath)
       .then((diff) => {
-        if (cancelled) {
+        if (cancelled || latestFileRenderTokenRef.current !== requestRenderToken) {
           return;
         }
         setGitLineMarkers(parseLineMarkersFromDiff(diff));
       })
       .catch(() => {
-        if (!cancelled) {
+        if (!cancelled && latestFileRenderTokenRef.current === requestRenderToken) {
           setGitLineMarkers({ added: [], modified: [] });
         }
       });
@@ -824,6 +870,9 @@ export function FileViewPanel({
   useEffect(() => () => clearPendingEditorLineRangeSync(), [
     clearPendingEditorLineRangeSync,
   ]);
+  useEffect(() => () => clearPendingActiveCodeAnchorResolve(), [
+    clearPendingActiveCodeAnchorResolve,
+  ]);
 
   useEffect(() => {
     if (editorLocalLineRangeRef.current !== null || activeFileLineRange === null) {
@@ -841,14 +890,18 @@ export function FileViewPanel({
     pendingOpenFindPanelRef.current = false;
     setMode(defaultMode);
     clearPendingEditorLineRangeSync();
+    clearPendingActiveCodeAnchorResolve();
+    activeCodeAnchorResolveEpochRef.current += 1;
     editorLocalLineRangeRef.current = null;
     pendingEditorLineRangeRef.current = null;
     lastPublishedEditorLineRangeKeyRef.current = "none";
     setEditorLocalLineRange(null);
+    setActiveDeclarationCodeAnchor(null);
     onActiveFileLineRangeChange?.(null);
     lastReportedLineRangeRef.current = "";
   }, [
     clearPendingEditorLineRangeSync,
+    clearPendingActiveCodeAnchorResolve,
     defaultMode,
     filePath,
     onActiveFileLineRangeChange,
@@ -1056,11 +1109,16 @@ export function FileViewPanel({
     }
 
     let cancelled = false;
+    const requestRenderToken = latestFileRenderTokenRef.current;
     markdownPreviewOverrideRequestRef.current += 1;
     const requestId = markdownPreviewOverrideRequestRef.current;
     readWorkspaceFilePreview(workspaceId, workspaceRelativeFilePath)
       .then((response) => {
-        if (cancelled || requestId !== markdownPreviewOverrideRequestRef.current) {
+        if (
+          cancelled ||
+          requestId !== markdownPreviewOverrideRequestRef.current ||
+          latestFileRenderTokenRef.current !== requestRenderToken
+        ) {
           return;
         }
         setMarkdownPreviewOverride({
@@ -1070,7 +1128,11 @@ export function FileViewPanel({
         });
       })
       .catch(() => {
-        if (cancelled || requestId !== markdownPreviewOverrideRequestRef.current) {
+        if (
+          cancelled ||
+          requestId !== markdownPreviewOverrideRequestRef.current ||
+          latestFileRenderTokenRef.current !== requestRenderToken
+        ) {
           return;
         }
         setMarkdownPreviewOverride(null);

@@ -655,7 +655,6 @@ export function FileViewBody({
           : Date.now();
       latestEditorContentRef.current = nextContent;
       onEditorContentDraftChange?.(nextContent);
-      setEditorContent(nextContent);
       scheduleEditorContentPublish();
       const endedAt =
         typeof performance !== "undefined" && typeof performance.now === "function"

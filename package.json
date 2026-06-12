@@ -31,6 +31,7 @@
     "check:agent-domain-event-schema": "node scripts/check-agent-domain-event-schema.mjs",
     "check:agent-domain-event-adoption": "node scripts/check-agent-domain-event-adoption.mjs",
     "check:realtime-event-batching": "node scripts/check-realtime-event-batching.mjs",
+    "check:file-interaction-evidence": "vitest run src/features/files/contracts/fileInteractionEvidenceGate.test.ts src/features/files/contracts/fileSurfaceRuntimeBoundaryGuard.test.ts",
     "check:bundle-chunking": "node scripts/check-bundle-chunking.mjs",
     "check:runtime-evidence-gates": "node scripts/generate-runtime-evidence-report.mjs",
     "check:native-menu-usage": "node scripts/check-native-menu-usage.mjs",

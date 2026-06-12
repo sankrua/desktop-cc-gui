@@ -55,6 +55,9 @@ vi.mock("@uiw/react-codemirror", async () => {
       extensions?: unknown;
     }
   >((props, ref) => {
+    const [localValue, setLocalValue] = React.useState(props.value ?? "");
+    const onCreateEditorRef = React.useRef(props.onCreateEditor);
+    onCreateEditorRef.current = props.onCreateEditor;
     const viewRef = React.useRef<any>({
       state: {
         doc: createDoc(props.value ?? ""),
@@ -72,6 +75,7 @@ vi.mock("@uiw/react-codemirror", async () => {
     });
 
     React.useEffect(() => {
+      setLocalValue(props.value ?? "");
       viewRef.current.state.doc = createDoc(props.value ?? "");
       viewRef.current.state.field = () => null;
     }, [props.value]);
@@ -82,8 +86,8 @@ vi.mock("@uiw/react-codemirror", async () => {
     }, [props.extensions]);
 
     React.useEffect(() => {
-      props.onCreateEditor?.(viewRef.current, viewRef.current.state);
-    }, [props]);
+      onCreateEditorRef.current?.(viewRef.current, viewRef.current.state);
+    }, []);
 
     React.useImperativeHandle(ref, () => ({ view: viewRef.current }), []);
 
@@ -91,8 +95,13 @@ vi.mock("@uiw/react-codemirror", async () => {
       <textarea
         data-testid="mock-codemirror"
         data-editor-theme={props.theme ?? ""}
-        value={props.value ?? ""}
-        onChange={(event) => props.onChange?.(event.target.value)}
+        value={localValue}
+        onChange={(event) => {
+          const nextValue = event.target.value;
+          setLocalValue(nextValue);
+          viewRef.current.state.doc = createDoc(nextValue);
+          props.onChange?.(nextValue);
+        }}
         onSelect={(event) => {
           const target = event.currentTarget;
           viewRef.current.state.selection.main = {
