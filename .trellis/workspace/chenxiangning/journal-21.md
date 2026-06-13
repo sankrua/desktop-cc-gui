@@ -1884,3 +1884,47 @@ During verification, `TaskCreateModal.test.tsx` exposed an async state assertion
 ### Next Steps
 
 - None - task complete
+
+
+## Session 826: 收口客户端性能残余证据
+
+**Date**: 2026-06-13
+**Task**: 收口客户端性能残余证据
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+补齐客户端性能 residual closure：编码 inputEventLossCount 预算、同步 BUDGET_RESIDUALS、新增 cold-start marker 单测，并修正 OpenSpec 验收口径。
+
+### Main Changes
+
+- OpenSpec change: `close-client-performance-residual-2026-06`
+- 编码 `S-CI-50/inputEventLossCount` 与 `S-CI-100-IME/inputEventLossCount` budget block，owner=`input-latency-budget`，target/hardFail=`0/0 count`。
+- 同步 `scripts/perf-archive-readiness.mjs` 的 `BUDGET_RESIDUALS`，移除已预算的 4 条 realtime metrics 与 2 条 input-latency metrics。
+- 新增 `scripts/perf-cold-start-baseline.test.mjs`，覆盖有 marker、无 marker、损坏 marker 三分支；损坏 marker contract 与 runner 行为对齐为 corrupt-specific `unsupportedReason`。
+- 修复 review blocker：移除本 change 中误夹带的 `src-tauri/tauri.windows.conf.json` 范围污染，确认 `git diff --stat -- 'src/**' 'src-tauri/**'` 为空。
+
+Validation:
+- `node --test scripts/perf-cold-start-baseline.test.mjs` pass。
+- `openspec validate close-client-performance-residual-2026-06 --strict --no-interactive` pass。
+- `npm run perf:archive-readiness -- --json`: `budgetMissingCount=15`, `hardFailures=[]`, exitCode=2 warning-only。
+- `npm run perf:archive-readiness -- --release --json`: 仅 `S-CS-COLD/firstPaintMs` / `firstInteractiveMs` 两个 explicit release blocker。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a8bd4b24` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
