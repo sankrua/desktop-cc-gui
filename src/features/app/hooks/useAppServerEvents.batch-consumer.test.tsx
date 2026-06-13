@@ -7,9 +7,9 @@
 //   (c) dispatcher routes an `approval/request` to onApprovalRequest
 //   (d) batch route preserves non-coalescible deltas, coalesces status
 //       snapshots, and chunks large batches instead of a tight full loop
-//   (e) channel subscription is mutually exclusive: the runtime flag picks
-//       either the batch channel or the single channel, NEVER both
-//   (f) cleanup fires exactly once for the chosen subscription
+//   (e) batch-enabled mode remains compatible with legacy single-channel
+//       producers while keeping the batch route active
+//   (f) cleanup releases every active subscription
 //
 // The 1000-delta burst assertion for `prepareThreadItems_calls_per_1000_delta`
 // lives in `useThreadsReducer.append-agent-delta-fast-path.test.ts` (the
@@ -218,19 +218,21 @@ describe("useAppServerEvents channel subscription (proposal §1.4 e/f)", () => {
   let listener: ((event: AppServerEvent) => void) | null = null;
   let batchListener: ((events: readonly AppServerEvent[]) => void) | null =
     null;
-  const unlisten = vi.fn();
+  const unlistenSingle = vi.fn();
+  const unlistenBatch = vi.fn();
 
   beforeEach(() => {
     listener = null;
     batchListener = null;
-    unlisten.mockReset();
+    unlistenSingle.mockReset();
+    unlistenBatch.mockReset();
     vi.mocked(subscribeAppServerEvents).mockImplementation((cb) => {
       listener = cb;
-      return unlisten;
+      return unlistenSingle;
     });
     vi.mocked(subscribeAppServerEventBatch).mockImplementation((cb) => {
       batchListener = cb;
-      return unlisten;
+      return unlistenBatch;
     });
   });
 
@@ -248,20 +250,21 @@ describe("useAppServerEvents channel subscription (proposal §1.4 e/f)", () => {
     return { root };
   }
 
-  it("subscribes to ONE channel (batch) when the runtime flag is on", async () => {
+  it("subscribes to batch and legacy single channels when the runtime flag is on", async () => {
     vi.mocked(isAppServerEventBatchConsumerEnabled).mockReturnValue(true);
     const handlers: Handlers = { onAppServerEvent: vi.fn() };
     const { root } = await mount(handlers);
 
     expect(batchListener).toBeTypeOf("function");
-    expect(listener).toBeNull();
+    expect(listener).toBeTypeOf("function");
     expect(vi.mocked(subscribeAppServerEventBatch)).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(subscribeAppServerEvents)).not.toHaveBeenCalled();
+    expect(vi.mocked(subscribeAppServerEvents)).toHaveBeenCalledTimes(1);
 
     await act(async () => {
       root.unmount();
     });
-    expect(unlisten).toHaveBeenCalledTimes(1);
+    expect(unlistenBatch).toHaveBeenCalledTimes(1);
+    expect(unlistenSingle).toHaveBeenCalledTimes(1);
   });
 
   it("subscribes to ONE channel (single) when the runtime flag is off", async () => {
@@ -277,7 +280,8 @@ describe("useAppServerEvents channel subscription (proposal §1.4 e/f)", () => {
     await act(async () => {
       root.unmount();
     });
-    expect(unlisten).toHaveBeenCalledTimes(1);
+    expect(unlistenSingle).toHaveBeenCalledTimes(1);
+    expect(unlistenBatch).not.toHaveBeenCalled();
   });
 
   it("batch channel preserves non-coalescible delta events (proposal §1.4 d)", async () => {
@@ -371,5 +375,67 @@ describe("useAppServerEvents channel subscription (proposal §1.4 e/f)", () => {
       });
     });
     expect(onWorkspaceConnected).toHaveBeenCalledTimes(1);
+  });
+
+  it("legacy single channel still routes agent deltas when the batch flag is on", async () => {
+    vi.mocked(isAppServerEventBatchConsumerEnabled).mockReturnValue(true);
+    const onAgentMessageDelta = vi.fn();
+    const handlers: Handlers = {
+      onAppServerEvent: vi.fn(),
+      onAgentMessageDelta,
+    };
+    await mount(handlers);
+
+    await act(async () => {
+      listener?.({
+        workspace_id: "ws-claude",
+        message: {
+          method: "item/agentMessage/delta",
+          params: {
+            threadId: "claude:session-1",
+            itemId: "claude-item-1",
+            delta: "hello",
+            turnId: "claude-turn-1",
+          },
+        },
+      });
+    });
+
+    expect(onAgentMessageDelta).toHaveBeenCalledWith({
+      workspaceId: "ws-claude",
+      threadId: "claude:session-1",
+      itemId: "claude-item-1",
+      delta: "hello",
+      turnId: "claude-turn-1",
+    });
+  });
+
+  it("legacy single channel still routes turn completion when the batch flag is on", async () => {
+    vi.mocked(isAppServerEventBatchConsumerEnabled).mockReturnValue(true);
+    const onTurnCompleted = vi.fn();
+    const handlers: Handlers = {
+      onAppServerEvent: vi.fn(),
+      onTurnCompleted,
+    };
+    await mount(handlers);
+
+    await act(async () => {
+      listener?.({
+        workspace_id: "ws-claude",
+        message: {
+          method: "turn/completed",
+          params: {
+            threadId: "claude:session-1",
+            turnId: "claude-turn-1",
+          },
+        },
+      });
+    });
+
+    expect(onTurnCompleted).toHaveBeenCalledWith(
+      "ws-claude",
+      "claude:session-1",
+      "claude-turn-1",
+    );
   });
 });

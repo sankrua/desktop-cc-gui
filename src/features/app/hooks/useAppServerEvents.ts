@@ -2802,10 +2802,6 @@ export function useAppServerEvents(
     threadAgentSnapshotSeenRef,
   };
   useEffect(() => {
-    // Per design §1.1 and proposal tasks §1: subscribe to ONE channel at a
-    // time. The runtime flag picks the batch channel as the preferred path
-    // and falls back to single only when the flag is off. This avoids the
-    // duplicate-dispatch regression flagged in calibration #1/#2.
     if (isAppServerEventBatchConsumerEnabled()) {
       const queuedBatches: Array<readonly AppServerEvent[]> = [];
       let activeBatchDispatchCancel: (() => void) | null = null;
@@ -2851,13 +2847,21 @@ export function useAppServerEvents(
         activeBatchDispatchCancel = cancelBatchDispatch;
       };
 
-      const unsubscribe = subscribeAppServerEventBatch((batch) => {
+      const unsubscribeBatch = subscribeAppServerEventBatch((batch) => {
         queuedBatches.push(batch);
         runNextBatch();
       });
+      const unsubscribeSingle = subscribeAppServerEvents((payload) => {
+        dispatchAppServerEvent(
+          handlersRef.current,
+          payload,
+          dispatcherOptionsRef.current,
+        );
+      });
       return () => {
         disposed = true;
-        unsubscribe();
+        unsubscribeBatch();
+        unsubscribeSingle();
         queuedBatches.length = 0;
         if (activeBatchDispatchCancel) {
           activeBatchDispatchCancel();
