@@ -20,10 +20,10 @@ Commit: f731af5b2c7f930393e58ca5e40f356b19b37668
 | S-LL-1000 | firstPaintAfterMount | 48.29 | ms | proxy |  |  |  |
 | S-LL-1000 | scrollFrameDropPct | 0 | % | proxy | 1 | 5 | jsdom proxy; browser scroll gate is follow-up |
 | S-CI-50 | keystrokeToCommitP95 | 0.08 | ms | proxy | 16 | 32 |  |
-| S-CI-50 | inputEventLossCount | 0 | count | proxy |  |  |  |
+| S-CI-50 | inputEventLossCount | 0 | count | proxy | 0 | 0 | approved (input-latency-budget) |
 | S-CI-50 | compositionToCommit | 0 | ms | proxy |  |  |  |
 | S-CI-100-IME | keystrokeToCommitP95 | 0.03 | ms | proxy | 16 | 32 |  |
-| S-CI-100-IME | inputEventLossCount | 0 | count | proxy |  |  |  |
+| S-CI-100-IME | inputEventLossCount | 0 | count | proxy | 0 | 0 | approved (input-latency-budget) |
 | S-CI-100-IME | compositionToCommit | 0.12 | ms | proxy |  |  |  |
 | S-RS-FT | firstTokenLatency | 5000 | ms | proxy | 2000 | 5000 | turn start to first assistant delta |
 | S-RS-FT | interTokenJitterP95 | 920 | ms | proxy | 500 | 920 |  |
