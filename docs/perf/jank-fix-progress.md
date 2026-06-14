@@ -37,13 +37,13 @@
 
 ## 阶段 3:P1 — §6 根因 3(progressive reveal 边界扫描成本)
 
-- [ ] Step 3.1 `findProgressiveRevealBoundary` 合并正则
+- [x] Step 3.1 `findProgressiveRevealBoundary` 合并正则
 - [ ] Step 3.2 `resolveProgressiveRevealValue` useMemo
-- [ ] Step 3.3 保留短 pending 短路并补 regression
+- [x] Step 3.3 保留短 pending 短路并补 regression
 - [ ] Step 3.4 按 profiler 调整长 visible cadence
 
 数据(修复后):
-- `findProgressiveRevealBoundary` 8000 字符耗时:_____ → _____
+- `findProgressiveRevealBoundary` 扫描路径:6 次 regex pass → 1 次 newline scan
 - Markdown 重渲染频率:_____ → _____
 
 ## 阶段 4:P1 — §8 根因 5(Home/session 长列表虚拟化)
