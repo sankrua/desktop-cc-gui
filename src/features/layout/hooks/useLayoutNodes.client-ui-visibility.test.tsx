@@ -1068,7 +1068,14 @@ describe("useLayoutNodes client UI visibility", () => {
 
       const selector = await screen.findByLabelText("messages.forkProviderLabel");
       expect((selector as HTMLSelectElement).value).toBe("provider-a");
-      fireEvent.change(selector, { target: { value: "provider-b" } });
+      await screen.findByRole("option", { name: "Provider B" });
+      await act(async () => {
+        fireEvent.change(selector, { target: { value: "provider-b" } });
+        await Promise.resolve();
+      });
+      await waitFor(() => {
+        expect((selector as HTMLSelectElement).value).toBe("provider-b");
+      });
       fireEvent.click(
         screen.getByRole("button", { name: "messages.forkConfirmAction" }),
       );
