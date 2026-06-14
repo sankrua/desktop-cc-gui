@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-22.md`
-- **Total Sessions**: 834
+- **Total Sessions**: 835
 - **Last Active**: 2026-06-14
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-22.md` | ~334 | Active |
+| `journal-22.md` | ~367 | Active |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
 | `journal-19.md` | ~1989 | Archived |
@@ -50,6 +50,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 835 | 2026-06-14 | 修复 Messages reasoning 测试类型检查 | `262970f1` | `feature/v0.5.9` |
 | 834 | 2026-06-14 | 重新触发 heavy noise CI 验证 | `7486cdfb` | `feature/v0.5.9` |
 | 833 | 2026-06-14 | 清理过时 OpenSpec 性能调查提案 | `88072aee` | `feature/v0.5.9` |
 | 832 | 2026-06-14 | 归档已验证 OpenSpec 提案 | `c9dd8cb1` | `feature/v0.5.9` |

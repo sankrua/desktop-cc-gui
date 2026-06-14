@@ -332,3 +332,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 835: 修复 Messages reasoning 测试类型检查
+
+**Date**: 2026-06-14
+**Task**: 修复 Messages reasoning 测试类型检查
+**Branch**: `feature/v0.5.9`
+
+### Summary
+
+将 Messages reasoning render 测试中的 JSX.Element 显式替换为 ReactElement，避免 React 19/TS 环境缺少全局 JSX namespace 导致 npm run typecheck 失败；验证 npm run typecheck 与 npm run check:heavy-test-noise 通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `262970f1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
