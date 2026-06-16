@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-22.md`
-- **Total Sessions**: 844
+- **Total Sessions**: 845
 - **Last Active**: 2026-06-16
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-22.md` | ~735 | Active |
+| `journal-22.md` | ~779 | Active |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
 | `journal-19.md` | ~1989 | Archived |
@@ -50,6 +50,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 845 | 2026-06-16 | 稳定 FileViewPanel 慢 git marker 测试 | `59399914` | `feature/v0.5.10` |
 | 844 | 2026-06-16 | 修复 Composer 文件引用深层路径搜索 | `3f08861b` | `feature/v0.5.10` |
 | 843 | 2026-06-16 | 修复文件树首屏滚动容器布局 | `269088b2` | `feature/v0.5.10` |
 | 842 | 2026-06-15 | 修复 Messages 测试 Suspense act 噪声 | `9f7002bf` | `bump-version-0.5.10` |

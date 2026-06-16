@@ -733,3 +733,47 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 845: 稳定 FileViewPanel 慢 git marker 测试
+
+**Date**: 2026-06-16
+**Task**: 稳定 FileViewPanel 慢 git marker 测试
+**Branch**: `feature/v0.5.10`
+
+### Summary
+
+修复 FileViewPanel 慢 git marker 用例在 CI batch 下过早读取 editor value 的时序问题，并完成目标测试、整文件测试、eslint、typecheck 与 diff gate。
+
+### Main Changes
+
+## 本次工作
+- 修复 `FileViewPanel navigation > mounts the editor before slow git markers resolve` 在 Windows CI batch 下的时序不稳定。
+- 根因：测试只等待 `mock-codemirror` 节点存在，但 mock editor 的 `props.value` 还需要等 file read async state commit；慢 git diff promise 不 resolve 时，节点先出现、value 后更新。
+- 修复：改为 `waitFor` 等待 editor value 等于 `const value = 1;`，保留原行为断言：editor 内容不依赖 git markers resolve。
+
+## 验证
+- `npx vitest run src/features/files/components/FileViewPanel.test.tsx -t "mounts the editor before slow git markers resolve"`
+- `npx vitest run src/features/files/components/FileViewPanel.test.tsx`
+- `npx eslint src/features/files/components/FileViewPanel.test.tsx src/features/composer/components/Composer.rewind-confirm.test.tsx`
+- `npm run typecheck`
+- `git diff --check`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `59399914` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
