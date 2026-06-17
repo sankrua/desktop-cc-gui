@@ -1253,3 +1253,62 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 857: 建立 v0.5.11 性能证据门禁
+
+**Date**: 2026-06-17
+**Task**: 建立 v0.5.11 性能证据门禁
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+为 v0.5.11 建立 runtime performance evidence producer、baseline/gate/OpenSpec 提案与验证记录；用户已启动 app smoke test，无明显问题。
+
+### Main Changes
+
+## 完成内容
+
+- 创建 OpenSpec change `v0511-performance-evidence-and-runtime-jank-hardening`，包含 proposal/design/tasks/spec delta/implementation evidence。
+- 新增 `scripts/perf-v0511-runtime-evidence.ts`，复用现有 reducer、app-server dispatcher、async file I/O fixture 与 `__profile.recordComponentRender` 输出 v0.5.11 runtime evidence。
+- 新增 `scripts/perf-v0511-runtime-evidence.test.mjs`，确保 S-IO-RR、S-IO-AS、S-IO-FS、S-IO-FP 四组 runtime jank 缺口都有 numeric proxy evidence，不再静默退回 unsupported。
+- 将 `perf:v0511-runtime-evidence` 接入 `perf:baseline:all`，并让 runtime evidence gates 消费 `docs/perf/v0511-runtime-evidence.json`。
+- 更新 `docs/perf/baseline.*`、`docs/perf/runtime-evidence-gates.*`、`docs/perf/history/v0.5.11-baseline*` 和 OpenSpec governance report。
+- 为 `S-CI-50/inputEventLossCount` 与 `S-CI-100-IME/inputEventLossCount` 补 budget ownership，减少 archive-readiness unassigned budget 噪音。
+
+## 事实结论
+
+- 本次没有改业务运行逻辑；主要是 test-first performance evidence producer、gate 和 OpenSpec 文档。
+- 四组原 runtime jank 缺口已从 unsupported 收敛为 proxy evidence；仍不宣称 release-grade desktop runtime proof。
+- `perf:archive-readiness` 仍为 warn，但 `hardFailures: []`；剩余 warnings 是既有 budget ownership / Tauri-WebView measured evidence 缺口。
+- 用户已手动启动 app，反馈“没啥问题”。
+
+## 验证
+
+- `node --test scripts/perf-v0511-runtime-evidence.test.mjs scripts/generate-runtime-evidence-report.test.mjs scripts/perf-startup-marker-snapshot.test.mjs scripts/perf-cold-start-baseline.test.mjs` pass。
+- `npm exec vitest run src/features/threads/hooks/useThreadsReducer.append-agent-delta-fast-path.test.ts src/features/app/hooks/useAppServerEvents.batch-consumer.test.tsx` pass。
+- `cargo test --manifest-path src-tauri/Cargo.toml external_changes_debouncer` pass。
+- `npm run typecheck` pass。
+- `npm run lint` pass。
+- `npm run perf:baseline:all` pass。
+- `npm run perf:archive-readiness -- --json` returns exit code 2 by design for warn, with `ok: true`, `hardFailures: []`。
+- `openspec validate v0511-performance-evidence-and-runtime-jank-hardening --strict --no-interactive` pass。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5a330dbd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
