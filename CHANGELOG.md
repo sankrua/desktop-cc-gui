@@ -2,6 +2,70 @@
 
 ---
 
+##### **2026年6月16日（v0.5.10）**
+
+中文：
+
+🔧 Improvements
+- 升级应用版本号到 `0.5.10`，同步前端包配置与 Tauri 配置
+- 补齐近期测试稳定性批次，覆盖 Composer rewind 确认、慢 git 标记编辑器挂载、聊天流渲染隔离、WebService token 生成、router lazy act 边界、Suspense host-task teardown 与 flush 等场景，降低测试串扰与误报
+- 补齐近期 OpenSpec 稳定性提案优化与归档，覆盖聊天流渲染隔离、AppShell 运行态稳定性、长运行客户端运行时、稳定性归档文档等条目
+
+🐛 Fixes
+- 修复 Composer 文件引用深层路径搜索异常，恢复深层目录文件在 Composer 输入中的可被检索与引用能力
+- 修复文件树首屏滚动容器布局问题，让首屏目录树展示与滚动行为回到稳定状态
+- 修复父组件测试中 Markdown 懒加载隔离问题，降低消息组件 Markdown 懒加载在父级测试上下文中的串扰与不稳定
+- 修复顶栏菜单按钮收敛问题，恢复关键导航入口稳定状态
+- 修复 Apple event 完整诊断码保留问题，避免 threads 链路在跨进程事件中丢失诊断信息
+- 修复长运行客户端运行时稳定性问题，减少长会话、并行对话与高频事件下的 runtime 状态、事件订阅与前台残留漂移
+- 修复 AppShell 运行态上下文隔离稳定性问题，让 layoutContext、fileEditorContext、settingsContext 以及新增的 runtimeContext、modelSelectionContext、collaborationModeContext 在跨模块访问时保持清晰边界
+- 修复供应商排序时间稳定性问题，让供应商列表的展示顺序在多次刷新与会话切换后保持一致
+- 修复 runtime 重连恢复卡片状态问题，避免 messages 在重连或会话恢复后丢失或错乱展示
+- 修复 reasoning 测试 JSX 类型引用问题，让消息组件在测试上下文中恢复稳定渲染
+- 修复 AppShell runtime contract 治理脚本边界处理问题，避免新增 context 名称与 ctx 形参被误判为违规
+
+English:
+
+🔧 Improvements
+- Bump app version to `0.5.10` across frontend package metadata and Tauri configuration
+- Add a recent test-stability batch covering Composer rewind confirmation, slow git marker editor mount, chat-stream render isolation, WebService token generation, router lazy act boundaries, and Suspense host-task teardown and flush to reduce cross-talk and false positives
+- Optimize and archive recent OpenSpec stability proposals covering chat-stream render isolation, AppShell runtime stability, long-running client runtime, and stability archiving documentation
+
+🐛 Fixes
+- Fix Composer deep-path file reference search so files inside deeply nested directories can be searched and referenced again from the Composer input
+- Fix file-tree first-paint scroll container layout to restore stable initial render and scrolling of the directory tree
+- Fix Markdown lazy-loading isolation in parent component tests to reduce cross-talk and flakiness between message components and Markdown lazy boundaries
+- Fix top-bar menu button convergence so key navigation entrypoints stay stable
+- Fix Apple event full diagnostic code retention so the threads path no longer drops diagnostic information across process events
+- Fix long-running client runtime stability to reduce runtime-state, event-subscription, and foreground-residue drift during long sessions, parallel conversations, and high-frequency events
+- Fix AppShell runtime context isolation stability so `layoutContext`, `fileEditorContext`, `settingsContext`, and the newly introduced `runtimeContext`, `modelSelectionContext`, and `collaborationModeContext` keep clear boundaries across module access
+- Fix vendor ordering time stability so the vendor list order remains consistent across refreshes and session switches
+- Fix the runtime reconnect recovery card state so messages no longer lose or mis-render state after reconnect or session recovery
+- Fix reasoning test JSX type references so message components render reliably inside the test context
+- Fix the AppShell runtime contract governance script boundary handling so newly added context names and `ctx` parameters are no longer misclassified as violations
+
+中文：
+
+🔧 Improvements
+- 升级应用版本号到 `0.5.10`，同步前端包配置与 Tauri 配置
+
+🐛 Fixes
+- 修复 Composer 文件引用深层路径搜索异常，恢复深层目录文件在 Composer 输入中的可被检索与引用能力
+- 修复文件树首屏滚动容器布局问题，让首屏目录树展示与滚动行为回到稳定状态
+- 修复父组件测试中 Markdown 懒加载隔离问题，降低消息组件 Markdown 懒加载在父级测试上下文中的串扰与不稳定
+
+English:
+
+🔧 Improvements
+- Bump app version to `0.5.10` across frontend package metadata and Tauri configuration
+
+🐛 Fixes
+- Fix Composer deep-path file reference search so files inside deeply nested directories can be searched and referenced again from the Composer input
+- Fix file-tree first-paint scroll container layout to restore stable initial render and scrolling of the directory tree
+- Fix Markdown lazy-loading isolation in parent component tests to reduce cross-talk and flakiness between message components and Markdown lazy boundaries
+
+---
+
 ##### **2026年6月14日（v0.5.9）**
 
 中文：
