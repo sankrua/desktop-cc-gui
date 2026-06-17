@@ -170,11 +170,11 @@ test("v0.5.11 runtime producer derives measured timing from turn trace summaries
               payload: {
                 evidenceClass: "measured",
                 deltas: {
-                  firstDeltaToBatchFlushEndMs: 4,
                   batchFlushEndToReducerCommitMs: 3,
                 },
                 counters: {
-                  batchFlushDurationAvgMs: 5,
+                  realtimeDeltaRouteDurationAvgMs: 4,
+                  appServerEventRouteDurationAvgMs: 5,
                 },
               },
             },
@@ -184,11 +184,11 @@ test("v0.5.11 runtime producer derives measured timing from turn trace summaries
               payload: {
                 evidenceClass: "measured",
                 deltas: {
-                  firstDeltaToBatchFlushEndMs: 8,
                   batchFlushEndToReducerCommitMs: 6,
                 },
                 counters: {
-                  batchFlushDurationAvgMs: 9,
+                  realtimeDeltaRouteDurationAvgMs: 8,
+                  appServerEventRouteDurationAvgMs: 9,
                 },
               },
             },
@@ -228,7 +228,7 @@ test("v0.5.11 runtime producer derives reducer dispatch rate from measured turn 
             counters: {
               deltaCount: 12,
               reducerCommitCount: 24,
-              batchFlushDurationAvgMs: 10,
+              appServerEventRouteDurationAvgMs: 10,
             },
           },
         },
@@ -240,7 +240,7 @@ test("v0.5.11 runtime producer derives reducer dispatch rate from measured turn 
             counters: {
               deltaCount: 14,
               reducerCommitCount: 56,
-              batchFlushDurationAvgMs: 14,
+              appServerEventRouteDurationAvgMs: 14,
             },
           },
         },
@@ -262,4 +262,47 @@ test("v0.5.11 runtime producer derives reducer dispatch rate from measured turn 
   assert.equal(reducerDispatchRate?.evidenceClass, "measured");
   assert.equal(appServerRoute?.value, 14);
   assert.doesNotMatch(JSON.stringify(fragment), /firstDeltaToFirstVisibleTextMs/);
+});
+
+test("v0.5.11 runtime producer does not promote legacy turn-window timings as measured route evidence", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "mossx-v0511-runtime-evidence-"));
+  const diagnosticsPath = join(dir, "legacy-turn-trace-diagnostics.json");
+  const outputPath = join(dir, "runtime-evidence.json");
+
+  await writeFile(
+    diagnosticsPath,
+    JSON.stringify({
+      entries: [
+        {
+          timestamp: Date.now(),
+          label: "realtime.turnTrace.summary",
+          payload: {
+            evidenceClass: "measured",
+            deltas: {
+              firstDeltaToBatchFlushEndMs: 35_600,
+              batchFlushEndToReducerCommitMs: 2_065,
+            },
+            counters: {
+              deltaCount: 32,
+              reducerCommitCount: 32,
+              batchFlushDurationAvgMs: 9_647.5,
+            },
+          },
+        },
+      ],
+    }),
+    "utf-8",
+  );
+
+  await runProducer([`--diagnostics=${diagnosticsPath}`, `--output=${outputPath}`]);
+
+  const fragment = JSON.parse(await readFile(outputPath, "utf-8"));
+  const byMetric = metricMap(fragment);
+
+  assert.equal(byMetric.get("S-IO-RR/realtime_delta_route_ms_p95")?.evidenceClass, "proxy");
+  assert.notEqual(byMetric.get("S-IO-RR/realtime_delta_route_ms_p95")?.value, 35_600);
+  assert.equal(byMetric.get("S-IO-AS/app_server_event_route_ms_p95")?.evidenceClass, "proxy");
+  assert.notEqual(byMetric.get("S-IO-AS/app_server_event_route_ms_p95")?.value, 9_647.5);
+  assert.equal(byMetric.get("S-IO-RR/thread_reducer_flush_ms_p95")?.value, 2_065);
+  assert.equal(byMetric.get("S-IO-RR/thread_reducer_flush_ms_p95")?.evidenceClass, "measured");
 });

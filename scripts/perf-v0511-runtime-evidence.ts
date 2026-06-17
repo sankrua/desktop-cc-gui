@@ -228,20 +228,20 @@ function measuredMetricsFromTurnTrace(entry: Record<string, unknown>, sourcePath
   if (reducerDispatchesPer1000Delta) {
     rows.push(reducerDispatchesPer1000Delta);
   }
-  const firstDeltaToBatchFlushEndMs = readNestedNumber(
+  const realtimeDeltaRouteDurationAvgMs = readNestedNumber(
     payload,
-    "deltas",
-    "firstDeltaToBatchFlushEndMs",
+    "counters",
+    "realtimeDeltaRouteDurationAvgMs",
   );
-  if (firstDeltaToBatchFlushEndMs !== null) {
+  if (realtimeDeltaRouteDurationAvgMs !== null) {
     rows.push(metric({
       scenario: "S-IO-RR",
       name: "realtime_delta_route_ms_p95",
-      value: firstDeltaToBatchFlushEndMs,
+      value: realtimeDeltaRouteDurationAvgMs,
       unit: "ms",
       evidenceClass: "measured",
       notes:
-        `Measured realtime.turnTrace.summary firstDeltaToBatchFlushEndMs from ${sourcePath}.`,
+        `Measured realtime.turnTrace.summary realtimeDeltaRouteDurationAvgMs from ${sourcePath}.`,
     }));
   }
   const batchFlushEndToReducerCommitMs = readNestedNumber(
@@ -260,20 +260,20 @@ function measuredMetricsFromTurnTrace(entry: Record<string, unknown>, sourcePath
         `Measured realtime.turnTrace.summary batchFlushEndToReducerCommitMs from ${sourcePath}.`,
     }));
   }
-  const batchFlushDurationAvgMs = readNestedNumber(
+  const appServerEventRouteDurationAvgMs = readNestedNumber(
     payload,
     "counters",
-    "batchFlushDurationAvgMs",
+    "appServerEventRouteDurationAvgMs",
   );
-  if (batchFlushDurationAvgMs !== null) {
+  if (appServerEventRouteDurationAvgMs !== null) {
     rows.push(metric({
       scenario: "S-IO-AS",
       name: "app_server_event_route_ms_p95",
-      value: batchFlushDurationAvgMs,
+      value: appServerEventRouteDurationAvgMs,
       unit: "ms",
       evidenceClass: "measured",
       notes:
-        `Measured realtime.turnTrace.summary batchFlushDurationAvgMs from ${sourcePath}.`,
+        `Measured realtime.turnTrace.summary appServerEventRouteDurationAvgMs from ${sourcePath}.`,
     }));
   }
   return rows;

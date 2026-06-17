@@ -97,9 +97,13 @@ function buildFragment(summaries, sourcePath) {
   const unsupportedReason = summaries.length === 0
     ? "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics."
     : undefined;
+  const missingPreciseRouteTimingReason =
+    "Measured realtime.turnTrace.summary diagnostics do not contain appServerEventRouteDurationAvgMs. Run a build with precise route timing instrumentation before claiming batch flush duration.";
   const visibleTextLagValues = summaries.map((summary) => summary.deltas?.firstDeltaToFirstVisibleTextMs);
   const reducerAmplificationValues = summaries.map((summary) => summary.counters?.reducerAmplification);
-  const batchFlushDurationValues = summaries.map((summary) => summary.counters?.batchFlushDurationAvgMs);
+  const batchFlushDurationValues = summaries.map((summary) =>
+    summary.counters?.appServerEventRouteDurationAvgMs
+  );
   const terminalSettlementValues = summaries.map((summary) =>
     summary.counters?.terminalSettlementLagMs ?? summary.deltas?.lastReducerCommitToTerminalSettlementMs
   );
@@ -129,8 +133,8 @@ function buildFragment(summaries, sourcePath) {
         metric: "batchFlushDurationP95",
         values: batchFlushDurationValues,
         unit: "ms",
-        notes: `measured runtime turn trace from ${sourcePath}`,
-        unsupportedReason,
+        notes: `measured runtime turn trace appServerEventRouteDurationAvgMs from ${sourcePath}`,
+        unsupportedReason: unsupportedReason ?? missingPreciseRouteTimingReason,
       }),
       metricFromValues({
         scenario: "S-RS-TS",

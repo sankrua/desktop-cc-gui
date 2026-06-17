@@ -131,3 +131,64 @@ npm run check:runtime-evidence-gates
   - Exported `realtime.turnTrace.summary` entries: `0`.
 - Because the just-run app conversation did not have turn trace enabled, `docs/perf/realtime-runtime-evidence.json` now correctly reports `measuredSummaryCount=0` instead of reusing the stale fixture artifact.
 - `turnTraceCorrelation.ts` and `streamLatencyDiagnostics.ts` now auto-enable bounded trace in Vite dev or `VITE_ENABLE_PERF_BASELINE=1`, while keeping test mode default-off. The next dev/hot app conversation after this code is loaded should produce fresh `realtime.turnTrace.summary` rows without requiring DevTools localStorage setup.
+
+## Precise Route Timing Calibration
+
+- New hot-start runtime export after user conversation produced `entries=1200` and `turnTraceSummaryCount=1`.
+- The measured summary showed:
+  - `S-RS-VL/firstDeltaToFirstVisibleTextMs = 156ms`
+  - `S-IO-RR/reducerCommitCount / deltaCount = 32 / 32 = 1000 dispatches per 1000 deltas`
+  - `deltas.firstDeltaToBatchFlushEndMs = 35600ms`
+  - `counters.batchFlushDurationAvgMs = 9647.5ms`
+- Code audit found `firstDeltaToBatchFlushEndMs` is a whole-turn batch wait/window value, not a per-delta route duration. `batchFlushDurationAvgMs` was also derived from event wait-window timestamps instead of actual route work.
+- Added precise route timing counters to `realtime.turnTrace.summary`:
+  - `counters.realtimeDeltaRouteDurationAvgMs`
+  - `counters.appServerEventRouteDurationAvgMs`
+- Updated `scripts/perf-v0511-runtime-evidence.ts` so:
+  - `S-IO-RR/realtime_delta_route_ms_p95` is promoted to `measured` only from `realtimeDeltaRouteDurationAvgMs`
+  - `S-IO-AS/app_server_event_route_ms_p95` is promoted to `measured` only from `appServerEventRouteDurationAvgMs`
+  - legacy `firstDeltaToBatchFlushEndMs` and `batchFlushDurationAvgMs` no longer promote route metrics
+- Updated `scripts/perf-realtime-runtime-report.mjs` so `S-RS-FD/batchFlushDurationP95` uses `appServerEventRouteDurationAvgMs`; old diagnostics without this field now remain explicit `unsupported`.
+- Pre-restart regenerated evidence after this calibration:
+  - `docs/perf/realtime-runtime-evidence.json`: `S-RS-FD/batchFlushDurationP95 = unsupported`, reason says precise route timing field is missing in the exported diagnostics.
+  - `docs/perf/v0511-runtime-evidence.json`: `S-IO-RR/realtime_delta_route_ms_p95` and `S-IO-AS/app_server_event_route_ms_p95` fall back to proxy fixture values instead of using the stale `35600ms` / `9647.5ms` measured window values.
+  - `npm run perf:archive-readiness -- --json`: exits `2`, `ok: true`, `status: "warn"`, `hardFailures: []`; unsupported records now include `S-RS-FD/batchFlushDurationP95` until the app is restarted with the new instrumentation and another conversation is exported.
+- Validation:
+  - `npm exec vitest run src/features/threads/utils/turnTraceCorrelation.test.ts src/features/threads/utils/streamLatencyDiagnostics.test.ts`: pass (`47` tests)
+  - `node --test scripts/perf-v0511-runtime-evidence.test.mjs scripts/perf-realtime-runtime-report.test.mjs`: pass (`9` tests)
+  - `npm exec vitest run src/features/threads/hooks/useThreadItemEvents.test.ts src/features/threads/hooks/useThreadEventHandlers.test.ts src/features/threads/hooks/useThreadsReducer.append-agent-delta-fast-path.test.ts src/features/app/hooks/useAppServerEvents.batch-consumer.test.tsx`: pass (`115` tests)
+  - `npm run typecheck`: pass
+  - `npm run lint`: pass
+  - `npm run perf:baseline:aggregate`: pass
+  - `npm run check:runtime-evidence-gates`: pass
+  - `openspec validate v0511-performance-evidence-and-runtime-jank-hardening --strict --no-interactive`: pass
+
+## Hot Restart Runtime Evidence Closure
+
+- User restarted the hot dev app and ran a streaming conversation against the latest instrumentation.
+- Process fact:
+  - `npm run tauri:dev:hot` was active from this repository.
+  - No `/Applications/ccgui.app/Contents/MacOS/cc-gui` stale app process was observed in the active process list.
+- `npm run perf:renderer-diagnostics:export -- --verbose`: pass; exported `entries=1200`, `turnTraceSummaryCount=1`.
+- The exported `realtime.turnTrace.summary` includes the new precise route timing counters:
+  - `counters.realtimeDeltaRouteDurationAvgMs = 0`
+  - `counters.realtimeDeltaRouteDurationCount = 2`
+  - `counters.appServerEventRouteDurationAvgMs = 0`
+  - `counters.appServerEventRouteDurationCount = 2`
+- The same measured turn summary records:
+  - `deltas.sendToFirstDeltaMs = 3549`
+  - `deltas.firstDeltaToFirstVisibleTextMs = 116`
+  - `deltas.batchFlushEndToReducerCommitMs = 7265`
+  - `counters.reducerCommitCount / counters.deltaCount = 41 / 41 = 1000 dispatches per 1000 deltas`
+  - `counters.visibleTextGrowthCount = 1`
+- Refreshed evidence after export:
+  - `docs/perf/realtime-runtime-evidence.json`: `S-RS-FD/batchFlushDurationP95 = 0ms`, `measured`, sourced from `appServerEventRouteDurationAvgMs`.
+  - `docs/perf/v0511-runtime-evidence.json`: `S-IO-RR/realtime_delta_route_ms_p95 = 0ms`, `measured`, sourced from `realtimeDeltaRouteDurationAvgMs`.
+  - `docs/perf/v0511-runtime-evidence.json`: `S-IO-AS/app_server_event_route_ms_p95 = 0ms`, `measured`, sourced from `appServerEventRouteDurationAvgMs`.
+  - `docs/perf/v0511-runtime-evidence.json`: `S-IO-RR/thread_reducer_flush_ms_p95 = 7265ms`, `measured`, sourced from `batchFlushEndToReducerCommitMs`.
+- `npm run perf:realtime:runtime-report -- --verbose`: pass; `realtime runtime measured summaries: 1`.
+- `npm run perf:v0511-runtime-evidence -- --verbose`: pass.
+- `npm run perf:baseline:aggregate`: pass.
+- `npm run check:runtime-evidence-gates`: pass.
+- `npm run perf:archive-readiness -- --json`: exits `2` with `ok: true`, `status: "warn"`, `hardFailures: []`, `activeChangeCount: 3`, `metricCount: 28`, `budgetMissingCount: 15`.
+- Remaining unsupported rows are cold-start and long-running-process sampling rows, not the precise route timing gap fixed in this pass.

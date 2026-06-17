@@ -1699,6 +1699,8 @@ export function noteRealtimeCoalescedFlush(input: {
   itemKind: string;
   startedAt?: number;
   endedAt?: number;
+  routeStartedAt?: number;
+  routeEndedAt?: number;
   queueDepthAfter?: number;
 }) {
   // endedAt defaults to wall-clock now; callers (the realtime batcher in
@@ -1731,6 +1733,10 @@ export function noteRealtimeCoalescedFlush(input: {
   ) {
     const snapshot = snapshotByThread.get(input.threadId);
     if (snapshot) {
+      const routeTiming =
+        typeof input.routeStartedAt === "number" && typeof input.routeEndedAt === "number"
+          ? { routeStartedAt: input.routeStartedAt, routeEndedAt: input.routeEndedAt }
+          : {};
       noteTurnBatchFlushBoundary({
         dimensions: {
           workspaceId: input.workspaceId,
@@ -1745,6 +1751,7 @@ export function noteRealtimeCoalescedFlush(input: {
         },
         startedAt: input.startedAt,
         endedAt: now,
+        ...routeTiming,
         eventCount: input.eventCount,
         queueDepthAfter: input.queueDepthAfter ?? 0,
       });
@@ -1757,6 +1764,8 @@ export function noteThreadBatchFlushBoundary(input: {
   turnId: string;
   startedAt: number;
   endedAt: number;
+  routeStartedAt?: number;
+  routeEndedAt?: number;
   eventCount: number;
   queueDepthAfter?: number;
 }) {
@@ -1770,6 +1779,14 @@ export function noteThreadBatchFlushBoundary(input: {
     || !Number.isFinite(input.startedAt)
     || typeof input.endedAt !== "number"
     || !Number.isFinite(input.endedAt)
+    || (
+      input.routeStartedAt !== undefined &&
+      (typeof input.routeStartedAt !== "number" || !Number.isFinite(input.routeStartedAt))
+    )
+    || (
+      input.routeEndedAt !== undefined &&
+      (typeof input.routeEndedAt !== "number" || !Number.isFinite(input.routeEndedAt))
+    )
     || input.eventCount < 0
   ) {
     return;
@@ -1778,6 +1795,10 @@ export function noteThreadBatchFlushBoundary(input: {
   if (!snapshot) {
     return;
   }
+  const routeTiming =
+    typeof input.routeStartedAt === "number" && typeof input.routeEndedAt === "number"
+      ? { routeStartedAt: input.routeStartedAt, routeEndedAt: input.routeEndedAt }
+      : {};
   noteTurnBatchFlushBoundary({
     dimensions: {
       workspaceId: snapshot.workspaceId,
@@ -1792,6 +1813,7 @@ export function noteThreadBatchFlushBoundary(input: {
     },
     startedAt: input.startedAt,
     endedAt: input.endedAt,
+    ...routeTiming,
     eventCount: input.eventCount,
     queueDepthAfter: input.queueDepthAfter ?? 0,
   });

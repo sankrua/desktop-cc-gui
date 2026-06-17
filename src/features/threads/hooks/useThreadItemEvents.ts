@@ -779,30 +779,17 @@ export function useThreadItemEvents({
       const ensuredThreads = new Set<string>();
       const markedProcessingThreads = new Set<string>();
       const flushEndedAt = Date.now();
-      // Reconstruct batch-flush-start from the earliest timestamp on the events
-      // in this flush (falls back to flushEndedAt for single-event first-token
-      // flushes where the start == end is the truthful signal).
-      let batchStart = flushEndedAt;
       for (const flush of flushes) {
+        // Reconstruct the batch wait window from event timestamps, but measure
+        // actual route work separately so evidence does not treat long streams
+        // as one giant route operation.
+        let batchStart = flushEndedAt;
         for (const event of flush.events) {
           if (typeof event.timestampMs === "number" && event.timestampMs < batchStart) {
             batchStart = event.timestampMs;
           }
         }
-      }
-      for (const flush of flushes) {
-        noteRealtimeCoalescedFlush({
-          reason: flush.reason,
-          eventCount: flush.events.length,
-          engine: operation.event.engine,
-          workspaceId: operation.event.workspaceId,
-          threadId: operation.event.threadId,
-          turnId: operation.event.turnId ?? null,
-          itemKind: operation.event.itemKind,
-          startedAt: batchStart,
-          endedAt: flushEndedAt,
-          queueDepthAfter: 0,
-        });
+        const routeStartedAt = Date.now();
         for (const event of flush.events) {
           applyNormalizedRealtimeEventNow(
             {
@@ -817,6 +804,21 @@ export function useThreadItemEvents({
             },
           );
         }
+        const routeEndedAt = Date.now();
+        noteRealtimeCoalescedFlush({
+          reason: flush.reason,
+          eventCount: flush.events.length,
+          engine: operation.event.engine,
+          workspaceId: operation.event.workspaceId,
+          threadId: operation.event.threadId,
+          turnId: operation.event.turnId ?? null,
+          itemKind: operation.event.itemKind,
+          startedAt: batchStart,
+          endedAt: flushEndedAt,
+          routeStartedAt,
+          routeEndedAt,
+          queueDepthAfter: 0,
+        });
       }
     },
     [applyNormalizedRealtimeEventNow, flushNormalizedRealtimeOps],

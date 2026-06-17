@@ -64,6 +64,12 @@ export type TurnTraceCounters = {
   batchFlushDurationSumMs: number;
   batchFlushDurationCount: number;
   batchFlushDurationAvgMs: number | null;
+  realtimeDeltaRouteDurationSumMs: number;
+  realtimeDeltaRouteDurationCount: number;
+  realtimeDeltaRouteDurationAvgMs: number | null;
+  appServerEventRouteDurationSumMs: number;
+  appServerEventRouteDurationCount: number;
+  appServerEventRouteDurationAvgMs: number | null;
   terminalSettlementLagMs: number | null;
 };
 
@@ -177,6 +183,15 @@ function sanitizeTimestamp(value: number | null | undefined): number | null {
     return null;
   }
   return value;
+}
+
+function computeStrictDurationMs(startedAt: number | null | undefined, endedAt: number | null | undefined) {
+  const started = sanitizeTimestamp(startedAt);
+  const ended = sanitizeTimestamp(endedAt);
+  if (started === null || ended === null || ended < started) {
+    return null;
+  }
+  return ended - started;
 }
 
 function computeDeltas(milestones: TurnTraceMilestones): TurnTraceSummary["deltas"] {
@@ -328,6 +343,12 @@ function pushSink(summary: TurnTraceSummary) {
         batchFlushDurationSumMs: summary.counters.batchFlushDurationSumMs,
         batchFlushDurationCount: summary.counters.batchFlushDurationCount,
         batchFlushDurationAvgMs: summary.counters.batchFlushDurationAvgMs,
+        realtimeDeltaRouteDurationSumMs: summary.counters.realtimeDeltaRouteDurationSumMs,
+        realtimeDeltaRouteDurationCount: summary.counters.realtimeDeltaRouteDurationCount,
+        realtimeDeltaRouteDurationAvgMs: summary.counters.realtimeDeltaRouteDurationAvgMs,
+        appServerEventRouteDurationSumMs: summary.counters.appServerEventRouteDurationSumMs,
+        appServerEventRouteDurationCount: summary.counters.appServerEventRouteDurationCount,
+        appServerEventRouteDurationAvgMs: summary.counters.appServerEventRouteDurationAvgMs,
         terminalSettlementLagMs: summary.counters.terminalSettlementLagMs,
       },
     });
@@ -369,6 +390,12 @@ function ensureTurn(dimensions: TurnTraceDimensions, startedAtMs: number): TurnT
       batchFlushDurationSumMs: 0,
       batchFlushDurationCount: 0,
       batchFlushDurationAvgMs: null,
+      realtimeDeltaRouteDurationSumMs: 0,
+      realtimeDeltaRouteDurationCount: 0,
+      realtimeDeltaRouteDurationAvgMs: null,
+      appServerEventRouteDurationSumMs: 0,
+      appServerEventRouteDurationCount: 0,
+      appServerEventRouteDurationAvgMs: null,
       terminalSettlementLagMs: null,
     },
     evidenceClass: "unsupported",
@@ -416,6 +443,22 @@ function recordMilestone(
       (summary.counters.batchFlushDurationSumMs / summary.counters.batchFlushDurationCount).toFixed(2),
     );
   }
+  if (summary.counters.realtimeDeltaRouteDurationCount > 0) {
+    summary.counters.realtimeDeltaRouteDurationAvgMs = Number(
+      (
+        summary.counters.realtimeDeltaRouteDurationSumMs /
+        summary.counters.realtimeDeltaRouteDurationCount
+      ).toFixed(3),
+    );
+  }
+  if (summary.counters.appServerEventRouteDurationCount > 0) {
+    summary.counters.appServerEventRouteDurationAvgMs = Number(
+      (
+        summary.counters.appServerEventRouteDurationSumMs /
+        summary.counters.appServerEventRouteDurationCount
+      ).toFixed(3),
+    );
+  }
   const evidence = resolveEvidenceClass(summary.counters, summary.milestones);
   summary.evidenceClass = evidence.class;
   summary.evidenceReason = evidence.reason;
@@ -453,6 +496,8 @@ export function noteTurnBatchFlushBoundary(input: {
   dimensions: TurnTraceDimensions;
   startedAt: number;
   endedAt: number;
+  routeStartedAt?: number;
+  routeEndedAt?: number;
   eventCount: number;
   queueDepthAfter: number;
 }) {
@@ -460,6 +505,11 @@ export function noteTurnBatchFlushBoundary(input: {
     return;
   }
   const flushDurationMs = Math.max(0, input.endedAt - input.startedAt);
+  const routeDurationMs = computeStrictDurationMs(input.routeStartedAt, input.routeEndedAt);
+  const perDeltaRouteDurationMs =
+    routeDurationMs !== null && input.eventCount > 0
+      ? routeDurationMs / input.eventCount
+      : null;
   recordMilestone(
     input.dimensions,
     "batch-flush-start",
@@ -468,6 +518,14 @@ export function noteTurnBatchFlushBoundary(input: {
       counters.batchFlushCount += 1;
       counters.batchFlushDurationSumMs += flushDurationMs;
       counters.batchFlushDurationCount += 1;
+      if (routeDurationMs !== null) {
+        counters.appServerEventRouteDurationSumMs += routeDurationMs;
+        counters.appServerEventRouteDurationCount += 1;
+      }
+      if (perDeltaRouteDurationMs !== null) {
+        counters.realtimeDeltaRouteDurationSumMs += perDeltaRouteDurationMs;
+        counters.realtimeDeltaRouteDurationCount += 1;
+      }
       if (input.queueDepthAfter > counters.maxQueueDepth) {
         counters.maxQueueDepth = input.queueDepthAfter;
       }

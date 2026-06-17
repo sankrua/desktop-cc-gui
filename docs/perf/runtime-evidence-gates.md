@@ -1,6 +1,6 @@
 # Runtime Evidence Gates
 
-Generated at: 2026-06-17T16:22:58.800Z
+Generated at: 2026-06-17T17:21:01.442Z
 
 ## Performance Evidence
 
@@ -26,10 +26,10 @@ Generated at: 2026-06-17T16:22:58.800Z
 | docs/perf/baseline.json | S-RS-FT | interTokenJitterP95 | 920 | ms | proxy | 500 | 920 | Fixture or replay evidence; useful for regression comparison, not release-grade runtime proof. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/baseline.json | S-RS-PE | dedupHitRatio | 0.25 | ratio | proxy |  |  | Fixture or replay evidence; useful for regression comparison, not release-grade runtime proof. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/baseline.json | S-RS-PE | assemblerLatency | 4.21 | ms | proxy |  |  | replay reducer-path proxy latency | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
-| docs/perf/realtime-extended-baseline.json | S-RS-VL | visibleTextLagP95 | 24 | ms | proxy | 2000 | 5000 | Replay-derived first-delta -> first-visible-text P95; jsdom/PerformanceObserver path is the follow-up. | Wire PerformanceObserver in Tauri webview to record first visible text growth and bring this to measured. |
-| docs/perf/realtime-extended-baseline.json | S-RS-RA | reducerAmplificationMedian | 1.33 | ratio | proxy | 2 | 4 | Replay-derived reducer amplification median; reflects fixture batch grouping. | Cross-check with renderer-side reducer commit count under live Tauri session. |
-| docs/perf/realtime-extended-baseline.json | S-RS-FD | batchFlushDurationP95 | 13.33 | ms | proxy | 8 | 16 | Replay-derived batch flush duration P95; replay group window is the surrogate. | Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path. |
-| docs/perf/realtime-extended-baseline.json | S-RS-TS | terminalSettlementP95 | 60 | ms | proxy | 100 | 250 | Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted). | Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured. |
+| docs/perf/baseline.json | S-RS-VL | visibleTextLagP95 | 116 | ms | measured | 2000 | 5000 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/baseline.json | S-RS-RA | reducerAmplificationMedian | 1 | ratio | measured | 2 | 4 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/baseline.json | S-RS-FD | batchFlushDurationP95 | 0 | ms | measured | 8 | 16 | measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/baseline.json | S-RS-TS | terminalSettlementP95 | 7 | ms | measured | 100 | 250 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/baseline.json | S-CS-COLD | bundleSizeMain | 1068094 | bytes-gzip | measured | 950000 | 1100000 | App-pCMuvY3q.js | Track for regression. |
 | docs/perf/baseline.json | S-CS-COLD | bundleSizeVendor | 741553 | bytes-gzip | measured | 680000 | 760000 | subset-shared.chunk-BcpPBYlL.js | Track for regression. |
 | docs/perf/baseline.json | S-CS-COLD | firstPaintMs | unsupported | ms | unsupported |  |  | Tauri/webview startup marker snapshot was not provided; bundle baseline is recorded. | Collect real Tauri webview cold-start timing on a supported runner. |
@@ -41,27 +41,27 @@ Generated at: 2026-06-17T16:22:58.800Z
 | docs/perf/composer-baseline.json | S-CI-100-IME | inputEventLossCount | 0 | count | proxy |  |  | Fixture or replay evidence; useful for regression comparison, not release-grade runtime proof. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/composer-baseline.json | S-CI-100-IME | compositionToCommit | 0.1 | ms | proxy |  |  | Fixture or replay evidence; useful for regression comparison, not release-grade runtime proof. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/long-list-browser-scroll.json | S-LL-1000 | browserScrollFrameDropPct | 0 | % | measured |  |  | browser=/Applications/Google Chrome.app/Contents/MacOS/Google Chrome | Track for regression. |
-| docs/perf/realtime-runtime-evidence.json | S-RS-VL | visibleTextLagP95 | unsupported | ms | unsupported | 2000 | 5000 | No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
-| docs/perf/realtime-runtime-evidence.json | S-RS-RA | reducerAmplificationMedian | unsupported | ratio | unsupported | 2 | 4 | No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
-| docs/perf/realtime-runtime-evidence.json | S-RS-FD | batchFlushDurationP95 | unsupported | ms | unsupported | 8 | 16 | No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
-| docs/perf/realtime-runtime-evidence.json | S-RS-TS | terminalSettlementP95 | unsupported | ms | unsupported | 100 | 250 | No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics. | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/realtime-runtime-evidence.json | S-RS-VL | visibleTextLagP95 | 116 | ms | measured | 2000 | 5000 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/realtime-runtime-evidence.json | S-RS-RA | reducerAmplificationMedian | 1 | ratio | measured | 2 | 4 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/realtime-runtime-evidence.json | S-RS-FD | batchFlushDurationP95 | 0 | ms | measured | 8 | 16 | measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/realtime-runtime-evidence.json | S-RS-TS | terminalSettlementP95 | 7 | ms | measured | 100 | 250 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-RR | prepareThreadItems_calls_per_1000_delta | 0 | count | proxy |  |  | Proxy fixture anchored to useThreadsReducer.append-agent-delta-fast-path 1000-delta Codex burst. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-RR | realtime_reducer_dispatches_per_1000_delta | 1000 | count | proxy |  |  | Proxy fixture anchored to useThreadsReducer.__profile reducerDispatchCount for the same burst. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-RR | thread_reducer_flush_ms_p95 | 0.027 | ms | proxy |  |  | Proxy timing from the same reducer-only 1000-delta fixture; not a browser frame/render measurement. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-RR | realtime_delta_route_ms_p95 | 0.003 | ms | proxy |  |  | Proxy timing from dispatchAppServerEvent over the synthetic 1000-delta app-server route. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-RR | realtime_reducer_dispatches_per_1000_delta | 1000 | count | measured |  |  | Measured realtime.turnTrace.summary reducerCommitCount/deltaCount from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1 | Track for regression. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-RR | thread_reducer_flush_ms_p95 | 7265 | ms | measured |  |  | Measured realtime.turnTrace.summary batchFlushEndToReducerCommitMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1 | Track for regression. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-RR | realtime_delta_route_ms_p95 | 0 | ms | measured |  |  | Measured realtime.turnTrace.summary realtimeDeltaRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1 | Track for regression. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-AS | app_server_event_raw_per_sec | 1000 | events/sec | proxy |  |  | Proxy burst fixture: 1000 app-server delta events submitted in a one-second synthetic window. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-AS | app_server_event_ipc_emit_per_sec | 1 | events/sec | proxy |  |  | Proxy burst fixture expects one per-workspace batch IPC payload for the synthetic window. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-AS | app_server_event_route_ms_p95 | 0.001 | ms | proxy |  |  | Proxy timing from dispatchAppServerEvent over 1000 synthetic app-server delta payloads. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-AS | app_server_event_route_ms_p95 | 0 | ms | measured |  |  | Measured realtime.turnTrace.summary appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1 | Track for regression. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-AS | realtime_reducer_dispatches_per_1000_delta | 1000 | count | proxy |  |  | Proxy fixture counts routed append-only deltas through dispatchAppServerEventBatch. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-AS | main_thread_long_task_count_during_stream | 0 | count | proxy |  |  | Node fixture proxy: one synchronous batch route is compared to the 50ms long-task threshold; browser PerformanceObserver remains release follow-up. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FC | fs_event_raw_per_sec | 1000 | events/sec | proxy |  |  | Proxy same-path burst fixture mirrors DebouncedState same-key replacement semantics. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FC | fs_event_emitted_per_sec | 1 | events/sec | proxy |  |  | Proxy same-path burst fixture emits one debounced batch for one flush window. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FC | fs_event_same_path_coalesce_ratio | 0.999 | ratio | proxy |  |  | Proxy same-path burst fixture: (rawCount - emittedCount) / rawCount. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FC | fs_event_empty_batch_emit_count | 0 | count | proxy |  |  | Proxy fixture matches external_changes_debouncer_no_empty_batch_emit regression contract. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-FS | file_io_command_wall_ms_p95 | 5.75 | ms | proxy |  |  | Proxy Node async fs fixture: 10MB write+read wall-time P95; Tauri command timing remains release follow-up. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-FS | file_io_async_worker_stall_ms_p95 | 0.183 | ms | proxy |  |  | Proxy event-loop stall probe sampled with setImmediate during async 10MB write+read fixture. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-FS | file_io_command_wall_ms_p95 | 16.772 | ms | proxy |  |  | Proxy Node async fs fixture: 10MB write+read wall-time P95; Tauri command timing remains release follow-up. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-FS | file_io_async_worker_stall_ms_p95 | 0.202 | ms | proxy |  |  | Proxy event-loop stall probe sampled with setImmediate during async 10MB write+read fixture. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FS | file_io_blocking_pool_call_count | 10 | count | proxy |  |  | Proxy count of async fs operations in the fixture; native Tauri blocking-pool attribution remains release follow-up. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
-| docs/perf/v0511-runtime-evidence.json | S-IO-FS | tauri_command_during_stream_ms_p95 | 5.75 | ms | proxy |  |  | Proxy wall-time reused for the content-safe file I/O fixture; not a live Tauri command measurement. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/v0511-runtime-evidence.json | S-IO-FS | tauri_command_during_stream_ms_p95 | 16.772 | ms | proxy |  |  | Proxy wall-time reused for the content-safe file I/O fixture; not a live Tauri command measurement. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FP | composer_render_count_per_streaming_minute | 2 | count | proxy |  |  | Proxy render-counter fixture using the same __profile.recordComponentRender hook wired by useLayoutNodes Profiler. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FP | sidebar_render_count_per_streaming_minute | 1 | count | proxy |  |  | Proxy render-counter fixture using the same __profile.recordComponentRender hook wired by useLayoutNodes Profiler. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 | docs/perf/v0511-runtime-evidence.json | S-IO-FP | thread_row_rerender_count_per_1000_delta | 1 | count | proxy |  |  | Proxy render-counter fixture; production row-level Profiler capture remains release follow-up. | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
@@ -78,10 +78,10 @@ Generated at: 2026-06-17T16:22:58.800Z
 
 - First token latency: 5000 ms
 - Inter-token jitter P95: 920 ms
-- Visible text lag P95: 24 ms (turn-trace correlation gate)
-- Reducer amplification median: 1.33 ratio
-- Batch flush duration P95: 13.33 ms
-- Terminal settlement P95: 60 ms
+- Visible text lag P95: 116 ms (turn-trace correlation gate)
+- Reducer amplification median: 1 ratio
+- Batch flush duration P95: 0 ms
+- Terminal settlement P95: 7 ms
 - Visible lag risk: high
 - Terminal pressure: not-directly-measured
 - Turn trace evidence class: proxy (source: docs/perf/realtime-turn-trace.json)
@@ -90,7 +90,7 @@ Generated at: 2026-06-17T16:22:58.800Z
 ## Renderer Resource Pressure
 
 - Backpressure flush cap: 200 events / 131072 bytes
-- Backpressure evidence: proxy
+- Backpressure evidence: measured
 - Listener owner pilot surfaces: events.terminal-output, events.runtime-log-line, events.runtime-log-status, focus-refresh-wave
 - Media owner pilot surfaces: message-image-grid, message-deferred-image
 - Residual listener risk: Full-app listener inventory remains manual; pilot surfaces are tracked first.
@@ -125,8 +125,8 @@ Generated at: 2026-06-17T16:22:58.800Z
 
 - Diagnostics label: perf.realtime.input-render-budget
 - prepareThreadItems calls / 1000 delta: 0 (target 5)
-- Reducer flush P95: 0.027 ms (target 8)
-- Delta route P95: 0.003 ms (target 4)
+- Reducer flush P95: 7265 ms (target 8)
+- Delta route P95: 0 ms (target 4)
 - Evidence class: proxy
 - Reason: Producer artifact captures reducer fast-path and realtime route timing proxy evidence.
 - Next action: Promote proxy reducer and route timing to measured Tauri/WebView evidence before release-grade closure.
@@ -134,10 +134,10 @@ Generated at: 2026-06-17T16:22:58.800Z
 ## Backend File IO Isolation
 
 - Diagnostics label: perf.backend.file-io-isolation
-- File I/O command wall P95: 5.75 ms (no artificial 5ms budget)
-- Async worker stall P95: 0.183 ms (target 1)
+- File I/O command wall P95: 16.772 ms (no artificial 5ms budget)
+- Async worker stall P95: 0.202 ms (target 1)
 - Blocking pool call count: 10
-- Tauri command during stream P95: 5.75 ms
+- Tauri command during stream P95: 16.772 ms
 - Evidence class: proxy
 - Reason: Proxy Node async fs fixture: 10MB write+read wall-time P95; Tauri command timing remains release follow-up.
 - Next action: Run blocking pool call counter and async-worker stall probe in a 10MB read/write fixture during streaming.
@@ -158,7 +158,7 @@ Generated at: 2026-06-17T16:22:58.800Z
 - Diagnostics label: perf.app-server-event.batching
 - Raw app server events / sec: 1000
 - IPC app server events / sec: 1 (target ipcEmit/raw ratio 0.1)
-- Route P95: 0.001 ms (target 4)
+- Route P95: 0 ms (target 4)
 - Reducer dispatches / 1000 delta: 1000 (target 1000)
 - Main thread long tasks during stream: 0 (target 0)
 - Evidence class: proxy

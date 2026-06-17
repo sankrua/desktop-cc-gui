@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-06-17T16:22:58.800Z",
+  "generatedAt": "2026-06-17T17:21:01.442Z",
   "sources": {
     "perfBaseline": "docs/perf/baseline.json",
     "composerBaseline": "docs/perf/composer-baseline.json",
@@ -291,12 +291,12 @@
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-VL",
       "metric": "visibleTextLagP95",
-      "value": 24,
+      "value": 116,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2000,
         "hardFail": 5000,
@@ -306,16 +306,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived first-delta -> first-visible-text P95; jsdom/PerformanceObserver path is the follow-up.",
-      "nextAction": "Wire PerformanceObserver in Tauri webview to record first visible text growth and bring this to measured."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-RA",
       "metric": "reducerAmplificationMedian",
-      "value": 1.33,
+      "value": 1,
       "unit": "ratio",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2,
         "hardFail": 4,
@@ -325,16 +325,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived reducer amplification median; reflects fixture batch grouping.",
-      "nextAction": "Cross-check with renderer-side reducer commit count under live Tauri session."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-FD",
       "metric": "batchFlushDurationP95",
-      "value": 13.33,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 8,
         "hardFail": 16,
@@ -344,16 +344,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived batch flush duration P95; replay group window is the surrogate.",
-      "nextAction": "Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path."
+      "reason": "measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-TS",
       "metric": "terminalSettlementP95",
-      "value": 60,
+      "value": 7,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 100,
         "hardFail": 250,
@@ -363,8 +363,8 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted).",
-      "nextAction": "Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/baseline.json",
@@ -507,9 +507,9 @@
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-VL",
       "metric": "visibleTextLagP95",
-      "value": null,
+      "value": 116,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2000,
         "hardFail": 5000,
@@ -519,16 +519,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-RA",
       "metric": "reducerAmplificationMedian",
-      "value": null,
+      "value": 1,
       "unit": "ratio",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2,
         "hardFail": 4,
@@ -538,16 +538,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-FD",
       "metric": "batchFlushDurationP95",
-      "value": null,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 8,
         "hardFail": 16,
@@ -557,16 +557,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-TS",
       "metric": "terminalSettlementP95",
-      "value": null,
+      "value": 7,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 100,
         "hardFail": 250,
@@ -576,7 +576,7 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
@@ -596,32 +596,32 @@
       "metric": "realtime_reducer_dispatches_per_1000_delta",
       "value": 1000,
       "unit": "count",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy fixture anchored to useThreadsReducer.__profile reducerDispatchCount for the same burst.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary reducerCommitCount/deltaCount from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-RR",
       "metric": "thread_reducer_flush_ms_p95",
-      "value": 0.027,
+      "value": 7265,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from the same reducer-only 1000-delta fixture; not a browser frame/render measurement.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary batchFlushEndToReducerCommitMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-RR",
       "metric": "realtime_delta_route_ms_p95",
-      "value": 0.003,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from dispatchAppServerEvent over the synthetic 1000-delta app-server route.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary realtimeDeltaRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
@@ -649,12 +649,12 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-AS",
       "metric": "app_server_event_route_ms_p95",
-      "value": 0.001,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from dispatchAppServerEvent over 1000 synthetic app-server delta payloads.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
@@ -726,7 +726,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "file_io_command_wall_ms_p95",
-      "value": 5.75,
+      "value": 16.772,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
@@ -737,7 +737,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "file_io_async_worker_stall_ms_p95",
-      "value": 0.183,
+      "value": 0.202,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
@@ -759,7 +759,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "tauri_command_during_stream_ms_p95",
-      "value": 5.75,
+      "value": 16.772,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
@@ -892,10 +892,10 @@
     "firstTokenLatencyMs": 5000,
     "interTokenJitterP95Ms": 920,
     "assemblerLatencyMs": 4.21,
-    "visibleTextLagP95Ms": 24,
-    "reducerAmplificationMedian": 1.33,
-    "batchFlushDurationP95Ms": 13.33,
-    "terminalSettlementP95Ms": 60,
+    "visibleTextLagP95Ms": 116,
+    "reducerAmplificationMedian": 1,
+    "batchFlushDurationP95Ms": 0,
+    "terminalSettlementP95Ms": 7,
     "evidenceClass": "proxy",
     "visibleLagRisk": "high",
     "terminalPressure": "not-directly-measured",
@@ -905,14 +905,14 @@
   },
   "rendererResourceSummary": {
     "backpressure": {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "eventFlushCap": 200,
       "byteFlushCap": 131072,
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "queueDepth": null,
       "droppedCount": null,
       "coalescedCount": null,
-      "reason": "Replay-derived batch flush duration P95; replay group window is the surrogate."
+      "reason": "measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json"
     },
     "listenerOwners": {
       "ownerTaxonomy": [
@@ -943,8 +943,8 @@
       "unsupportedReason": "Retained bytes are reported when Blob sizes are available in renderer diagnostics."
     },
     "criticalPath": {
-      "terminalSettlementP95Ms": 60,
-      "evidenceClass": "proxy"
+      "terminalSettlementP95Ms": 7,
+      "evidenceClass": "measured"
     }
   },
   "backendBridgeSummary": {
@@ -1097,8 +1097,8 @@
       "realtimeDeltaRouteMsP95": 4
     },
     "prepareThreadItems_calls_per_1000_delta": 0,
-    "thread_reducer_flush_ms_p95": 0.027,
-    "realtime_delta_route_ms_p95": 0.003,
+    "thread_reducer_flush_ms_p95": 7265,
+    "realtime_delta_route_ms_p95": 0,
     "evidenceClass": "proxy",
     "reason": "Producer artifact captures reducer fast-path and realtime route timing proxy evidence.",
     "nextAction": "Promote proxy reducer and route timing to measured Tauri/WebView evidence before release-grade closure."
@@ -1122,10 +1122,10 @@
       "file_io_blocking_pool_call_count": null,
       "tauri_command_during_stream_ms_p95": null
     },
-    "file_io_command_wall_ms_p95": 5.75,
-    "file_io_async_worker_stall_ms_p95": 0.183,
+    "file_io_command_wall_ms_p95": 16.772,
+    "file_io_async_worker_stall_ms_p95": 0.202,
     "file_io_blocking_pool_call_count": 10,
-    "tauri_command_during_stream_ms_p95": 5.75,
+    "tauri_command_during_stream_ms_p95": 16.772,
     "evidenceClass": "proxy",
     "reason": "Proxy Node async fs fixture: 10MB write+read wall-time P95; Tauri command timing remains release follow-up.",
     "nextAction": "Run blocking pool call counter and async-worker stall probe in a 10MB read/write fixture during streaming."
@@ -1181,7 +1181,7 @@
     },
     "app_server_event_raw_per_sec": 1000,
     "app_server_event_ipc_emit_per_sec": 1,
-    "app_server_event_route_ms_p95": 0.001,
+    "app_server_event_route_ms_p95": 0,
     "realtime_reducer_dispatches_per_1000_delta": 1000,
     "main_thread_long_task_count_during_stream": 0,
     "evidenceClass": "proxy",
@@ -1491,12 +1491,12 @@
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-VL",
       "metric": "visibleTextLagP95",
-      "value": 24,
+      "value": 116,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2000,
         "hardFail": 5000,
@@ -1506,16 +1506,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived first-delta -> first-visible-text P95; jsdom/PerformanceObserver path is the follow-up.",
-      "nextAction": "Wire PerformanceObserver in Tauri webview to record first visible text growth and bring this to measured."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-RA",
       "metric": "reducerAmplificationMedian",
-      "value": 1.33,
+      "value": 1,
       "unit": "ratio",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2,
         "hardFail": 4,
@@ -1525,16 +1525,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived reducer amplification median; reflects fixture batch grouping.",
-      "nextAction": "Cross-check with renderer-side reducer commit count under live Tauri session."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-FD",
       "metric": "batchFlushDurationP95",
-      "value": 13.33,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 8,
         "hardFail": 16,
@@ -1544,16 +1544,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived batch flush duration P95; replay group window is the surrogate.",
-      "nextAction": "Replace with measured wall-clock gap between batcher flush-start and flush-end in the renderer hot path."
+      "reason": "measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-extended-baseline.json",
+      "source": "docs/perf/baseline.json",
       "scenario": "S-RS-TS",
       "metric": "terminalSettlementP95",
-      "value": 60,
+      "value": 7,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": {
         "target": 100,
         "hardFail": 250,
@@ -1563,8 +1563,8 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "Replay-derived terminal settlement P95 (last reducer commit -> agentCompleted).",
-      "nextAction": "Wire real Tauri/webview terminal signal (provider final + reducer final) and reclassify to measured."
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
+      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/baseline.json",
@@ -1707,9 +1707,9 @@
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-VL",
       "metric": "visibleTextLagP95",
-      "value": null,
+      "value": 116,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2000,
         "hardFail": 5000,
@@ -1719,16 +1719,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-RA",
       "metric": "reducerAmplificationMedian",
-      "value": null,
+      "value": 1,
       "unit": "ratio",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 2,
         "hardFail": 4,
@@ -1738,16 +1738,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-FD",
       "metric": "batchFlushDurationP95",
-      "value": null,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 8,
         "hardFail": 16,
@@ -1757,16 +1757,16 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
       "source": "docs/perf/realtime-runtime-evidence.json",
       "scenario": "S-RS-TS",
       "metric": "terminalSettlementP95",
-      "value": null,
+      "value": 7,
       "unit": "ms",
-      "evidenceClass": "unsupported",
+      "evidenceClass": "measured",
       "budget": {
         "target": 100,
         "hardFail": 250,
@@ -1776,7 +1776,7 @@
         "owner": "realtime-runtime-evidence",
         "status": "approved-runtime-measured"
       },
-      "reason": "No measured realtime.turnTrace.summary diagnostics were found. Enable turn trace in a Tauri/webview session and export renderer diagnostics.",
+      "reason": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json",
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
@@ -1796,32 +1796,32 @@
       "metric": "realtime_reducer_dispatches_per_1000_delta",
       "value": 1000,
       "unit": "count",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy fixture anchored to useThreadsReducer.__profile reducerDispatchCount for the same burst.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary reducerCommitCount/deltaCount from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-RR",
       "metric": "thread_reducer_flush_ms_p95",
-      "value": 0.027,
+      "value": 7265,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from the same reducer-only 1000-delta fixture; not a browser frame/render measurement.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary batchFlushEndToReducerCommitMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-RR",
       "metric": "realtime_delta_route_ms_p95",
-      "value": 0.003,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from dispatchAppServerEvent over the synthetic 1000-delta app-server route.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary realtimeDeltaRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
@@ -1849,12 +1849,12 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-AS",
       "metric": "app_server_event_route_ms_p95",
-      "value": 0.001,
+      "value": 0,
       "unit": "ms",
-      "evidenceClass": "proxy",
+      "evidenceClass": "measured",
       "budget": null,
-      "reason": "Proxy timing from dispatchAppServerEvent over 1000 synthetic app-server delta payloads.",
-      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+      "reason": "Measured realtime.turnTrace.summary appServerEventRouteDurationAvgMs from .artifacts/realtime-runtime-diagnostics.json. sampleCount=1",
+      "nextAction": "Track for regression."
     },
     {
       "source": "docs/perf/v0511-runtime-evidence.json",
@@ -1926,7 +1926,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "file_io_command_wall_ms_p95",
-      "value": 5.75,
+      "value": 16.772,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
@@ -1937,7 +1937,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "file_io_async_worker_stall_ms_p95",
-      "value": 0.183,
+      "value": 0.202,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
@@ -1959,7 +1959,7 @@
       "source": "docs/perf/v0511-runtime-evidence.json",
       "scenario": "S-IO-FS",
       "metric": "tauri_command_during_stream_ms_p95",
-      "value": 5.75,
+      "value": 16.772,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
