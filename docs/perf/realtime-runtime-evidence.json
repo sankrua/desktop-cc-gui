@@ -1,6 +1,6 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-06-13T05:50:20.808Z",
+  "generatedAt": "2026-06-17T04:12:24.041Z",
   "source": "realtime-runtime",
   "metrics": [
     {
@@ -34,14 +34,6 @@
       "unit": "ms",
       "evidenceClass": "measured",
       "notes": "measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json"
-    },
-    {
-      "scenario": "S-RS-VL2",
-      "metric": "visibleTextLagP95Streaming",
-      "value": 24,
-      "unit": "ms",
-      "evidenceClass": "proxy",
-      "notes": "proxy: derived from realtime-extended baseline (2-thread 5min) until 500-row + 2-thread 5min streaming trace fixture is added; visibleTextLagP95 currently reported as 24ms in docs/perf/realtime-extended-baseline.json; chat-stream-render-isolation-2026-06 task 0.1"
     }
   ],
   "notes": [

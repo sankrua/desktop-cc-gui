@@ -1,12 +1,13 @@
 {
   "schemaVersion": "1.0",
-  "generatedAt": "2026-06-16T10:05:21.983Z",
+  "generatedAt": "2026-06-17T04:23:50.444Z",
   "sources": {
     "perfBaseline": "docs/perf/baseline.json",
     "composerBaseline": "docs/perf/composer-baseline.json",
     "browserScroll": "docs/perf/long-list-browser-scroll.json",
     "realtimeTurnTrace": "docs/perf/realtime-turn-trace.json",
     "realtimeRuntimeEvidence": "docs/perf/realtime-runtime-evidence.json",
+    "longrunningRuntimeEvidence": "docs/perf/long-running-runtime-evidence.json",
     "realtimeProfile": null,
     "largeFileWatchlist": ".artifacts/large-files-near-threshold.json",
     "openSpec": "openspec list --json"
@@ -687,15 +688,81 @@
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-runtime-evidence.json",
-      "scenario": "S-RS-VL2",
-      "metric": "visibleTextLagP95Streaming",
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-100",
+      "metric": "activeEngineProcessCountAfterClose",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "measured",
+      "budget": null,
+      "reason": "registered runtime handle count; OS child liveness recorded separately under S-LR-101",
+      "nextAction": "Track for regression."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-101",
+      "metric": "sampledOsChildLivenessAfterClose",
+      "value": null,
+      "unit": "count",
+      "evidenceClass": "unsupported",
+      "budget": null,
+      "reason": "Runtime does not ship a cross-platform OS child process sampler; sampler added in release-grade-evidence follow-up (task 6.4)",
+      "nextAction": "Provide supported environment evidence or preserve explicit qualifier."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-110",
+      "metric": "staleEngineChildCandidateCount",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "measured",
+      "budget": null,
+      "reason": "diagnostics-only; no auto-kill; candidates require registeredAgeMs >= 5min; OpenCode/Gemini report progress_evidence=unsupported",
+      "nextAction": "Track for regression."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-200",
+      "metric": "moduleSwitchP95Ms",
+      "value": null,
+      "unit": "ms",
+      "evidenceClass": "unsupported",
+      "budget": null,
+      "reason": "jsdom cannot produce real module switch latency; requires Tauri/WebView trace",
+      "nextAction": "Provide supported environment evidence or preserve explicit qualifier."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-210",
+      "metric": "visibleListRowCount",
+      "value": 36,
+      "unit": "rows",
+      "evidenceClass": "proxy",
+      "budget": 100,
+      "reason": "200-workspace / 200-thread fixture; DOM mounted row count is bounded by virtualizer overscan, not by list size; CSS defines bounded scroll viewport plus relative/absolute virtual rows",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-300",
+      "metric": "markdownWorkerPendingRequests",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "proxy",
+      "budget": null,
+      "reason": "pending count returns to 0 after worker dispose; worker request carries content-safe requestMeta; unit-tested in workerAdapterDiagnostics.test.ts",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-310",
+      "metric": "streamingVisibleLagP95Ms",
       "value": 24,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
-      "reason": "proxy: derived from realtime-extended baseline (2-thread 5min) until 500-row + 2-thread 5min streaming trace fixture is added; visibleTextLagP95 currently reported as 24ms in docs/perf/realtime-extended-baseline.json; chat-stream-render-isolation-2026-06 task 0.1",
-      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
+      "reason": "reuses S-RS-VL2 proxy from chat-stream-render-isolation-2026-06; no fresh runtime trace in this change",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
     }
   ],
   "realtimeSummary": {
@@ -1699,15 +1766,81 @@
       "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
     },
     {
-      "source": "docs/perf/realtime-runtime-evidence.json",
-      "scenario": "S-RS-VL2",
-      "metric": "visibleTextLagP95Streaming",
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-100",
+      "metric": "activeEngineProcessCountAfterClose",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "measured",
+      "budget": null,
+      "reason": "registered runtime handle count; OS child liveness recorded separately under S-LR-101",
+      "nextAction": "Track for regression."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-101",
+      "metric": "sampledOsChildLivenessAfterClose",
+      "value": null,
+      "unit": "count",
+      "evidenceClass": "unsupported",
+      "budget": null,
+      "reason": "Runtime does not ship a cross-platform OS child process sampler; sampler added in release-grade-evidence follow-up (task 6.4)",
+      "nextAction": "Provide supported environment evidence or preserve explicit qualifier."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-110",
+      "metric": "staleEngineChildCandidateCount",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "measured",
+      "budget": null,
+      "reason": "diagnostics-only; no auto-kill; candidates require registeredAgeMs >= 5min; OpenCode/Gemini report progress_evidence=unsupported",
+      "nextAction": "Track for regression."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-200",
+      "metric": "moduleSwitchP95Ms",
+      "value": null,
+      "unit": "ms",
+      "evidenceClass": "unsupported",
+      "budget": null,
+      "reason": "jsdom cannot produce real module switch latency; requires Tauri/WebView trace",
+      "nextAction": "Provide supported environment evidence or preserve explicit qualifier."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-210",
+      "metric": "visibleListRowCount",
+      "value": 36,
+      "unit": "rows",
+      "evidenceClass": "proxy",
+      "budget": 100,
+      "reason": "200-workspace / 200-thread fixture; DOM mounted row count is bounded by virtualizer overscan, not by list size; CSS defines bounded scroll viewport plus relative/absolute virtual rows",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-300",
+      "metric": "markdownWorkerPendingRequests",
+      "value": 0,
+      "unit": "count",
+      "evidenceClass": "proxy",
+      "budget": null,
+      "reason": "pending count returns to 0 after worker dispose; worker request carries content-safe requestMeta; unit-tested in workerAdapterDiagnostics.test.ts",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
+    },
+    {
+      "source": "docs/perf/long-running-runtime-evidence.json",
+      "scenario": "S-LR-310",
+      "metric": "streamingVisibleLagP95Ms",
       "value": 24,
       "unit": "ms",
       "evidenceClass": "proxy",
       "budget": null,
-      "reason": "proxy: derived from realtime-extended baseline (2-thread 5min) until 500-row + 2-thread 5min streaming trace fixture is added; visibleTextLagP95 currently reported as 24ms in docs/perf/realtime-extended-baseline.json; chat-stream-render-isolation-2026-06 task 0.1",
-      "nextAction": "Correlate replay metrics with runtime visible-lag and terminal-pressure traces."
+      "reason": "reuses S-RS-VL2 proxy from chat-stream-render-isolation-2026-06; no fresh runtime trace in this change",
+      "nextAction": "Keep as regression baseline and add runtime/browser evidence before release-grade closure."
     }
   ],
   "coldStartSummary": {
@@ -1721,6 +1854,11 @@
     "completed": [],
     "previousArchiveContext": [],
     "inProgress": [
+      {
+        "name": "stabilize-long-running-client-runtime-2026-06",
+        "tasks": "22/27",
+        "recommendation": "not-archive-ready"
+      },
       {
         "name": "chat-stream-render-isolation-2026-06",
         "tasks": "24/27",

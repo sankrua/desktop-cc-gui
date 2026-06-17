@@ -1,6 +1,6 @@
 # Runtime Evidence Gate Governance Report
 
-Generated at: 2026-06-16T10:05:21.983Z
+Generated at: 2026-06-17T04:23:50.444Z
 
 ## Archive Readiness
 
@@ -9,6 +9,7 @@ Generated at: 2026-06-16T10:05:21.983Z
 
 ## In Progress
 
+- stabilize-long-running-client-runtime-2026-06: 22/27, not-archive-ready
 - chat-stream-render-isolation-2026-06: 24/27, not-archive-ready
 - fix-file-tree-virtual-scroll-height: 0/0, not-archive-ready
 

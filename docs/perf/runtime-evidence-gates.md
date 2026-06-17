@@ -1,6 +1,6 @@
 # Runtime Evidence Gates
 
-Generated at: 2026-06-16T10:05:21.983Z
+Generated at: 2026-06-17T04:23:50.444Z
 
 ## Performance Evidence
 
@@ -50,7 +50,13 @@ Generated at: 2026-06-16T10:05:21.983Z
 | docs/perf/realtime-runtime-evidence.json | S-RS-RA | reducerAmplificationMedian | 3 | ratio | measured | 2 | 4 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/realtime-runtime-evidence.json | S-RS-FD | batchFlushDurationP95 | 14 | ms | measured | 8 | 16 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
 | docs/perf/realtime-runtime-evidence.json | S-RS-TS | terminalSettlementP95 | 70 | ms | measured | 100 | 250 | measured runtime turn trace from .artifacts/realtime-runtime-diagnostics.json | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
-| docs/perf/realtime-runtime-evidence.json | S-RS-VL2 | visibleTextLagP95Streaming | 24 | ms | proxy |  |  | proxy: derived from realtime-extended baseline (2-thread 5min) until 500-row + 2-thread 5min streaming trace fixture is added; visibleTextLagP95 currently reported as 24ms in docs/perf/realtime-extended-baseline.json; chat-stream-render-isolation-2026-06 task 0.1 | Correlate replay metrics with runtime visible-lag and terminal-pressure traces. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-100 | activeEngineProcessCountAfterClose | 0 | count | measured |  |  | registered runtime handle count; OS child liveness recorded separately under S-LR-101 | Track for regression. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-101 | sampledOsChildLivenessAfterClose | unsupported | count | unsupported |  |  | Runtime does not ship a cross-platform OS child process sampler; sampler added in release-grade-evidence follow-up (task 6.4) | Provide supported environment evidence or preserve explicit qualifier. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-110 | staleEngineChildCandidateCount | 0 | count | measured |  |  | diagnostics-only; no auto-kill; candidates require registeredAgeMs >= 5min; OpenCode/Gemini report progress_evidence=unsupported | Track for regression. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-200 | moduleSwitchP95Ms | unsupported | ms | unsupported |  |  | jsdom cannot produce real module switch latency; requires Tauri/WebView trace | Provide supported environment evidence or preserve explicit qualifier. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-210 | visibleListRowCount | 36 | rows | proxy |  |  | 200-workspace / 200-thread fixture; DOM mounted row count is bounded by virtualizer overscan, not by list size; CSS defines bounded scroll viewport plus relative/absolute virtual rows | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-300 | markdownWorkerPendingRequests | 0 | count | proxy |  |  | pending count returns to 0 after worker dispose; worker request carries content-safe requestMeta; unit-tested in workerAdapterDiagnostics.test.ts | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
+| docs/perf/long-running-runtime-evidence.json | S-LR-310 | streamingVisibleLagP95Ms | 24 | ms | proxy |  |  | reuses S-RS-VL2 proxy from chat-stream-render-isolation-2026-06; no fresh runtime trace in this change | Keep as regression baseline and add runtime/browser evidence before release-grade closure. |
 
 ## Realtime Correlation
 
