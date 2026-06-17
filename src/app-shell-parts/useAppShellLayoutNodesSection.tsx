@@ -33,7 +33,8 @@ import {
   shouldPreserveEditorOnThreadSelect,
 } from "./threadEditorPreservation";
 import {
-  flattenAppShellDomainContexts,
+  flattenSelectedAppShellDomainContexts,
+  type AppShellDomainContextName,
   type AppShellDomainContexts,
 } from "./appShellDomainContexts";
 
@@ -55,6 +56,17 @@ type WorkspaceAliasPromptState = {
   error: string | null;
   isSaving: boolean;
 };
+
+const APP_SHELL_LAYOUT_NODES_DOMAIN_NAMES = [
+  "workspaceNavigationContext",
+  "composerContext",
+  "layoutContext",
+  "fileEditorContext",
+  "settingsContext",
+  "runtimeContext",
+  "modelSelectionContext",
+  "collaborationModeContext",
+] as const satisfies readonly AppShellDomainContextName[];
 
 function formatWorkspaceAliasError(error: unknown) {
   if (error instanceof Error) {
@@ -89,7 +101,10 @@ function flattenAppShellLayoutNodesContext(
   input: AppShellLayoutNodesSectionInput,
 ): AppShellLayoutNodesContext {
   return {
-    ...flattenAppShellDomainContexts(input.appShellDomainContexts),
+    ...flattenSelectedAppShellDomainContexts(
+      input.appShellDomainContexts,
+      APP_SHELL_LAYOUT_NODES_DOMAIN_NAMES,
+    ),
     ...input.searchAndComposerSection,
     ...input.sections,
     isPullRequestComposer: input.isPullRequestComposer,
@@ -102,6 +117,8 @@ export function useAppShellLayoutNodesSection(
   input: AppShellLayoutNodesSectionInput,
 ) {
   const ctx = flattenAppShellLayoutNodesContext(input);
+  const runtimeRunState = input.appShellDomainContexts.runtimeContext
+    .runtimeRunState as any;
   const clientUiVisibility = useClientUiVisibility();
   const [workspaceAliasPrompt, setWorkspaceAliasPrompt] =
     useState<WorkspaceAliasPromptState | null>(null);
@@ -421,7 +438,6 @@ export function useAppShellLayoutNodesSection(
     resetPullRequestSelection,
     reviewPrompt,
     rightPanelCollapsed,
-    runtimeRunState,
     scanGitRoots,
     selectBranch,
     selectBranchAtIndex,

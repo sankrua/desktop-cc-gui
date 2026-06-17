@@ -9,13 +9,11 @@ import type {
   CollaborationModeResolvedRequest,
   RequestUserInputRequest,
   TurnReconciliationRuntimeStatus,
-  TurnReconciliationStatusRequest,
-  TurnReconciliationStatusResponse,
 } from "../../../types";
-import { queryTurnReconciliationStatus } from "../../../services/tauri";
 import { useThreadApprovalEvents } from "./useThreadApprovalEvents";
 import { useThreadItemEvents } from "./useThreadItemEvents";
 import { useThreadTurnEvents } from "./useThreadTurnEvents";
+import { queryTurnReconciliationStatusWithTimeout } from "./threadReconciliationStatusQuery";
 import { useThreadUserInputEvents } from "./useThreadUserInputEvents";
 import { parseFirstPacketTimeoutSeconds } from "../utils/networkErrors";
 import { buildThreadDebugCorrelation } from "../utils/threadDebugCorrelation";
@@ -32,18 +30,14 @@ import {
   reportThreadUpstreamPending,
   type StreamIngressSource,
 } from "../utils/streamLatencyDiagnostics";
-import {
-  buildCodexLivenessDiagnostic,
-} from "../utils/codexConversationLiveness";
+import { buildCodexLivenessDiagnostic } from "../utils/codexConversationLiveness";
 import {
   DEFAULT_TURN_SETTLEMENT_POLICY,
   evaluateTurnSettlement,
   toDryRunSettlementDecisionLabel,
   type TurnSettlementTerminalKind,
 } from "../utils/turnSettlementDecision";
-import {
-  domainEventFactories,
-} from "../domain-events";
+import { domainEventFactories } from "../domain-events";
 import type { ThreadEventHandlersOptions } from "./threadEventHandlerTypes";
 import { handleThreadAppServerEventDiagnostics } from "./threadAppServerEventDiagnostics";
 import {
@@ -73,33 +67,7 @@ import {
   type ThreadLifecycleSnapshot,
   type TurnDiagnosticState,
 } from "./threadEventDiagnostics";
-export {
-  CODEX_EXECUTION_ACTIVE_NO_PROGRESS_STALL_MS,
-  CODEX_TURN_NO_PROGRESS_STALL_MS,
-} from "./threadEventDiagnostics";
-const THREE_EVIDENCE_RECONCILIATION_QUERY_TIMEOUT_MS = 15_000;
-function queryTurnReconciliationStatusWithTimeout(
-  request: TurnReconciliationStatusRequest,
-): Promise<TurnReconciliationStatusResponse> {
-  let timeoutId: number | null = null;
-  const timeoutPromise = new Promise<never>((_, reject) => {
-    timeoutId = window.setTimeout(() => {
-      reject(
-        new Error(
-          `three-evidence reconciliation status query timed out after ${THREE_EVIDENCE_RECONCILIATION_QUERY_TIMEOUT_MS}ms`,
-        ),
-      );
-    }, THREE_EVIDENCE_RECONCILIATION_QUERY_TIMEOUT_MS);
-  });
-  return Promise.race([
-    queryTurnReconciliationStatus(request),
-    timeoutPromise,
-  ]).finally(() => {
-    if (timeoutId !== null) {
-      window.clearTimeout(timeoutId);
-    }
-  });
-}
+export { CODEX_EXECUTION_ACTIVE_NO_PROGRESS_STALL_MS, CODEX_TURN_NO_PROGRESS_STALL_MS } from "./threadEventDiagnostics";
 export function useThreadEventHandlers({
   activeThreadId,
   dispatch,

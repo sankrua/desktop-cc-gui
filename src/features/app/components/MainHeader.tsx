@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Check from "lucide-react/dist/esm/icons/check";
 import ClipboardCopy from "lucide-react/dist/esm/icons/clipboard-copy";
@@ -81,7 +81,7 @@ type MainHeaderProps = {
 
 const EMPTY_OPEN_APP_EXTRA_ACTIONS: OpenAppMenuExtraAction[] = [];
 
-export function MainHeader({
+function MainHeaderImpl({
   workspace,
   parentName = null,
   worktreeLabel = null,
@@ -828,3 +828,6 @@ export function MainHeader({
     </header>
   );
 }
+
+export const MainHeader = memo(MainHeaderImpl);
+MainHeader.displayName = "MainHeader";

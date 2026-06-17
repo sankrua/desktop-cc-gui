@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { memo, useMemo, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import Folder from "lucide-react/dist/esm/icons/folder";
 import GitBranch from "lucide-react/dist/esm/icons/git-branch";
@@ -88,7 +88,7 @@ const tabI18nKeys: Record<PanelToolbarTabId, string> = {
   prompts: "panels.prompts",
 };
 
-export function PanelTabs({
+function PanelTabsImpl({
   active,
   onSelect,
   tabs,
@@ -96,36 +96,43 @@ export function PanelTabs({
   visibleTabs,
 }: PanelTabsProps) {
   const { t } = useTranslation();
-  const resolvedTabs =
-    tabs ??
-    tabIds.map((id) => ({
-      id,
-      label: t(tabI18nKeys[id]),
-      icon: tabIcons[id],
-    }));
-  const visibleResolvedTabs = resolvedTabs.filter(
-    (tab) => visibleTabs?.[tab.id] !== false,
+  const resolvedTabs = useMemo(
+    () =>
+      tabs ??
+      tabIds.map((id) => ({
+        id,
+        label: t(tabI18nKeys[id]),
+        icon: tabIcons[id],
+      })),
+    [tabs, t],
   );
-  if (visibleResolvedTabs.length === 0) {
+  const visibleResolvedTabs = useMemo(
+    () => resolvedTabs.filter((tab) => visibleTabs?.[tab.id] !== false),
+    [resolvedTabs, visibleTabs],
+  );
+  const toolbarItems = useMemo<ResponsiveIconToolbarItem[]>(
+    () =>
+      visibleResolvedTabs.map((tab, index) => {
+        const isActive = active === tab.id;
+        const isLive = Boolean(liveStates?.[tab.id]);
+        return {
+          id: tab.id,
+          label: tab.label,
+          icon: tab.icon,
+          onSelect: () => onSelect(tab.id),
+          priority: index,
+          keepVisible: isActive || isLive,
+          ariaCurrent: isActive ? "page" : undefined,
+          buttonClassName: `panel-tab${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
+          iconClassName: `panel-tab-icon${isLive ? " is-live" : ""}`,
+          menuItemClassName: `panel-tab-menu-item${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
+        };
+      }),
+    [active, liveStates, onSelect, visibleResolvedTabs],
+  );
+  if (toolbarItems.length === 0) {
     return null;
   }
-
-  const toolbarItems: ResponsiveIconToolbarItem[] = visibleResolvedTabs.map((tab, index) => {
-    const isActive = active === tab.id;
-    const isLive = Boolean(liveStates?.[tab.id]);
-    return {
-      id: tab.id,
-      label: tab.label,
-      icon: tab.icon,
-      onSelect: () => onSelect(tab.id),
-      priority: index,
-      keepVisible: isActive || isLive,
-      ariaCurrent: isActive ? "page" : undefined,
-      buttonClassName: `panel-tab${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
-      iconClassName: `panel-tab-icon${isLive ? " is-live" : ""}`,
-      menuItemClassName: `panel-tab-menu-item${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
-    };
-  });
 
   return (
     <ResponsiveIconToolbar
@@ -140,3 +147,6 @@ export function PanelTabs({
     />
   );
 }
+
+export const PanelTabs = memo(PanelTabsImpl);
+PanelTabs.displayName = "PanelTabs";
