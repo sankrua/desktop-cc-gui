@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 873
+- **Total Sessions**: 874
 - **Last Active**: 2026-06-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~91 | Active |
+| `journal-23.md` | ~151 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 874 | 2026-06-18 | 收口：门禁噪音治理、Tauri 拆分与 AppShell 稳定性 | `1c4b4a39`, `8e68f276`, `31c0e5b3`, `cdc81b8d` | `feature/v0.5.11` |
 | 873 | 2026-06-18 | 修复流式结束窗口并升级 React | `2f1ba6d6` | `feature/v0.5.11` |
 | 872 | 2026-06-18 | 归档 Codex 首响应性能证据变更 | `ae1a41d9` | `feature/v0.5.11` |
 | 871 | 2026-06-18 | 稳定 Codex 首响应证据判定 | `f0711d44` | `feature/v0.5.11` |

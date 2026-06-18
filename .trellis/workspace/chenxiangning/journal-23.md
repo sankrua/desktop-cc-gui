@@ -89,3 +89,63 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 874: 收口：门禁噪音治理、Tauri 拆分与 AppShell 稳定性
+
+**Date**: 2026-06-18
+**Task**: 收口：门禁噪音治理、Tauri 拆分与 AppShell 稳定性
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| OpenSpec | Added `optimize-governance-sentry-noise-and-large-file-split` proposal/design/tasks/spec deltas for governance sentry optimization and large-file modularization. |
+| CI governance | Changed large-file governance so PR/push keeps hard gate only, moves near-threshold watch to advisory schedule/manual flow, and scopes heavy-test-noise log artifact upload to failures. |
+| Tauri services | Split `src/services/tauri.ts` by extracting Git service calls and workspace file service calls into domain modules while keeping the public facade. |
+| AppShell stability | Stabilized Claude thinking visibility reporting through a ref-backed dedupe gate and added regression coverage for callback identity stability. |
+
+**Validation**:
+- `openspec validate optimize-governance-sentry-noise-and-large-file-split --strict --no-interactive`
+- `node --test scripts/check-large-files.test.mjs`
+- `npm run check:large-files:gate`
+- near-threshold watch report mode
+- `node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs`
+- `npm run check:heavy-test-noise`
+- `npm exec vitest run src/features/layout/hooks/useLayoutNodes.client-ui-visibility.test.tsx src/features/composer/components/ChatInputBox/ChatInputBoxAdapter.test.tsx src/app-shell.startup.test.tsx`
+- `npm run typecheck`
+- `npm run lint`
+- `git diff --check`
+
+**Commits**:
+- `1c4b4a39` docs(openspec): 新增门禁收口变更规范
+- `8e68f276` ci(governance): 收敛大文件与重测试告警噪音
+- `31c0e5b3` refactor(tauri): 拆分 Git 与工作区文件服务
+- `cdc81b8d` fix(app-shell): 稳定 Claude thinking 状态上报
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1c4b4a39` | (see git log) |
+| `8e68f276` | (see git log) |
+| `31c0e5b3` | (see git log) |
+| `cdc81b8d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
