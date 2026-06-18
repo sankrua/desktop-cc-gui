@@ -1835,3 +1835,36 @@ Conclusion：性能证据现在明确显示，下一阶段真实方向不是 Mes
 ### Next Steps
 
 - None - task complete
+
+
+## Session 868: 聚合 Codex 首文本等待证据
+
+**Date**: 2026-06-18
+**Task**: 聚合 Codex 首文本等待证据
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+按 turn 聚合 Codex ack 后首文本等待指标，修正 null timing 被解析成 0ms 的报告污染；新增 Codex 首段文本等待态文案与 Messages 行为测试，真实 runtime report 确认 codexPostAckFirstDeltaP95=7441ms、visibleTextLagP95=115ms。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `79b4c8d1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
