@@ -215,3 +215,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 877: 修复文件树刷新失效
+
+**Date**: 2026-06-18
+**Task**: 修复文件树刷新失效
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+修复文件树手动刷新与文件操作后列表 stale 问题；新增 forceRefresh bridge contract；清理 FileTreePanel lazy subtree cache；文件操作后 optimistic reveal 并后台校准；daemon/desktop mode 透传刷新语义；补充 Vitest/Rust 回归测试；更新 hook-guidelines code-spec。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `c5fe7b17` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 876
+- **Total Sessions**: 877
 - **Last Active**: 2026-06-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~217 | Active |
+| `journal-23.md` | ~250 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 877 | 2026-06-18 | 修复文件树刷新失效 | `c5fe7b17` | `feature/v0.5.11` |
 | 876 | 2026-06-18 | 稳定 Codex 默认配置冷启动首发 | `a84b801e` | `feature/v0.5.11` |
 | 875 | 2026-06-18 | 修复 Codex 默认配置首轮恢复 | `44c31fb4` | `feature/v0.5.11` |
 | 874 | 2026-06-18 | 收口：门禁噪音治理、Tauri 拆分与 AppShell 稳定性 | `1c4b4a39`, `8e68f276`, `31c0e5b3`, `cdc81b8d` | `feature/v0.5.11` |
