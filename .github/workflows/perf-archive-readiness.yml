@@ -44,6 +44,9 @@ jobs:
           npm run --silent perf:archive-readiness -- --json > .artifacts/perf-archive-readiness.json
           exit_code=$?
           echo "exit_code=${exit_code}" >> "$GITHUB_OUTPUT"
+          if [[ "${exit_code}" != "0" ]]; then
+            cat .artifacts/perf-archive-readiness.json
+          fi
           if [[ "${exit_code}" != "0" && "${exit_code}" != "2" ]]; then
             exit "${exit_code}"
           fi

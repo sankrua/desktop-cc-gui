@@ -4,22 +4,26 @@ Generated at: 2026-06-18T11:01:58.314Z
 
 ## Archive Readiness
 
+No current completed active changes are waiting for performance archive.
+
+## Previous Archive Context
+
 | Change | Tasks | Recommendation | Qualifier |
 |---|---:|---|---|
-| refactor-v0511-thread-messaging-recovery-and-streaming | 44/44 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| fix-disk-codex-empty-draft-fresh-replay | 7/7 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| optimize-governance-sentry-noise-and-large-file-split | 14/14 | archive-candidate-after-qualifier-review | Archive only after evidence report identifies measured/proxy/unsupported boundaries. |
-| measure-codex-turn-start-ack-latency | 7/7 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| measure-codex-first-delta-latency | 8/8 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| reduce-turn-trace-batch-flush-lag | 12/12 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| reduce-message-row-render-amplification | 12/12 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| reduce-streaming-reducer-commit-lag | 12/12 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
-| v0511-performance-evidence-and-runtime-jank-hardening | 28/28 | archive-candidate-after-qualifier-review | Archive only after evidence report identifies measured/proxy/unsupported boundaries. |
-| fix-runtime-reconnect-card-state-loop | 7/7 | archive-candidate-after-qualifier-review | Review validation and platform qualifiers before archive. |
+| refactor-v0511-thread-messaging-recovery-and-streaming | 44/44 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| fix-disk-codex-empty-draft-fresh-replay | 7/7 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| optimize-governance-sentry-noise-and-large-file-split | 14/14 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| measure-codex-turn-start-ack-latency | 7/7 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| measure-codex-first-delta-latency | 8/8 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| reduce-turn-trace-batch-flush-lag | 12/12 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| reduce-message-row-render-amplification | 12/12 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| reduce-streaming-reducer-commit-lag | 12/12 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| v0511-performance-evidence-and-runtime-jank-hardening | 28/28 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
+| fix-runtime-reconnect-card-state-loop | 7/7 | previous-closure-context | Retained as historical closure context after the 2026-06-18 archive batch. |
 
 ## In Progress
 
-- follow-up-v0511-large-file-cookbook-and-measured-evidence: 15/22, not-archive-ready
+No current in-progress performance archive candidate is recorded in this generated snapshot.
 
 ## Compatibility / Cleanup Matrix
 

@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { tmpdir } from "node:os";
 
@@ -73,7 +73,7 @@ async function createFixture({ mainBundleValue = 1121481, coldStartEvidence = "u
   return { baselinePath, runtimePath, activePath };
 }
 
-function runReadiness(fixture, args = []) {
+function runReadiness(fixture, args = [], options = {}) {
   const result = spawnSync(
     process.execPath,
     [
@@ -83,17 +83,32 @@ function runReadiness(fixture, args = []) {
       fixture.baselinePath,
       "--runtime-evidence",
       fixture.runtimePath,
-      "--active-changes-json",
-      fixture.activePath,
+      ...(options.useActiveChangesJson === false
+        ? []
+        : ["--active-changes-json", fixture.activePath]),
       ...args,
     ],
-    { cwd: process.cwd(), encoding: "utf-8" },
+    {
+      cwd: options.cwd ?? process.cwd(),
+      encoding: "utf-8",
+      env: options.env ?? process.env,
+    },
   );
   assert.equal(result.stderr, "");
   return {
     status: result.status,
     json: JSON.parse(result.stdout),
   };
+}
+
+async function createFallbackOpenSpecWorkspace(activeNames) {
+  const cwd = await mkdtemp(join(tmpdir(), "perf-readiness-cwd-"));
+  await mkdir(join(cwd, "openspec", "changes", "archive"), { recursive: true });
+  await Promise.all(activeNames.map((name) => (
+    mkdir(join(cwd, "openspec", "changes", name), { recursive: true })
+  )));
+  await mkdir(join(cwd, "openspec", "changes", ".ignored"), { recursive: true });
+  return cwd;
 }
 
 test("default archive-readiness keeps hard budget breach advisory", async () => {
@@ -204,6 +219,52 @@ test("archive-readiness includes synthetic evidence in proxy ratio denominator",
   assert.equal(result.json.evidenceClassCounts.synthetic, 2);
   assert.ok(!result.json.warnings.some((warning) => (
     warning.check === "proxy-ratio-too-high"
+  )));
+});
+
+test("archive-readiness falls back to openspec changes directory when openspec binary is unavailable", async () => {
+  const fixture = await createFixture({ coldStartEvidence: "measured" });
+  const cwd = await createFallbackOpenSpecWorkspace([
+    "collect-release-grade-performance-evidence",
+  ]);
+  const result = runReadiness(fixture, [], {
+    cwd,
+    env: { ...process.env, PATH: "" },
+    useActiveChangesJson: false,
+  });
+
+  assert.equal(result.status, 2);
+  assert.equal(result.json.activeChangeCount, 1);
+  assert.equal(result.json.inputs.openSpec, "openspec/changes directory fallback");
+  assert.deepEqual(result.json.hardFailures, []);
+});
+
+test("archive-readiness directory fallback still hard fails stale completed changes", async () => {
+  const fixture = await createFixture({ coldStartEvidence: "measured" });
+  const cwd = await createFallbackOpenSpecWorkspace([
+    "collect-release-grade-performance-evidence",
+  ]);
+  const runtimeEvidence = {
+    archiveReadiness: {
+      completed: [{ name: "already-archived-performance-change" }],
+    },
+    largeFileSummary: { candidates: [] },
+    performanceEvidence: [],
+    realtimeTraceBudgets: [],
+  };
+  await writeJson(fixture.runtimePath, runtimeEvidence);
+
+  const result = runReadiness(fixture, [], {
+    cwd,
+    env: { ...process.env, PATH: "" },
+    useActiveChangesJson: false,
+  });
+
+  assert.equal(result.status, 1);
+  assert.equal(result.json.inputs.openSpec, "openspec/changes directory fallback");
+  assert.ok(result.json.hardFailures.some((failure) => (
+    failure.check === "archive-readiness-stale"
+    && failure.record === "already-archived-performance-change"
   )));
 });
 

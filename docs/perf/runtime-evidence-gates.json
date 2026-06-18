@@ -2096,76 +2096,70 @@
   },
   "archiveReadiness": {
     "source": "openspec list --json",
-    "completed": [
+    "completed": [],
+    "previousArchiveContext": [
       {
         "name": "refactor-v0511-thread-messaging-recovery-and-streaming",
         "tasks": "44/44",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "fix-disk-codex-empty-draft-fresh-replay",
         "tasks": "7/7",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "optimize-governance-sentry-noise-and-large-file-split",
         "tasks": "14/14",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Archive only after evidence report identifies measured/proxy/unsupported boundaries."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "measure-codex-turn-start-ack-latency",
         "tasks": "7/7",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "measure-codex-first-delta-latency",
         "tasks": "8/8",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "reduce-turn-trace-batch-flush-lag",
         "tasks": "12/12",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "reduce-message-row-render-amplification",
         "tasks": "12/12",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "reduce-streaming-reducer-commit-lag",
         "tasks": "12/12",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "v0511-performance-evidence-and-runtime-jank-hardening",
         "tasks": "28/28",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Archive only after evidence report identifies measured/proxy/unsupported boundaries."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       },
       {
         "name": "fix-runtime-reconnect-card-state-loop",
         "tasks": "7/7",
-        "recommendation": "archive-candidate-after-qualifier-review",
-        "qualifier": "Review validation and platform qualifiers before archive."
+        "recommendation": "previous-closure-context",
+        "qualifier": "Retained as historical closure context after the 2026-06-18 archive batch."
       }
     ],
-    "previousArchiveContext": [],
-    "inProgress": [
-      {
-        "name": "follow-up-v0511-large-file-cookbook-and-measured-evidence",
-        "tasks": "15/22",
-        "recommendation": "not-archive-ready"
-      }
-    ],
+    "inProgress": [],
     "error": null
   },
   "compatibilityPaths": [

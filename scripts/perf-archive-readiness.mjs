@@ -36,7 +36,7 @@
 
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const PERF_BASELINE_PATH = "docs/perf/baseline.json";
@@ -106,21 +106,49 @@ function readOpenSpecActiveNamesFromJson(parsed) {
   return new Set(names);
 }
 
+async function readOpenSpecActiveNamesFromDirectory() {
+  const changesDir = repoPath("openspec/changes");
+  const entries = await readdir(changesDir, { withFileTypes: true });
+  return new Set(
+    entries
+      .filter((entry) => (
+        entry.isDirectory()
+        && entry.name !== "archive"
+        && !entry.name.startsWith(".")
+      ))
+      .map((entry) => entry.name),
+  );
+}
+
 async function getOpenSpecActiveNames(activeChangesJsonPath) {
   if (activeChangesJsonPath) {
     const parsed = await readJsonIfExists(activeChangesJsonPath);
-    return readOpenSpecActiveNamesFromJson(parsed);
+    return {
+      names: readOpenSpecActiveNamesFromJson(parsed),
+      source: activeChangesJsonPath,
+    };
   }
   try {
     const output = execFileSync("openspec", ["list", "--json"], {
       cwd: process.cwd(),
       encoding: "utf-8",
     });
-    return readOpenSpecActiveNamesFromJson(JSON.parse(output));
+    return {
+      names: readOpenSpecActiveNamesFromJson(JSON.parse(output)),
+      source: "openspec list --json",
+    };
   } catch (error) {
-    throw new Error(
-      `Failed to read \`openspec list --json\`: ${error.message ?? String(error)}`
-    );
+    try {
+      return {
+        names: await readOpenSpecActiveNamesFromDirectory(),
+        source: "openspec/changes directory fallback",
+      };
+    } catch (fallbackError) {
+      throw new Error(
+        `Failed to read \`openspec list --json\`: ${error.message ?? String(error)}; ` +
+          `directory fallback failed: ${fallbackError.message ?? String(fallbackError)}`
+      );
+    }
   }
 }
 
@@ -570,9 +598,9 @@ async function main() {
     process.exit(3);
   }
 
-  let activeNames;
+  let activeChangeState;
   try {
-    activeNames = await getOpenSpecActiveNames(paths.activeChangesJson);
+    activeChangeState = await getOpenSpecActiveNames(paths.activeChangesJson);
   } catch (error) {
     const message = error.message ?? String(error);
     if (jsonMode) {
@@ -582,6 +610,7 @@ async function main() {
     }
     process.exit(3);
   }
+  const activeNames = activeChangeState.names;
 
   const unitCheck = checkUnitConsistency(baseline, runtimeGates);
   const releaseCheck = releaseMode
@@ -636,7 +665,7 @@ async function main() {
     inputs: {
       baseline: paths.baseline,
       runtimeEvidenceGates: paths.runtimeEvidenceGates,
-      openSpec: paths.activeChangesJson ?? "openspec list --json",
+      openSpec: activeChangeState.source,
     },
   };
 
