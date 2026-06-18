@@ -220,6 +220,10 @@ function shouldUseContractRealtimeBatcher(event: NormalizedThreadEvent) {
   return event.operation === "appendAgentMessageDelta";
 }
 
+function shouldDispatchNormalizedRealtimeEventUrgently(event: NormalizedThreadEvent) {
+  return event.operation === "appendAgentMessageDelta";
+}
+
 function buildPendingNormalizedRealtimeOperationKey(event: NormalizedThreadEvent) {
   return `${event.threadId}\u0000${event.item.kind}\u0000${event.item.id}`;
 }
@@ -791,6 +795,9 @@ export function useThreadItemEvents({
         }
         const routeStartedAt = Date.now();
         for (const event of flush.events) {
+          const useTransitionForDispatch =
+            flush.reason !== "terminal" &&
+            !shouldDispatchNormalizedRealtimeEventUrgently(event);
           applyNormalizedRealtimeEventNow(
             {
               event,
@@ -799,7 +806,7 @@ export function useThreadItemEvents({
             {
               ensuredThreads,
               markedProcessingThreads,
-              useTransitionForDispatch: flush.reason !== "terminal",
+              useTransitionForDispatch,
               skipMessageActivity: false,
             },
           );
@@ -858,7 +865,7 @@ export function useThreadItemEvents({
                 hasCustomName: operation.hasCustomName,
               },
               {
-                useTransitionForDispatch: true,
+                useTransitionForDispatch: !shouldDispatchNormalizedRealtimeEventUrgently(event),
               },
             );
           }

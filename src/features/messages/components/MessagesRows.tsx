@@ -1135,6 +1135,17 @@ export const MessageRow = memo(function MessageRow({
     usePlainTextStreamingSurface,
   ]);
   useEffect(() => {
+    if (usePlainTextStreamingSurface || !useLightweightStreamingMarkdown) {
+      return;
+    }
+    handleRenderedAssistantValue(displayText);
+  }, [
+    displayText,
+    handleRenderedAssistantValue,
+    useLightweightStreamingMarkdown,
+    usePlainTextStreamingSurface,
+  ]);
+  useEffect(() => {
     if (
       !threadId ||
       item.role !== "assistant" ||

@@ -11,6 +11,7 @@ const markdownCalls = vi.hoisted(() => ({
     streamingThrottleMs?: number;
     value: string;
   }>,
+  deferRenderedValueChange: false,
 }));
 
 const rendererDiagnosticMocks = vi.hoisted(() => ({
@@ -37,7 +38,9 @@ vi.mock("./Markdown", () => ({
       streamingThrottleMs,
       value,
     });
-    onRenderedValueChange?.(value);
+    if (!markdownCalls.deferRenderedValueChange) {
+      onRenderedValueChange?.(value);
+    }
     return (
       <div
         data-testid="markdown"
@@ -56,6 +59,7 @@ vi.mock("../../../services/rendererDiagnostics", () => rendererDiagnosticMocks);
 describe("MessagesRows stream mitigation", () => {
   beforeEach(() => {
     markdownCalls.calls = [];
+    markdownCalls.deferRenderedValueChange = false;
     rendererDiagnosticMocks.appendMessageRowRenderBudgetDiagnostic.mockClear();
   });
 
@@ -425,6 +429,53 @@ describe("MessagesRows stream mitigation", () => {
     );
     expect(screen.getByTestId("markdown").textContent).toContain("审计结论");
     expect(onAssistantVisibleTextRender).toHaveBeenCalled();
+  });
+
+  it("reports lightweight Codex recovery text when Markdown rendered callback is delayed", () => {
+    markdownCalls.deferRenderedValueChange = true;
+    const messageItem = {
+      id: "assistant-codex-recovery-delayed-render",
+      kind: "message" as const,
+      role: "assistant" as const,
+      text: [
+        "## 新证据",
+        "",
+        "- delta 已经进入当前 assistant item",
+        "- Markdown callback 可能晚于 row render",
+        "- diagnostics 不能继续停在旧 item",
+        "- recovery surface 仍保持 lightweight Markdown",
+        "- final output 继续回到完整 Markdown",
+        "- 这条测试覆盖 callback 延迟",
+      ].join("\n"),
+    };
+    const onAssistantVisibleTextRender = vi.fn();
+
+    render(
+      <MessageRow
+        item={messageItem}
+        isStreaming
+        activeEngine="codex"
+        isCopied={false}
+        onCopy={vi.fn()}
+        streamMitigationProfile={{
+          id: "codex-markdown-stream-recovery",
+          messageStreamingThrottleMs: 120,
+          reasoningStreamingThrottleMs: 220,
+        }}
+        onAssistantVisibleTextRender={onAssistantVisibleTextRender}
+      />,
+    );
+
+    expect(screen.getByTestId("markdown").getAttribute("data-live-render-mode")).toBe(
+      "lightweight",
+    );
+    expect(screen.getByTestId("markdown").getAttribute("data-progressive-reveal")).toBe(
+      "true",
+    );
+    expect(onAssistantVisibleTextRender).toHaveBeenCalledWith({
+      itemId: "assistant-codex-recovery-delayed-render",
+      visibleText: messageItem.text,
+    });
   });
 
   it("uses a staged markdown throttle for large Codex streaming output without an explicit mitigation profile", () => {
