@@ -1582,3 +1582,57 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 863: 校准流式 turn trace 诊断口径
+
+**Date**: 2026-06-18
+**Task**: 校准流式 turn trace 诊断口径
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次会话继续 v0.5.11 性能优化第二阶段，基于 fresh streaming conversation 运行时证据修正 turnTrace / stream latency diagnostics 的一致性问题。
+
+| Area | Work |
+|------|------|
+| OpenSpec | 新增 `reduce-turn-trace-batch-flush-lag` change，明确第二阶段从 MessageRow render 转向 turnTrace/batch flush/reducer commit 证据链校准。 |
+| turnTrace | 将 `first-engine-delta-ingress`、`first-visible-row-render`、`first-visible-text-growth` 统一为 first-observed milestones，避免后续事件覆盖首次时间。 |
+| stream latency | 每次 visible text length 真增长都会同步最新 `visibleTextGrowthCount` 到 turnTrace，解决实测中 stream snapshot count 和 summary count 不一致的问题。 |
+| runtime report | `perf-realtime-runtime-report.mjs` 保留 measured metrics，同时在可见输出快但 batch/reducer summary window 异常偏大时输出 `traceConsistencyCaution`，避免误判为确认的 client batch/reducer lag。 |
+| Tests | 补齐 turnTrace、streamLatencyDiagnostics、runtime report tests，覆盖 first milestone preservation、latest growth counter、summary consistency caution。 |
+
+验证结果：
+- `npx openspec validate reduce-turn-trace-batch-flush-lag --strict --no-interactive` passed
+- `npm run typecheck` passed
+- `npm run lint` passed
+- `git diff --check` clean
+- `npx vitest run src/features/threads/utils/turnTraceCorrelation.test.ts src/features/threads/utils/streamLatencyDiagnostics.test.ts` passed，49 tests
+- `node --test scripts/perf-realtime-runtime-report.test.mjs` passed，4 tests
+- Fresh streaming diagnostics exported with `turnTraceSummaryCount=2`; latest summary shows `visibleTextGrowthCount=61` instead of being pinned to `1`
+- Runtime report emits `traceConsistencyCaution` while preserving measured metrics: `visibleTextLagP95=177ms`, `reducerAmplificationMedian=1`, `batchFlushDurationP95=0.17ms`, `terminalSettlementP95=1788ms`
+
+Residual observation：fresh diagnostics still contains hidden-window Vite dependency `ReferenceError: Can't find variable: document` entries. It is not part of the performance evidence chain and should be tracked separately as a stability bug if it persists.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e49034be` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
