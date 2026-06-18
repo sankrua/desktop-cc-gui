@@ -404,3 +404,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 882: 补充 Codex 恢复 cookbook
+
+**Date**: 2026-06-18
+**Task**: 补充 Codex 恢复 cookbook
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+继续 follow-up v0.5.11 recovery cookbook：在 .trellis/spec/backend/codex-provider-scoped-runtime.md 增加 Codex stale recovery cookbook，定义 staleRecoveryClassification.reasonCode/staleReason/userAction 语义，补充 recovery failure playbook、GEMINI/CLAUDE provider recovery template，并链接 codex-message-recovery-hook 与 codex-stale-thread-binding-recovery。同步 OpenSpec tasks 8-11。验证通过 openspec validate follow-up-v0511-large-file-cookbook-and-measured-evidence --strict --no-interactive 与 git diff --check。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e97d78ff` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
