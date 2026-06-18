@@ -1934,3 +1934,36 @@ Conclusion：性能证据现在明确显示，下一阶段真实方向不是 Mes
 ### Next Steps
 
 - None - task complete
+
+
+## Session 871: 稳定 Codex 首响应证据判定
+
+**Date**: 2026-06-18
+**Task**: 稳定 Codex 首响应证据判定
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+为 renderer diagnostics 增加 realtime.turnTrace.summary 与 stream-latency 独立保留桶，避免长流式会话挤掉关键证据；为 perf realtime runtime report 增加 providerFirstResponseDominates 自动判定，并同步 OpenSpec change、补充 retention 与 dominance 回归测试。验证通过 rendererDiagnostics Vitest、perf runtime report node test、OpenSpec validate、typecheck、lint、branding 和 app-shell runtime contract。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f0711d44` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

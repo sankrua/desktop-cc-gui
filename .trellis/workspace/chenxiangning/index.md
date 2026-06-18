@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-22.md`
-- **Total Sessions**: 870
+- **Total Sessions**: 871
 - **Last Active**: 2026-06-18
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-22.md` | ~1936 | Active |
+| `journal-22.md` | ~1969 | Active |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
 | `journal-19.md` | ~1989 | Archived |
@@ -50,6 +50,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 871 | 2026-06-18 | 稳定 Codex 首响应证据判定 | `f0711d44` | `feature/v0.5.11` |
 | 870 | 2026-06-18 | 细分 Codex assistant item 首响应阶段 | `9cf672e8` | `feature/v0.5.11` |
 | 869 | 2026-06-18 | 拆分 Codex 首文本前运行阶段 | `8fb58aa1` | `feature/v0.5.11` |
 | 868 | 2026-06-18 | 聚合 Codex 首文本等待证据 | `79b4c8d1` | `feature/v0.5.11` |
