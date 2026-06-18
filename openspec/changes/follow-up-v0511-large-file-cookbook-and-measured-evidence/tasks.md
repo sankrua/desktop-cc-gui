@@ -4,8 +4,8 @@
 - [x] Split permission wrappers into `src/services/tauri/permission.ts`.
 - [x] Split app-server wrappers into `src/services/tauri/appServer.ts`.
 - [x] Preserve `src/services/tauri.ts` public facade and existing import compatibility.
-- [ ] Extract `useFileTreeViewState.ts` from `FileTreePanel.tsx`.
-- [ ] Extract `FileTreeRefreshControls.tsx` from `FileTreePanel.tsx`.
+- [x] Extract `useFileTreeViewState.ts` from `FileTreePanel.tsx`.
+- [x] Extract `FileTreeRefreshControls.tsx` from `FileTreePanel.tsx`.
 - [x] Run `npm run check:large-files`; no new module may enter near-threshold advisory debt.
 
 ## 2. Recovery cookbook
