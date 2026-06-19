@@ -730,3 +730,44 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 891: 修复门禁脚本失败
+
+**Date**: 2026-06-20
+**Task**: 修复门禁脚本失败
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 说明 |
+|------|------|
+| Heavy test noise | 修复 `useThreads.memory-race.integration.test.tsx` 在 batch 142 中因 completion email terminal identity 丢失导致的 timeout。 |
+| Large file governance | 将 `useThreadEventHandlers.ts` 的 three-evidence reconciliation 逻辑抽到 `useThreadTurnSettlementReconciliation.ts`，将 `useThreads.ts` 的 runtime ownership helper 抽到 `threadRuntimeOwnershipHelpers.ts`，使 hard gate 低于 2800 行阈值。 |
+| Contract | 在 `onTurnTerminalExternal` payload 中保留 `rawTurnId`，业务 settlement 继续用 normalized turn id，completion email intent 使用 raw turn id 识别缺失 terminal identity。 |
+| 验证 | `typecheck`、`lint`、`git diff --check`、`check:large-files:gate`、`check:heavy-test-noise`、目标 threads 测试通过。 |
+
+**Code Commit**: `1646ee5a fix(threads): 修复门禁失败与大文件债务`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `1646ee5a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
