@@ -9,22 +9,52 @@
 ✨ Features
 - 新增 v0.5.11 性能证据门禁，覆盖 cold start、Composer、long list、realtime、runtime evidence 与历史基线归档，让发布前性能状态具备可审计的证据闭环
 - 新增 renderer 诊断导出与 turn trace 校准链路，将 renderer 指标、realtime runtime evidence 和 turn trace summary 接入统一性能证据报告
+- 新增 Codex 首响应与首包延迟证据细分，覆盖 turn start ack、首个流式增量、ack 后首包、首文本等待、assistant item 首响应与首文本前运行阶段，帮助定位流式输出慢点
+- 新增 v0.5.11 消息恢复与性能证据收口，串联消息恢复、流式渲染、runtime evidence 与恢复 cookbook，降低长会话恢复和性能排查成本
 
 🔧 Improvements
 - 升级应用版本号到 `0.5.11`，同步前端包配置与 Tauri 配置
 - 收口 v0.5.10 性能闭环文档，补齐 runtime evidence gates、验证记录与 OpenSpec 任务状态
 - 锁定 `turn completed` 写出 trace summary 的测试覆盖，减少 realtime trace 回归时的证据缺口
+- 优化消息流渲染与流式路由实测口径，降低流式输出可见延迟，并校准 turn trace 诊断与首响应证据判定
+- 拆分 Tauri Git、工作区文件服务与文件树视图状态，收敛大文件与重测试治理噪音，提升文件相关模块的维护边界
+- 补充恢复 cookbook，并归档 v0.5.11 已验证 OpenSpec 提案，让性能证据、恢复链路和发布门禁具备更完整的审计记录
+- 提升文档树节点查询与文件列表刷新参数断言的测试稳定性，减少 UI 与 Tauri 边界测试误报
+
+🐛 Fixes
+- 修复消息流式结束窗口问题，并升级 React 运行时，减少消息结束阶段的状态漂移
+- 修复 Claude thinking 状态上报不稳的问题，让 AppShell 对运行态思考状态的展示更可靠
+- 修复 Codex 默认配置首轮恢复与冷启动首发问题，降低首次启动或默认 provider 场景下的响应丢失风险
+- 修复文件树刷新失效与 hook 依赖告警，恢复文件树刷新链路并清理无效依赖噪音
+- 修复性能归档门禁与评论权限失败处理，避免 CI gate 因归档评论权限或门禁边界阻塞发布验证
+- 修复侧栏提示入口与弹层层级问题，避免 runtime notice 被遮挡或入口不可达
+- 修复 Codex 并行会话生命周期隔离问题，降低并行 session 在启动、恢复和释放过程中的状态串扰
 
 English:
 
 ✨ Features
 - Add the v0.5.11 performance evidence gates across cold start, Composer, long lists, realtime, runtime evidence, and historical baseline archiving so release performance has an auditable evidence loop
 - Add renderer diagnostics export and turn-trace calibration, connecting renderer metrics, realtime runtime evidence, and turn trace summaries into the unified performance evidence report
+- Add finer-grained Codex first-response and first-packet latency evidence across turn-start ack, first streaming delta, post-ack first packet, first-text wait, assistant-item first response, and pre-first-text runtime phases to make slow streaming paths easier to locate
+- Add the v0.5.11 message recovery and performance-evidence closure, tying message recovery, streaming rendering, runtime evidence, and the recovery cookbook into one auditable release path
 
 🔧 Improvements
 - Bump app version to `0.5.11` across frontend package metadata and Tauri configuration
 - Close the v0.5.10 performance loop documentation with updated runtime evidence gates, verification records, and OpenSpec task status
 - Lock test coverage for writing `turn completed` trace summaries to reduce evidence gaps during realtime trace regressions
+- Improve message-stream rendering and measured streaming-route diagnostics, reducing visible streaming latency while calibrating turn-trace diagnostics and first-response evidence checks
+- Split Tauri Git services, workspace file services, and file-tree view state while reducing large-file and heavy-test governance noise, making file-related module boundaries easier to maintain
+- Add the recovery cookbook and archive verified v0.5.11 OpenSpec proposals so performance evidence, recovery flows, and release gates have a stronger audit trail
+- Improve documentation-tree queries and file-list refresh parameter assertions in tests to reduce false positives across UI and Tauri boundaries
+
+🐛 Fixes
+- Fix the message streaming completion window and upgrade the React runtime to reduce state drift when streamed messages finish
+- Fix unstable Claude thinking-state reporting so AppShell displays runtime thinking state more reliably
+- Fix Codex default-configuration first-turn recovery and cold-start first dispatch, reducing response-loss risk during first launch or default-provider flows
+- Fix file-tree refresh failures and hook dependency warnings, restoring the refresh path and cleaning up invalid dependency noise
+- Fix performance archive gates and comment-permission failure handling so CI gates do not block release validation on archive-comment permissions or gate boundaries
+- Fix the sidebar runtime-notice entrypoint and popover layering so notices remain reachable and visible
+- Fix Codex parallel-session lifecycle isolation, reducing state cross-talk while parallel sessions launch, recover, and release resources
 
 ---
 
