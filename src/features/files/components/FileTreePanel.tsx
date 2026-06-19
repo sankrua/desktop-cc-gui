@@ -529,7 +529,12 @@ export function FileTreePanel({
     setSelectedNodePath(path);
     setSelectedNodeType(type === "root" ? "folder" : type);
     selectionAnchorPathRef.current = path;
-  }, []);
+  }, [
+    selectionAnchorPathRef,
+    setSelectedNodePath,
+    setSelectedNodePaths,
+    setSelectedNodeType,
+  ]);
 
   const setRangeSelection = useCallback(
     (targetPath: string, targetType: "file" | "folder" | "root") => {
@@ -547,7 +552,15 @@ export function FileTreePanel({
       setSelectedNodePath(targetPath);
       setSelectedNodeType(targetType === "root" ? "folder" : targetType);
     },
-    [selectedNodePath, setSingleSelection, visibleTreePathOrder],
+    [
+      selectedNodePath,
+      selectionAnchorPathRef,
+      setSelectedNodePath,
+      setSelectedNodePaths,
+      setSelectedNodeType,
+      setSingleSelection,
+      visibleTreePathOrder,
+    ],
   );
 
   const togglePathSelection = useCallback((path: string, type: "file" | "folder" | "root") => {
@@ -568,7 +581,14 @@ export function FileTreePanel({
       selectionAnchorPathRef.current = path;
       return next;
     });
-  }, [visibleTreePathOrder, visibleTreePathTypeMap]);
+  }, [
+    selectionAnchorPathRef,
+    setSelectedNodePath,
+    setSelectedNodePaths,
+    setSelectedNodeType,
+    visibleTreePathOrder,
+    visibleTreePathTypeMap,
+  ]);
 
   useEffect(() => {
     setExpandedFolders((prev) => {
@@ -584,7 +604,7 @@ export function FileTreePanel({
       }
       return next;
     });
-  }, [folderPaths]);
+  }, [folderPaths, setExpandedFolders]);
 
   useEffect(() => {
     if (gitignoredFolderAncestorPaths.size === 0) {
@@ -602,7 +622,7 @@ export function FileTreePanel({
       });
       return changed ? next : prev;
     });
-  }, [folderPaths, gitignoredFolderAncestorPaths]);
+  }, [folderPaths, gitignoredFolderAncestorPaths, setExpandedFolders]);
 
   useEffect(() => {
     setSelectedNodePaths((prev) => {
@@ -636,7 +656,16 @@ export function FileTreePanel({
       }
       return next;
     });
-  }, [allTreeNodePaths, selectedNodePath, visibleTreePathOrder, visibleTreePathTypeMap]);
+  }, [
+    allTreeNodePaths,
+    selectedNodePath,
+    selectionAnchorPathRef,
+    setSelectedNodePath,
+    setSelectedNodePaths,
+    setSelectedNodeType,
+    visibleTreePathOrder,
+    visibleTreePathTypeMap,
+  ]);
 
   const resolveFileTreeParentPath = useCallback((relativePath: string) => {
     const normalized = relativePath.trim().replaceAll("\\", "/").replace(/^\/+|\/+$/g, "");
@@ -699,7 +728,18 @@ export function FileTreePanel({
       setSelectedNodePaths(new Set([normalized]));
       selectionAnchorPathRef.current = normalized;
     },
-    [resolveFileTreeParentPath],
+    [
+      resolveFileTreeParentPath,
+      selectionAnchorPathRef,
+      setExpandedFolders,
+      setLazyDirectories,
+      setLazyDirectoryMetadata,
+      setLazyFiles,
+      setSelectedNodePath,
+      setSelectedNodePaths,
+      setSelectedNodeType,
+      setSuppressedDeletedPaths,
+    ],
   );
 
   const loadLazyDirectoryChildren = useCallback(
@@ -843,7 +883,21 @@ export function FileTreePanel({
         });
       }
     },
-    [workspaceId],
+    [
+      loadedLazyDirectoriesRef,
+      loadingLazyDirectoriesRef,
+      setLazyDirectories,
+      setLazyDirectoryLoadErrors,
+      setLazyDirectoryMetadata,
+      setLazyFiles,
+      setLazyGitignoredDirectories,
+      setLazyGitignoredFiles,
+      setLazyLoadableDirectories,
+      setLoadedLazyDirectories,
+      setLoadingLazyDirectories,
+      sourceVersionRef,
+      workspaceId,
+    ],
   );
 
   useEffect(() => {
@@ -857,7 +911,13 @@ export function FileTreePanel({
       }
       void loadLazyDirectoryChildren(path);
     });
-  }, [effectiveExpandedFolders, effectiveLazyLoadableDirectories, loadLazyDirectoryChildren]);
+  }, [
+    effectiveExpandedFolders,
+    effectiveLazyLoadableDirectories,
+    loadLazyDirectoryChildren,
+    loadedLazyDirectoriesRef,
+    loadingLazyDirectoriesRef,
+  ]);
 
   useEffect(() => {
     if (!previewPath) {
@@ -873,7 +933,7 @@ export function FileTreePanel({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewPath, closePreview]);
 
-  const toggleFolder = (path: string) => {
+  const toggleFolder = useCallback((path: string) => {
     setExpandedFolders((prev) => {
       const next = new Set(prev);
       if (next.has(path)) {
@@ -883,7 +943,7 @@ export function FileTreePanel({
       }
       return next;
     });
-  };
+  }, [setExpandedFolders]);
 
   const toggleFolderExpandedState = useCallback(
     (path: string, isLazyFolder: boolean) => {
@@ -893,7 +953,7 @@ export function FileTreePanel({
         void loadLazyDirectoryChildren(path);
       }
     },
-    [expandedFolders, loadLazyDirectoryChildren],
+    [expandedFolders, loadLazyDirectoryChildren, toggleFolder],
   );
 
   const resolvePath = useCallback(
@@ -944,7 +1004,14 @@ export function FileTreePanel({
     setIsDragSelecting(false);
     dragAnchorLineRef.current = null;
     dragMovedRef.current = false;
-  }, []);
+  }, [
+    dragAnchorLineRef,
+    dragMovedRef,
+    setIsDragSelecting,
+    setPreviewAnchor,
+    setPreviewPath,
+    setPreviewSelection,
+  ]);
 
   useEffect(() => {
     if (!previewPath) {
@@ -984,7 +1051,15 @@ export function FileTreePanel({
     return () => {
       cancelled = true;
     };
-  }, [previewKind, previewPath, workspaceId]);
+  }, [
+    previewKind,
+    previewPath,
+    setPreviewContent,
+    setPreviewError,
+    setPreviewLoading,
+    setPreviewTruncated,
+    workspaceId,
+  ]);
 
   useEffect(() => {
     if (!isDragSelecting) {
@@ -996,13 +1071,13 @@ export function FileTreePanel({
     };
     window.addEventListener("mouseup", handleMouseUp);
     return () => window.removeEventListener("mouseup", handleMouseUp);
-  }, [isDragSelecting]);
+  }, [dragAnchorLineRef, isDragSelecting, setIsDragSelecting]);
 
   const selectRangeFromAnchor = useCallback((anchor: number, index: number) => {
     const start = Math.min(anchor, index);
     const end = Math.max(anchor, index);
     setPreviewSelection({ start, end });
-  }, []);
+  }, [setPreviewSelection]);
 
   const handleSelectLine = useCallback(
     (index: number, event: MouseEvent<HTMLButtonElement>) => {
@@ -1017,7 +1092,7 @@ export function FileTreePanel({
       }
       setPreviewSelection({ start: index, end: index });
     },
-    [previewSelection, selectRangeFromAnchor],
+    [dragMovedRef, previewSelection, selectRangeFromAnchor, setPreviewSelection],
   );
 
   const handleLineMouseDown = useCallback(
@@ -1033,7 +1108,14 @@ export function FileTreePanel({
       dragMovedRef.current = false;
       selectRangeFromAnchor(anchor, index);
     },
-    [previewKind, previewSelection, selectRangeFromAnchor],
+    [
+      dragAnchorLineRef,
+      dragMovedRef,
+      previewKind,
+      previewSelection,
+      selectRangeFromAnchor,
+      setIsDragSelecting,
+    ],
   );
 
   const handleLineMouseEnter = useCallback(
@@ -1050,7 +1132,7 @@ export function FileTreePanel({
       }
       selectRangeFromAnchor(anchor, index);
     },
-    [isDragSelecting, selectRangeFromAnchor],
+    [dragAnchorLineRef, dragMovedRef, isDragSelecting, selectRangeFromAnchor],
   );
 
   const handleLineMouseUp = useCallback(() => {
@@ -1059,7 +1141,7 @@ export function FileTreePanel({
     }
     setIsDragSelecting(false);
     dragAnchorLineRef.current = null;
-  }, [isDragSelecting]);
+  }, [dragAnchorLineRef, isDragSelecting, setIsDragSelecting]);
 
   const selectionHints = useMemo(
     () =>
@@ -1119,7 +1201,7 @@ export function FileTreePanel({
       tone,
       message,
     });
-  }, []);
+  }, [setOperationNotice]);
 
   useEffect(() => {
     setSuppressedDeletedPaths((prev) => {
@@ -1143,7 +1225,13 @@ export function FileTreePanel({
       });
       return changed ? next : prev;
     });
-  }, [directoryEntries, files, lazyDirectories, lazyFiles]);
+  }, [
+    directoryEntries,
+    files,
+    lazyDirectories,
+    lazyFiles,
+    setSuppressedDeletedPaths,
+  ]);
 
   const purgeDeletedFileTreePath = useCallback(
     (deletedPath: string) => {
@@ -1212,8 +1300,29 @@ export function FileTreePanel({
     },
     [
       closePreview,
+      loadedLazyDirectoriesRef,
+      loadingLazyDirectoriesRef,
       previewPath,
       selectedNodePath,
+      selectionAnchorPathRef,
+      setExpandedFolders,
+      setFileTreeClipboardItem,
+      setLazyDirectories,
+      setLazyDirectoryLoadErrors,
+      setLazyDirectoryMetadata,
+      setLazyFiles,
+      setLazyGitignoredDirectories,
+      setLazyGitignoredFiles,
+      setLazyLoadableDirectories,
+      setLoadedLazyDirectories,
+      setLoadingLazyDirectories,
+      setNewFileParent,
+      setNewFolderParent,
+      setRenamePrompt,
+      setSelectedNodePath,
+      setSelectedNodePaths,
+      setSelectedNodeType,
+      setSuppressedDeletedPaths,
       visibleTreePathOrder,
       visibleTreePathTypeMap,
     ],
@@ -1273,7 +1382,13 @@ export function FileTreePanel({
       });
       showOperationNotice("info", t("files.copyReady"));
     },
-    [getFileTreeItemName, showOperationNotice, t, workspaceId],
+    [
+      getFileTreeItemName,
+      setFileTreeClipboardItem,
+      showOperationNotice,
+      t,
+      workspaceId,
+    ],
   );
 
   const pasteFileTreeItem = useCallback(
@@ -1345,13 +1460,18 @@ export function FileTreePanel({
         renameInputRef.current?.select();
       });
     },
-    [getFileTreeItemName],
+    [
+      getFileTreeItemName,
+      renameInputRef,
+      setRenameDraftName,
+      setRenamePrompt,
+    ],
   );
 
   const cancelRename = useCallback(() => {
     setRenamePrompt(null);
     setRenameDraftName("");
-  }, []);
+  }, [setRenameDraftName, setRenamePrompt]);
 
   const confirmRename = useCallback(async () => {
     const prompt = renamePrompt;
@@ -1378,6 +1498,8 @@ export function FileTreePanel({
     revealOptimisticFileTreePath,
     renameDraftName,
     renamePrompt,
+    setRenameDraftName,
+    setRenamePrompt,
     showOperationNotice,
     t,
     workspaceId,
@@ -1391,7 +1513,7 @@ export function FileTreePanel({
         newFileInputRef.current?.focus();
       });
     },
-    [],
+    [newFileInputRef, setNewFileName, setNewFileParent],
   );
 
   const confirmNewFile = useCallback(async () => {
@@ -1419,6 +1541,8 @@ export function FileTreePanel({
     revealOptimisticFileTreePath,
     onRefreshFiles,
     showOperationNotice,
+    setNewFileName,
+    setNewFileParent,
     t,
     normalizeOperationError,
   ]);
@@ -1426,7 +1550,7 @@ export function FileTreePanel({
   const cancelNewFile = useCallback(() => {
     setNewFileParent(null);
     setNewFileName("");
-  }, []);
+  }, [setNewFileName, setNewFileParent]);
 
   const openNewFolderPrompt = useCallback(
     (parentFolder: string) => {
@@ -1436,7 +1560,7 @@ export function FileTreePanel({
         newFolderInputRef.current?.focus();
       });
     },
-    [],
+    [newFolderInputRef, setNewFolderName, setNewFolderParent],
   );
 
   const confirmNewFolder = useCallback(async () => {
@@ -1464,6 +1588,8 @@ export function FileTreePanel({
     revealOptimisticFileTreePath,
     onRefreshFiles,
     showOperationNotice,
+    setNewFolderName,
+    setNewFolderParent,
     t,
     normalizeOperationError,
   ]);
@@ -1471,7 +1597,7 @@ export function FileTreePanel({
   const cancelNewFolder = useCallback(() => {
     setNewFolderParent(null);
     setNewFolderName("");
-  }, []);
+  }, [setNewFolderName, setNewFolderParent]);
 
   const resolveParentFolderForNode = useCallback(
     (relativePath: string | null, nodeType: "file" | "folder" | null) => {
@@ -1533,7 +1659,12 @@ export function FileTreePanel({
       type: "start",
       paths,
     });
-  }, [broadcastCrossWindowTreeDrag, crossWindowDragTargetLabel]);
+  }, [
+    activeCrossWindowDragPathsRef,
+    broadcastCrossWindowTreeDrag,
+    crossWindowDragTargetLabel,
+    lastCrossWindowDragBroadcastRef,
+  ]);
   const canTrashSelectedNode =
     selectedNodeType !== null && selectedNodePath !== null && selectedNodePath.length > 0;
 
@@ -1674,6 +1805,7 @@ export function FileTreePanel({
       copyFileTreeItem,
       duplicateItem,
       pasteFileTreeItem,
+      setFileTreeContextMenu,
       onInsertText,
       openRenamePrompt,
       openNewFilePrompt,
@@ -1716,7 +1848,7 @@ export function FileTreePanel({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodePath, selectedNodeType, trashItem, copyPath]);
+  }, [copyPath, panelRef, selectedNodePath, selectedNodeType, trashItem]);
 
   const fileTreeRowState: FileTreeRowState = {
     expandedFolders,
