@@ -10,7 +10,6 @@ import { useAppServerEvents } from "../../app/hooks/useAppServerEvents";
 import { subscribeWebServiceReconnect } from "../../../services/events";
 import { createInitialThreadState, threadReducer } from "./useThreadsReducer";
 import {
-  type PendingAssistantCompletion,
   type PendingMemoryCapture,
   buildMemoryTurnKey,
   joinPendingAssistantCompletionText,
@@ -20,6 +19,18 @@ import {
   PENDING_MEMORY_STALE_MS,
   upsertPendingAssistantCompletionSegment,
 } from "./threadMemoryCaptureHelpers";
+import {
+  type CodexOwnershipFallbackCandidateInput,
+  type PendingAssistantCompletionBucket,
+  type PendingMemoryCaptureBucket,
+  THREAD_ITEM_CACHE_TRIM_WATERMARK,
+  computeThreadItemCacheMax,
+  deletePendingMemoryEntry,
+  getPendingMemoryEntries,
+  isCodexOwnershipFallbackCandidate,
+  setPendingMemoryEntry,
+  shouldKeepPendingCaptureForAdditionalAssistantSegments,
+} from "./threadRuntimeOwnershipHelpers";
 import { useThreadStorage } from "./useThreadStorage";
 import { useThreadLinking } from "./useThreadLinking";
 import { useThreadEventHandlers } from "./useThreadEventHandlers";
@@ -29,7 +40,6 @@ import { useThreadApprovals } from "./useThreadApprovals";
 import {
   cleanupThreadScopedRefs,
   createWorkspaceScopedMap,
-  workspaceScopedDelete,
   workspaceScopedEntries,
   workspaceScopedGet,
   workspaceScopedHas,
@@ -106,56 +116,14 @@ import {
   createDomainEventRuntimeController,
 } from "../domain-events";
 
+export { computeThreadItemCacheMax } from "./threadRuntimeOwnershipHelpers";
+
 const AUTO_TITLE_REQUEST_TIMEOUT_MS = 8_000;
 const AUTO_TITLE_MAX_ATTEMPTS = 2;
 const AUTO_TITLE_PENDING_STALE_MS = 20_000;
 const THREAD_ERROR_DUPLICATE_WINDOW_MS = 8_000;
 const THREAD_SWITCH_RESUME_DELAY_MS = 24;
 const THREAD_SWITCH_LOADED_REFRESH_MS = 20_000;
-const THREAD_ITEM_CACHE_DEFAULT_MAX = 12;
-const THREAD_ITEM_CACHE_TRIM_WATERMARK = 2;
-
-type CodexOwnershipFallbackCandidateInput = {
-  id: string;
-  engineSource?: ThreadSummary["engineSource"] | null;
-  selectedEngine?: ThreadSummary["selectedEngine"] | null;
-  threadKind?: ThreadSummary["threadKind"] | null;
-};
-
-function isCodexOwnershipFallbackCandidate(
-  thread: CodexOwnershipFallbackCandidateInput,
-): boolean {
-  const explicitEngine = thread.engineSource ?? thread.selectedEngine;
-  if (explicitEngine) {
-    return explicitEngine === "codex";
-  }
-  const normalizedId = thread.id.trim().toLowerCase();
-  if (normalizedId.startsWith("shared:")) {
-    return false;
-  }
-  return !(
-    normalizedId.startsWith("claude:") ||
-    normalizedId.startsWith("claude-pending-") ||
-    normalizedId.startsWith("gemini:") ||
-    normalizedId.startsWith("gemini-pending-") ||
-    normalizedId.startsWith("opencode:") ||
-    normalizedId.startsWith("opencode-pending-")
-  );
-}
-
-// chat-stream-render-isolation-2026-06 task 5: LRU adaptive. When
-// multiple threads stream in parallel we want the cache to grow so
-// the reducer hot path does not thrash evicted thread items back into
-// state. The formula is intentionally simple: in-flight count plus
-// a baseline headroom. When no thread is processing, the formula
-// returns the original `THREAD_ITEM_CACHE_DEFAULT_MAX` (backward-compat
-// with the prior 12-entry budget).
-export function computeThreadItemCacheMax(inFlightCount: number): number {
-  if (!Number.isFinite(inFlightCount) || inFlightCount <= 0) {
-    return THREAD_ITEM_CACHE_DEFAULT_MAX;
-  }
-  return Math.max(THREAD_ITEM_CACHE_DEFAULT_MAX, inFlightCount * 2 + 6);
-}
 
 function normalizeMemoryTurnId(turnId: string | null | undefined) {
   return turnId?.trim() || "__unknown_turn__";
@@ -166,62 +134,6 @@ function isSameMemoryTurn(
   rightTurnId: string | null | undefined,
 ) {
   return normalizeMemoryTurnId(leftTurnId) === normalizeMemoryTurnId(rightTurnId);
-}
-
-type PendingMemoryCaptureBucket = Record<string, PendingMemoryCapture>;
-type PendingAssistantCompletionBucket = Record<string, PendingAssistantCompletion>;
-
-function getPendingMemoryEntries<T extends { threadId: string }>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadIds: readonly string[],
-) {
-  return threadIds.flatMap((threadId) => {
-    const bucket = workspaceScopedGet(store, workspaceId, threadId);
-    if (!bucket) {
-      return [];
-    }
-    return Object.entries(bucket).map(([key, entry]) => ({ key, threadId, entry }));
-  });
-}
-
-function setPendingMemoryEntry<T>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadId: string,
-  key: string,
-  entry: T,
-) {
-  const bucket = {
-    ...(workspaceScopedGet(store, workspaceId, threadId) ?? {}),
-    [key]: entry,
-  };
-  workspaceScopedSet(store, workspaceId, threadId, bucket);
-}
-
-function deletePendingMemoryEntry<T>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadId: string,
-  key: string,
-) {
-  const bucket = workspaceScopedGet(store, workspaceId, threadId);
-  if (!bucket || !(key in bucket)) {
-    return;
-  }
-  const nextBucket = { ...bucket };
-  delete nextBucket[key];
-  if (Object.keys(nextBucket).length === 0) {
-    workspaceScopedDelete(store, workspaceId, threadId);
-    return;
-  }
-  workspaceScopedSet(store, workspaceId, threadId, nextBucket);
-}
-
-function shouldKeepPendingCaptureForAdditionalAssistantSegments(
-  pending: Pick<PendingMemoryCapture, "engine" | "threadId">,
-) {
-  return pending.engine === "codex" || !pending.threadId.includes(":");
 }
 
 type UseThreadsOptions = {
@@ -2612,8 +2524,8 @@ export function useThreads({
     onTurnCompletedExternal: (payload) => {
       handleTurnCompletedForHistoryReconcile(payload);
     },
-    onTurnTerminalExternal: ({ workspaceId, threadId, turnId, status }) => {
-      settleCompletionEmailIntent(workspaceId, threadId, turnId, status);
+    onTurnTerminalExternal: ({ workspaceId, threadId, turnId, rawTurnId, status }) => {
+      settleCompletionEmailIntent(workspaceId, threadId, rawTurnId ?? turnId, status);
     },
     onThreadTransientCleanupReady: (cleanup) => {
       cleanupThreadTransientStateRef.current = cleanup;
