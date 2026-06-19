@@ -644,3 +644,56 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 889: Codex 并行会话生命周期隔离加固
+
+**Date**: 2026-06-20
+**Task**: Codex 并行会话生命周期隔离加固
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+加固 Codex 并行会话 owner gating、settled-turn quarantine、幕布 scope guard 与 deferred completion scoped reconciliation；同步记录手工三并行仍复现，change 暂不 archive-ready。
+
+### Main Changes
+
+| Area | Detail |
+|------|--------|
+| Codex lifecycle | Added explicit/bounded ownership resolver, removed active-tab lifecycle owner fallback, and hardened settled-turn quarantine against late duplicate starts and turnless late events. |
+| Deferred completion | Added scoped backend reconciliation for deferred `turn/completed`; terminal same-scope response may flush, running/unknown/mismatch stays blocked. |
+| Render scope | Scoped `Messages` deferred render/presentation snapshots by `workspaceId + threadId` to prevent tab-switch curtain bleed. |
+| Startup/reducer guards | Added reducer idempotency and model catalog attempt guard to avoid startup restore/update-depth amplification. |
+| Docs | Created OpenSpec change `fix-codex-parallel-runtime-ended-isolation` and updated Trellis frontend specs. Marked the change as implementation checkpoint, not archive-ready, because manual 3-session runtime testing still reproduces stuck loading. |
+
+**Validation**:
+- `npm test` passed: 681 test files.
+- `npm run typecheck` passed.
+- `npm run lint` passed.
+- `npm run check:runtime-contracts` passed.
+- `npm run doctor:strict` passed before doc calibration.
+- `openspec validate fix-codex-parallel-runtime-ended-isolation --type change --strict --no-interactive` passed.
+- `git diff --check` passed.
+
+**Known Open Risk**:
+- User manual testing still reproduces one running/loading residue in 3 parallel Codex/Minimax sessions.
+- Next fix must first capture `deferred-completion-reconciliation-*`, `three-evidence-reconciliation-*`, `turn-completed-deferred`, and `quarantined-codex-event-skipped` payloads to classify whether terminal authority never arrives, backend status remains running/unknown, or frontend cleanup guard rejects a valid terminal signal.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ef834bdb` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

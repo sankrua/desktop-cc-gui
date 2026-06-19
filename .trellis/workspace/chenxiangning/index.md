@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 888
-- **Last Active**: 2026-06-19
+- **Total Sessions**: 889
+- **Last Active**: 2026-06-20
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~646 | Active |
+| `journal-23.md` | ~699 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 889 | 2026-06-20 | Codex 并行会话生命周期隔离加固 | `ef834bdb` | `feature/v0.5.11` |
 | 888 | 2026-06-19 | 清理文件树 Hook 依赖告警 | `223e589c` | `feature/v0.5.11` |
 | 887 | 2026-06-19 | 修正运行时提示侧栏入口和弹层 | `b5ddea13` | `feature/v0.5.11` |
 | 886 | 2026-06-19 | 修复性能归档评论权限 | `3a1de15e` | `feature/v0.5.11` |
