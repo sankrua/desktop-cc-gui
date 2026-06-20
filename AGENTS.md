@@ -102,9 +102,9 @@ Keep this managed block so 'trellis update' can refresh the instructions.
 ### Shell Baseline
 
 - 遇到 `command not found`，先执行：
-  - `zsh -lc 'source ~/.zshrc && <command>'`
+  - `pwsh -NoLogo -NoProfile -Command "Get-Command <command> -ErrorAction SilentlyContinue"`
 - 仍失败再排查：
-  - `zsh -lc 'source ~/.zshrc && which <command> && echo $PATH'`
+  - `pwsh -NoLogo -NoProfile -Command "$env:Path -split ';'; Get-Command <command> -ErrorAction SilentlyContinue"`
 
 ## 仓库卫生
 
