@@ -2,6 +2,46 @@
 
 ---
 
+##### **2026年6月20日（v0.5.10）**
+
+中文：
+
+✨ Features
+- 新增 Claude 供应商配置界面与默认模板补全，补齐模型、环境变量和运行时开关等关键配置项，方便用户直接创建和调整 Claude provider
+- 新增 Claude provider 模型拉取能力，支持从供应商接口同步模型列表并在模型下拉菜单中展示可用项
+- 新增 Claude provider 拖拽排序能力，支持在供应商列表中调整常规 provider 顺序并保持本地设置项与当前激活项的固定位置
+- 升级应用版本号到 `0.5.10`，同步前端包配置与 Tauri 配置
+
+🔧 Improvements
+- 优化 Claude provider 的默认配置和表单展示，减少创建或编辑供应商时的手工补全成本
+- 优化 provider 列表交互，让当前激活 provider 与可排序 provider 的视觉层级更清晰
+- 优化供应商模型加载后的展示与选择路径，提升可用模型较多时的浏览效率
+
+🐛 Fixes
+- 修复 Claude provider 模板中缺少必要选项的问题，避免新建供应商后还需要手动补齐关键字段
+- 修复模型列表展示过少的问题，确保下拉菜单与实际拉取到的模型数量保持一致
+- 修复供应商排序持久化问题，避免拖拽后顺序在刷新或重启后丢失
+
+English:
+
+✨ Features
+- Add the Claude provider settings UI and complete the default template with the key model, environment, and runtime toggles needed to create or adjust a Claude provider directly
+- Add Claude provider model fetching so the app can sync model lists from the provider API and expose the available models in the selector
+- Add drag reordering for Claude providers so regular providers can be reordered while the local settings entry and active provider stay pinned in place
+- Bump the app version to `0.5.10` across frontend package metadata and Tauri configuration
+
+🔧 Improvements
+- Improve the default Claude provider configuration and form presentation to reduce manual filling when creating or editing providers
+- Improve provider list interactions so the active provider and sortable providers have a clearer visual hierarchy
+- Improve the model-selection flow after provider model loading so browsing works better when many models are available
+
+🐛 Fixes
+- Fix missing required fields in the Claude provider template so new providers no longer need manual patch-up before use
+- Fix the model list showing too few entries so the selector matches the full set of fetched models
+- Fix provider-order persistence so drag reordering survives refresh and restart
+
+---
+
 ##### **2026年6月14日（v0.5.9）**
 
 中文：
