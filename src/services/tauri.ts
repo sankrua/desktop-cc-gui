@@ -271,6 +271,7 @@ export {
   getCurrentClaudeConfig,
   getGeminiVendorPreflight,
   getGeminiVendorSettings,
+  reorderClaudeProviders,
   saveGeminiVendorSettings,
   setClaudeAlwaysThinkingEnabled,
   switchClaudeProvider,

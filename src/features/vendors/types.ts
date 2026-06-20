@@ -56,6 +56,7 @@ export interface ProviderConfig {
   websiteUrl?: string;
   category?: ProviderCategory;
   createdAt?: number;
+  sortOrder?: number;
   isActive?: boolean;
   source?: 'cc-switch' | string;
   isLocalProvider?: boolean;

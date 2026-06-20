@@ -1636,6 +1636,7 @@ const zhPart1 = {
       edit: "编辑",
       delete: "删除",
       enable: "启用",
+      dragToReorder: "拖动调整顺序",
       inUse: "使用中",
       availableForNewCodexSessions: "新会话可选",
       currentConfig: "当前ClaudeCode配置",

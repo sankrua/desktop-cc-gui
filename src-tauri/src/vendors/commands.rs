@@ -166,6 +166,7 @@ fn build_local_provider(is_active: bool) -> ProviderConfig {
         website_url: None,
         category: None,
         created_at: Some(0),
+        sort_order: None,
         is_active,
         source: None,
         is_local_provider: Some(true),
@@ -453,11 +454,12 @@ fn set_provider_created_at(value: &mut Value, created_at: i64) {
     }
 }
 
-fn sort_claude_providers_by_created_at(providers: &mut [ProviderConfig]) {
+fn sort_claude_providers_by_order(providers: &mut [ProviderConfig]) {
     providers.sort_by(|a, b| {
-        a.created_at
-            .unwrap_or(0)
-            .cmp(&b.created_at.unwrap_or(0))
+        a.sort_order
+            .unwrap_or(i64::MAX)
+            .cmp(&b.sort_order.unwrap_or(i64::MAX))
+            .then_with(|| a.created_at.unwrap_or(0).cmp(&b.created_at.unwrap_or(0)))
             .then_with(|| a.id.cmp(&b.id))
     });
 }
@@ -508,6 +510,7 @@ fn value_to_claude_provider(
         .and_then(|v| v.as_str())
         .map(String::from);
     let created_at = value.get("createdAt").and_then(|v| v.as_i64());
+    let sort_order = value.get("sortOrder").and_then(|v| v.as_i64());
     let source = value
         .get("source")
         .and_then(|v| v.as_str())
@@ -522,6 +525,7 @@ fn value_to_claude_provider(
         website_url: website_url,
         category,
         created_at,
+        sort_order,
         is_active,
         source,
         is_local_provider,
@@ -545,6 +549,9 @@ fn claude_provider_to_value(provider: &ProviderConfig) -> Value {
     }
     if let Some(ts) = provider.created_at {
         map.insert("createdAt".into(), Value::Number(ts.into()));
+    }
+    if let Some(order) = provider.sort_order {
+        map.insert("sortOrder".into(), Value::Number(order.into()));
     }
     if let Some(ref src) = provider.source {
         map.insert("source".into(), Value::String(src.clone()));
@@ -753,7 +760,7 @@ pub(crate) async fn vendor_get_claude_providers() -> Result<Vec<ProviderConfig>,
             value_to_claude_provider(id, value, is_active).ok()
         })
         .collect();
-    sort_claude_providers_by_created_at(&mut regular_providers);
+    sort_claude_providers_by_order(&mut regular_providers);
 
     let mut providers = Vec::with_capacity(regular_providers.len() + 1);
     providers.push(build_local_provider(
@@ -851,6 +858,23 @@ pub(crate) async fn vendor_update_claude_provider(
         set_provider_created_at(&mut provider_value, created_at);
     }
     config.claude.providers.insert(id, provider_value);
+    write_config(&config)
+}
+
+#[tauri::command]
+pub(crate) async fn vendor_reorder_claude_providers(
+    ordered_ids: Vec<String>,
+) -> Result<(), String> {
+    let mut config = read_config()?;
+    for (index, id) in ordered_ids.iter().enumerate() {
+        if id == LOCAL_SETTINGS_PROVIDER_ID {
+            continue;
+        }
+        let Some(Value::Object(provider)) = config.claude.providers.get_mut(id) else {
+            continue;
+        };
+        provider.insert("sortOrder".into(), Value::Number((index as i64).into()));
+    }
     write_config(&config)
 }
 
@@ -1126,6 +1150,91 @@ mod tests {
             auth_json: None,
             custom_models: None,
         }
+    }
+
+    fn claude_provider(
+        id: &str,
+        created_at: Option<i64>,
+        sort_order: Option<i64>,
+    ) -> ProviderConfig {
+        ProviderConfig {
+            id: id.to_string(),
+            name: id.to_string(),
+            remark: None,
+            website_url: None,
+            category: None,
+            created_at,
+            sort_order,
+            is_active: false,
+            source: None,
+            is_local_provider: None,
+            settings_config: None,
+        }
+    }
+
+    #[test]
+    fn claude_provider_order_uses_sort_order_before_created_at() {
+        let mut providers = vec![
+            claude_provider("provider-created-first", Some(10), Some(2)),
+            claude_provider("provider-sort-first", Some(30), Some(0)),
+            claude_provider("provider-sort-second", Some(20), Some(1)),
+        ];
+
+        sort_claude_providers_by_order(&mut providers);
+
+        let ordered_ids: Vec<&str> = providers
+            .iter()
+            .map(|provider| provider.id.as_str())
+            .collect();
+        assert_eq!(
+            ordered_ids,
+            vec![
+                "provider-sort-first",
+                "provider-sort-second",
+                "provider-created-first",
+            ]
+        );
+    }
+
+    #[test]
+    fn claude_provider_order_falls_back_to_created_at_without_sort_order() {
+        let mut providers = vec![
+            claude_provider("provider-c", Some(30), None),
+            claude_provider("provider-b", Some(10), None),
+            claude_provider("provider-a", Some(10), None),
+        ];
+
+        sort_claude_providers_by_order(&mut providers);
+
+        let ordered_ids: Vec<&str> = providers
+            .iter()
+            .map(|provider| provider.id.as_str())
+            .collect();
+        assert_eq!(ordered_ids, vec!["provider-a", "provider-b", "provider-c"]);
+    }
+
+    #[test]
+    fn claude_provider_order_places_missing_sort_order_after_ordered_entries() {
+        let mut providers = vec![
+            claude_provider("provider-created-first", Some(10), None),
+            claude_provider("provider-sort-first", Some(30), Some(0)),
+            claude_provider("provider-created-second", Some(20), None),
+        ];
+
+        sort_claude_providers_by_order(&mut providers);
+
+        let ordered_ids: Vec<&str> = providers
+            .iter()
+            .map(|provider| provider.id.as_str())
+            .collect();
+        assert_eq!(
+            ordered_ids,
+            vec![
+                "provider-sort-first",
+                "provider-created-first",
+                "provider-created-second",
+            ]
+        );
     }
 
     #[test]

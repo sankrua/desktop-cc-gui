@@ -362,6 +362,7 @@ pub(crate) fn invoke_handler(
         crate::vendors::vendor_get_current_claude_config,
         crate::vendors::vendor_add_claude_provider,
         crate::vendors::vendor_update_claude_provider,
+        crate::vendors::vendor_reorder_claude_providers,
         crate::vendors::vendor_delete_claude_provider,
         crate::vendors::vendor_switch_claude_provider,
         crate::vendors::vendor_get_claude_always_thinking_enabled,

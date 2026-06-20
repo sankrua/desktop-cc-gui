@@ -108,6 +108,7 @@ import {
   hydrateClaudeDeferredImage,
   setMainWindowOpacity,
   fetchClaudeProviderModels,
+  reorderClaudeProviders,
 } from "./tauri";
 import { resetRuntimeModeStateForTests } from "./tauri/runtimeMode";
 import {
@@ -196,6 +197,17 @@ describe("tauri invoke wrappers", () => {
     expect(invokeMock).toHaveBeenCalledWith("vendor_fetch_claude_models", {
       baseUrl: "https://proxy.example.com/anthropic",
       apiKey: "sk-test",
+    });
+  });
+
+  it("maps Claude provider reorder requests", async () => {
+    const invokeMock = vi.mocked(invoke);
+    invokeMock.mockResolvedValueOnce(undefined);
+
+    await reorderClaudeProviders(["provider-b", "provider-a"]);
+
+    expect(invokeMock).toHaveBeenCalledWith("vendor_reorder_claude_providers", {
+      orderedIds: ["provider-b", "provider-a"],
     });
   });
 

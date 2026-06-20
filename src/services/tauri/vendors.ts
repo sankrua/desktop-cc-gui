@@ -28,6 +28,10 @@ export async function switchClaudeProvider(id: string): Promise<void> {
   return invoke("vendor_switch_claude_provider", { id });
 }
 
+export async function reorderClaudeProviders(orderedIds: string[]): Promise<void> {
+  return invoke("vendor_reorder_claude_providers", { orderedIds });
+}
+
 export async function getCurrentClaudeConfig(): Promise<VendorClaudeCurrentConfig> {
   return invoke<VendorClaudeCurrentConfig>("vendor_get_current_claude_config");
 }

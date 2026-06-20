@@ -1623,6 +1623,7 @@ const enPart1 = {
       edit: "Edit",
       delete: "Delete",
       enable: "Enable",
+      dragToReorder: "Drag to reorder",
       inUse: "In Use",
       availableForNewCodexSessions: "Available for new sessions",
       currentConfig: "Current Claude Code Config",
