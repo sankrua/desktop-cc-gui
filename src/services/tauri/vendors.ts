@@ -42,6 +42,21 @@ export async function setClaudeAlwaysThinkingEnabled(
   return invoke("vendor_set_claude_always_thinking_enabled", { enabled });
 }
 
+export interface VendorModelListResult {
+  models: string[];
+  endpoint: string;
+}
+
+export async function fetchClaudeProviderModels(
+  baseUrl: string,
+  apiKey: string,
+): Promise<VendorModelListResult> {
+  return invoke<VendorModelListResult>("vendor_fetch_claude_models", {
+    baseUrl,
+    apiKey,
+  });
+}
+
 export async function getCodexProviders(): Promise<
   VendorCodexProviderConfig[]
 > {

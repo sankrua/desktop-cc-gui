@@ -1708,6 +1708,12 @@ const zhPart1 = {
         opusModelPlaceholder: "例如：claude-opus-4-5",
         modelMappingHint:
           "可选：指定默认使用的 Claude 模型，留空则使用系统默认。",
+        fetchModels: "拉取模型",
+        fetchModelsLoading: "拉取中…",
+        fetchModelsCount: "已加载 {{count}} 个模型",
+        fetchModelsEmpty: "未返回模型",
+        fetchModelsNeedUrl: "请先填写 API URL",
+        fetchModelsError: "拉取模型失败",
         jsonConfig: "JSON 配置",
         jsonConfigDescription:
           "此处可配置完整的 settings.json 内容，支持所有字段（如 model、alwaysThinkingEnabled、ccSwitchProviderId、codemossProviderId 等）",

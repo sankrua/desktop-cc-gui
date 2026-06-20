@@ -264,6 +264,7 @@ export {
   addCodexProvider,
   deleteClaudeProvider,
   deleteCodexProvider,
+  fetchClaudeProviderModels,
   getClaudeAlwaysThinkingEnabled,
   getClaudeProviders,
   getCodexProviders,
@@ -277,7 +278,12 @@ export {
   updateClaudeProvider,
   updateCodexProvider,
 } from "./tauri/vendors";
-export type { GeminiVendorPreflightCheck, GeminiVendorPreflightResult, GeminiVendorSettings } from "./tauri/vendors";
+export type {
+  GeminiVendorPreflightCheck,
+  GeminiVendorPreflightResult,
+  GeminiVendorSettings,
+  VendorModelListResult,
+} from "./tauri/vendors";
 export {
   addAgentConfig,
   applyImportAgentConfigs,

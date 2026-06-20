@@ -304,7 +304,92 @@ pub(crate) struct GeminiVendorPreflightResult {
     pub(crate) checks: Vec<GeminiVendorPreflightCheck>,
 }
 
+#[derive(Debug, Serialize)]
+pub(crate) struct VendorModelListResult {
+    models: Vec<String>,
+    endpoint: String,
+}
+
 // ==================== Helpers ====================
+
+fn push_unique_candidate(candidates: &mut Vec<String>, candidate: String) {
+    if !candidate.trim().is_empty() && !candidates.contains(&candidate) {
+        candidates.push(candidate);
+    }
+}
+
+fn derive_model_list_candidates(base_url: &str) -> Vec<String> {
+    let base = base_url.trim().trim_end_matches('/').to_string();
+    if base.is_empty() {
+        return Vec::new();
+    }
+
+    let mut candidates = Vec::new();
+    push_unique_candidate(&mut candidates, format!("{base}/v1/models"));
+
+    if base.ends_with("/v1") {
+        push_unique_candidate(&mut candidates, format!("{base}/models"));
+    }
+
+    if let Some(stripped) = base.strip_suffix("/anthropic") {
+        let stripped = stripped.trim_end_matches('/');
+        if !stripped.is_empty() {
+            push_unique_candidate(&mut candidates, format!("{stripped}/v1/models"));
+        }
+    }
+
+    if let Ok(parsed) = reqwest::Url::parse(&base) {
+        if let Some(host) = parsed.host_str() {
+            let origin = match parsed.port() {
+                Some(port) => format!("{}://{}:{}", parsed.scheme(), host, port),
+                None => format!("{}://{}", parsed.scheme(), host),
+            };
+            push_unique_candidate(&mut candidates, format!("{origin}/v1/models"));
+        }
+    }
+
+    candidates
+}
+
+fn push_model_id(models: &mut Vec<String>, value: &Value) {
+    let candidate = match value {
+        Value::String(value) => Some(value.as_str()),
+        Value::Object(map) => map.get("id").and_then(Value::as_str),
+        _ => None,
+    };
+    let Some(candidate) = candidate.map(str::trim).filter(|value| !value.is_empty()) else {
+        return;
+    };
+    if !models.iter().any(|model| model == candidate) {
+        models.push(candidate.to_string());
+    }
+}
+
+fn extract_vendor_model_ids(value: &Value) -> Vec<String> {
+    let mut models = Vec::new();
+
+    if let Some(data) = value.get("data").and_then(Value::as_array) {
+        for item in data {
+            push_model_id(&mut models, item);
+        }
+        return models;
+    }
+
+    if let Some(data) = value.as_array() {
+        for item in data {
+            push_model_id(&mut models, item);
+        }
+        return models;
+    }
+
+    if let Some(data) = value.get("models").and_then(Value::as_array) {
+        for item in data {
+            push_model_id(&mut models, item);
+        }
+    }
+
+    models
+}
 
 fn config_path() -> PathBuf {
     app_paths::config_file_path().unwrap_or_else(|_| PathBuf::from("config.json"))
@@ -824,6 +909,72 @@ pub(crate) async fn vendor_set_claude_always_thinking_enabled(enabled: bool) -> 
     write_claude_settings(&settings)
 }
 
+#[tauri::command]
+pub(crate) async fn vendor_fetch_claude_models(
+    base_url: String,
+    api_key: String,
+) -> Result<VendorModelListResult, String> {
+    if base_url.trim().is_empty() {
+        return Err("API URL is required".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(15))
+        .build()
+        .map_err(|error| format!("Failed to build HTTP client: {error}"))?;
+    let api_key = api_key.trim().to_string();
+    let mut last_error: Option<String> = None;
+
+    for endpoint in derive_model_list_candidates(&base_url) {
+        let response = match client
+            .get(&endpoint)
+            .header("Authorization", format!("Bearer {api_key}"))
+            .header("x-api-key", api_key.as_str())
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(error) => {
+                last_error = Some(format!("{endpoint}: {error}"));
+                continue;
+            }
+        };
+
+        let status = response.status();
+        if !status.is_success() {
+            last_error = Some(format!("{endpoint} returned HTTP {status}"));
+            continue;
+        }
+
+        let body = match response.text().await {
+            Ok(body) => body,
+            Err(error) => {
+                last_error = Some(format!("{endpoint}: failed to read response body: {error}"));
+                continue;
+            }
+        };
+
+        let value = match serde_json::from_str::<Value>(&body) {
+            Ok(value) => value,
+            Err(error) => {
+                last_error = Some(format!("{endpoint}: failed to parse JSON response: {error}"));
+                continue;
+            }
+        };
+
+        return Ok(VendorModelListResult {
+            models: extract_vendor_model_ids(&value),
+            endpoint,
+        });
+    }
+
+    Err(format!(
+        "Failed to fetch models: {}",
+        last_error.unwrap_or_else(|| "no candidate endpoint succeeded".to_string())
+    ))
+}
+
 // ==================== Codex Provider Commands ====================
 
 #[tauri::command]
@@ -1037,5 +1188,47 @@ mod tests {
         let created_at = updated_provider_created_at(Some(&existing), Some(42));
 
         assert_eq!(created_at, Some(10));
+    }
+
+    #[test]
+    fn derive_model_list_candidates_supports_origin_base_url() {
+        assert_eq!(
+            derive_model_list_candidates("https://api.example.com"),
+            vec!["https://api.example.com/v1/models"]
+        );
+    }
+
+    #[test]
+    fn derive_model_list_candidates_supports_v1_base_url() {
+        assert_eq!(
+            derive_model_list_candidates("https://api.example.com/v1"),
+            vec![
+                "https://api.example.com/v1/v1/models",
+                "https://api.example.com/v1/models",
+            ]
+        );
+    }
+
+    #[test]
+    fn derive_model_list_candidates_supports_anthropic_base_url() {
+        assert_eq!(
+            derive_model_list_candidates("https://proxy.example.com/anthropic"),
+            vec![
+                "https://proxy.example.com/anthropic/v1/models",
+                "https://proxy.example.com/v1/models",
+            ]
+        );
+    }
+
+    #[test]
+    fn derive_model_list_candidates_trims_trailing_slashes_and_preserves_port() {
+        assert_eq!(
+            derive_model_list_candidates(" https://localhost:8787/api/anthropic/// "),
+            vec![
+                "https://localhost:8787/api/anthropic/v1/models",
+                "https://localhost:8787/api/v1/models",
+                "https://localhost:8787/v1/models",
+            ]
+        );
     }
 }

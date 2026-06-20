@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import EyeOff from "lucide-react/dist/esm/icons/eye-off";
 import Shield from "lucide-react/dist/esm/icons/shield";
+import { fetchClaudeProviderModels } from "../../../services/tauri";
 import type { ProviderConfig } from "../types";
 import { CLAUDE_PROVIDER_PRESETS } from "../types";
 
@@ -91,6 +92,15 @@ export function ProviderDialog({
   const [jsonConfig, setJsonConfig] = useState("");
   const [jsonError, setJsonError] = useState("");
   const [activePreset, setActivePreset] = useState("custom");
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
+  const [isFetchingModels, setIsFetchingModels] = useState(false);
+  const [modelFetchError, setModelFetchError] = useState("");
+
+  const resetFetchedModels = () => {
+    setFetchedModels([]);
+    setIsFetchingModels(false);
+    setModelFetchError("");
+  };
 
   const updateEnvField = (key: string, value: string) => {
     try {
@@ -135,6 +145,7 @@ export function ProviderDialog({
       return;
     }
     setActivePreset(presetId);
+    resetFetchedModels();
 
     if (presetId === "custom") {
       setApiKey("");
@@ -189,6 +200,9 @@ export function ProviderDialog({
     }
     setShowApiKey(false);
     setJsonError("");
+    setFetchedModels([]);
+    setIsFetchingModels(false);
+    setModelFetchError("");
   }, [isOpen, provider]);
 
   useEffect(() => {
@@ -229,6 +243,36 @@ export function ProviderDialog({
       setJsonError("");
     } catch {
       setJsonError(t("settings.vendor.dialog.jsonError"));
+    }
+  };
+
+  const handleFetchModels = async () => {
+    const baseUrl = apiUrl.trim();
+    if (!baseUrl) {
+      setModelFetchError(t("settings.vendor.dialog.fetchModelsNeedUrl"));
+      return;
+    }
+
+    setIsFetchingModels(true);
+    setModelFetchError("");
+    try {
+      const result = await fetchClaudeProviderModels(baseUrl, apiKey);
+      setFetchedModels(result.models);
+      setModelFetchError(
+        result.models.length === 0
+          ? t("settings.vendor.dialog.fetchModelsEmpty")
+          : "",
+      );
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+            ? error
+            : t("settings.vendor.dialog.fetchModelsError");
+      setModelFetchError(message || t("settings.vendor.dialog.fetchModelsError"));
+    } finally {
+      setIsFetchingModels(false);
     }
   };
 
@@ -370,11 +414,37 @@ export function ProviderDialog({
 
           <div className="vendor-form-group">
             <label>{t("settings.vendor.dialog.modelMapping")}</label>
+            <div className="vendor-model-fetch">
+              <button
+                type="button"
+                onClick={handleFetchModels}
+                disabled={isFetchingModels || !apiUrl.trim()}
+              >
+                {isFetchingModels
+                  ? t("settings.vendor.dialog.fetchModelsLoading")
+                  : t("settings.vendor.dialog.fetchModels")}
+              </button>
+              {modelFetchError ? (
+                <span className="vendor-model-fetch-error">{modelFetchError}</span>
+              ) : fetchedModels.length > 0 ? (
+                <span className="vendor-hint">
+                  {t("settings.vendor.dialog.fetchModelsCount", {
+                    count: fetchedModels.length,
+                  })}
+                </span>
+              ) : null}
+            </div>
+            <datalist id="vendor-fetched-models">
+              {fetchedModels.map((model) => (
+                <option key={model} value={model} />
+              ))}
+            </datalist>
             <div className="vendor-model-grid">
               <div>
                 <label>{t("settings.vendor.dialog.sonnetModel")}</label>
                 <input
                   type="text"
+                  list="vendor-fetched-models"
                   className="vendor-input"
                   placeholder={t("settings.vendor.dialog.sonnetModelPlaceholder")}
                   value={sonnetModel}
@@ -391,6 +461,7 @@ export function ProviderDialog({
                 <label>{t("settings.vendor.dialog.opusModel")}</label>
                 <input
                   type="text"
+                  list="vendor-fetched-models"
                   className="vendor-input"
                   placeholder={t("settings.vendor.dialog.opusModelPlaceholder")}
                   value={opusModel}
@@ -407,6 +478,7 @@ export function ProviderDialog({
                 <label>{t("settings.vendor.dialog.haikuModel")}</label>
                 <input
                   type="text"
+                  list="vendor-fetched-models"
                   className="vendor-input"
                   placeholder={t("settings.vendor.dialog.haikuModelPlaceholder")}
                   value={haikuModel}

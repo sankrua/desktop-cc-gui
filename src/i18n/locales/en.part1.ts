@@ -1702,6 +1702,12 @@ const enPart1 = {
         opusModelPlaceholder: "e.g. claude-opus-4-5",
         modelMappingHint:
           "Optional: specify Claude defaults for this provider. Leave blank to use system defaults.",
+        fetchModels: "Fetch models",
+        fetchModelsLoading: "Fetching…",
+        fetchModelsCount: "{{count}} models loaded",
+        fetchModelsEmpty: "No models returned",
+        fetchModelsNeedUrl: "Enter API URL first",
+        fetchModelsError: "Failed to fetch models",
         jsonConfig: "JSON Config",
         jsonConfigDescription:
           "Configure full settings.json content here, including fields like model, alwaysThinkingEnabled, ccSwitchProviderId, codemossProviderId, etc.",
