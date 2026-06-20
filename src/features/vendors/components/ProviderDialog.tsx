@@ -6,6 +6,20 @@ import Shield from "lucide-react/dist/esm/icons/shield";
 import type { ProviderConfig } from "../types";
 import { CLAUDE_PROVIDER_PRESETS } from "../types";
 
+type ClaudeProviderSettingsTemplate = {
+  alwaysThinkingEnabled: boolean;
+  autoDreamEnabled: boolean;
+  cleanupPeriodDays: number;
+  effortLevel: string;
+  env: Record<string, string>;
+  hasCompletedOnboarding: boolean;
+  language: string;
+  model: string;
+  skipAutoPermissionPrompt: boolean;
+  teammateMode: string;
+  tui: string;
+};
+
 interface ProviderDialogProps {
   isOpen: boolean;
   provider: ProviderConfig | null;
@@ -19,21 +33,42 @@ interface ProviderDialogProps {
   }) => void;
 }
 
-function defaultConfigJson() {
-  return JSON.stringify(
-    {
-      env: {
-        ANTHROPIC_AUTH_TOKEN: "",
-        ANTHROPIC_BASE_URL: "",
-        ANTHROPIC_MODEL: "",
-        ANTHROPIC_DEFAULT_SONNET_MODEL: "",
-        ANTHROPIC_DEFAULT_OPUS_MODEL: "",
-        ANTHROPIC_DEFAULT_HAIKU_MODEL: "",
-      },
+export function buildDefaultClaudeProviderSettingsConfig(): ClaudeProviderSettingsTemplate {
+  return {
+    alwaysThinkingEnabled: true,
+    autoDreamEnabled: true,
+    cleanupPeriodDays: 720,
+    effortLevel: "xhigh",
+    env: {
+      ANTHROPIC_AUTH_TOKEN: "",
+      ANTHROPIC_BASE_URL: "",
+      ANTHROPIC_BETAS: "context-1m-2025-08-07",
+      ANTHROPIC_DEFAULT_HAIKU_MODEL: "claude-haiku-4-5-20251001",
+      ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-opus-4-8",
+      ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-6",
+      ANTHROPIC_SMALL_FAST_MODEL: "claude-haiku-4-5-20251001",
+      CLAUDE_CODE_ATTRIBUTION_HEADER: "0",
+      CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS: "1",
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1",
+      CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS: "1",
+      CLAUDE_CODE_NEW_INIT: "1",
+      DISABLE_ERROR_REPORTING: "1",
+      DISABLE_TELEMETRY: "1",
+      ENABLE_TOOL_SEARCH: "1",
+      MAX_THINKING_TOKENS: "31999",
+      MCP_TIMEOUT: "60000",
     },
-    null,
-    2,
-  );
+    hasCompletedOnboarding: true,
+    language: "简体中文",
+    model: "opus",
+    skipAutoPermissionPrompt: true,
+    teammateMode: "in-process",
+    tui: "fullscreen",
+  };
+}
+
+export function defaultConfigJson() {
+  return JSON.stringify(buildDefaultClaudeProviderSettingsConfig(), null, 2);
 }
 
 export function ProviderDialog({
