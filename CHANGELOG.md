@@ -11,6 +11,8 @@
 - 新增 renderer 诊断导出与 turn trace 校准链路，将 renderer 指标、realtime runtime evidence 和 turn trace summary 接入统一性能证据报告
 - 新增 Codex 首响应与首包延迟证据细分，覆盖 turn start ack、首个流式增量、ack 后首包、首文本等待、assistant item 首响应与首文本前运行阶段，帮助定位流式输出慢点
 - 新增 v0.5.11 消息恢复与性能证据收口，串联消息恢复、流式渲染、runtime evidence 与恢复 cookbook，降低长会话恢复和性能排查成本
+- 新增 Claude 供应商拖拽排序，支持固定本地配置与当前启用项、拖动调整其他供应商顺序并持久化
+- 新增 Claude 供应商模型拉取能力，可从当前 API URL 与 API Key 拉取兼容端点模型列表，并作为 Haiku/Sonnet/Opus 映射输入建议
 
 🔧 Improvements
 - 升级应用版本号到 `0.5.11`，同步前端包配置与 Tauri 配置
@@ -20,6 +22,8 @@
 - 拆分 Tauri Git、工作区文件服务与文件树视图状态，收敛大文件与重测试治理噪音，提升文件相关模块的维护边界
 - 补充恢复 cookbook，并归档 v0.5.11 已验证 OpenSpec 提案，让性能证据、恢复链路和发布门禁具备更完整的审计记录
 - 提升文档树节点查询与文件列表刷新参数断言的测试稳定性，减少 UI 与 Tauri 边界测试误报
+- 校准 Claude 供应商默认 settings 模板，将模型层级、thinking、onboarding、语言与 TUI 等字段写入正确配置层级，降低新供应商配置成本
+- 提取 Git 行标记重置逻辑并清理未使用依赖，降低 Git 视图状态维护复杂度
 
 🐛 Fixes
 - 修复消息流式结束窗口问题，并升级 React 运行时，减少消息结束阶段的状态漂移
@@ -29,6 +33,9 @@
 - 修复性能归档门禁与评论权限失败处理，避免 CI gate 因归档评论权限或门禁边界阻塞发布验证
 - 修复侧栏提示入口与弹层层级问题，避免 runtime notice 被遮挡或入口不可达
 - 修复 Codex 并行会话生命周期隔离问题，降低并行 session 在启动、恢复和释放过程中的状态串扰
+- 修复 Claude 供应商默认配置中的不安全环境变量默认值，避免新建供应商时自动写入会造成回归的 Claude Code env
+- 修复独立文件窗口与文件树首屏滚动容器样式问题，让文件内容和目录树在首次打开时保持稳定滚动
+- 修复线程门禁失败与大文件债务收口问题，减少发布前治理检查的误报与阻塞
 
 English:
 
@@ -37,6 +44,8 @@ English:
 - Add renderer diagnostics export and turn-trace calibration, connecting renderer metrics, realtime runtime evidence, and turn trace summaries into the unified performance evidence report
 - Add finer-grained Codex first-response and first-packet latency evidence across turn-start ack, first streaming delta, post-ack first packet, first-text wait, assistant-item first response, and pre-first-text runtime phases to make slow streaming paths easier to locate
 - Add the v0.5.11 message recovery and performance-evidence closure, tying message recovery, streaming rendering, runtime evidence, and the recovery cookbook into one auditable release path
+- Add drag-to-reorder for Claude providers, keeping local settings and the active provider pinned while persisting the order of other providers
+- Add Claude provider model fetching from the current API URL and API key, surfacing compatible endpoint models as suggestions for Haiku/Sonnet/Opus mappings
 
 🔧 Improvements
 - Bump app version to `0.5.11` across frontend package metadata and Tauri configuration
@@ -46,6 +55,8 @@ English:
 - Split Tauri Git services, workspace file services, and file-tree view state while reducing large-file and heavy-test governance noise, making file-related module boundaries easier to maintain
 - Add the recovery cookbook and archive verified v0.5.11 OpenSpec proposals so performance evidence, recovery flows, and release gates have a stronger audit trail
 - Improve documentation-tree queries and file-list refresh parameter assertions in tests to reduce false positives across UI and Tauri boundaries
+- Calibrate the default Claude provider settings template so model tiers, thinking, onboarding, language, and TUI fields are written to the correct settings layer
+- Extract Git line-marker reset logic and remove unused dependencies to reduce Git view state-maintenance complexity
 
 🐛 Fixes
 - Fix the message streaming completion window and upgrade the React runtime to reduce state drift when streamed messages finish
@@ -55,6 +66,9 @@ English:
 - Fix performance archive gates and comment-permission failure handling so CI gates do not block release validation on archive-comment permissions or gate boundaries
 - Fix the sidebar runtime-notice entrypoint and popover layering so notices remain reachable and visible
 - Fix Codex parallel-session lifecycle isolation, reducing state cross-talk while parallel sessions launch, recover, and release resources
+- Fix unsafe environment-variable defaults in the Claude provider template so new providers no longer auto-write Claude Code env values that caused regressions
+- Fix standalone file-window and file-tree first-screen scroll-container styling so file content and directory trees scroll reliably on first open
+- Fix thread gate failures and large-file debt closure issues, reducing false positives and release-gate friction
 
 ---
 
