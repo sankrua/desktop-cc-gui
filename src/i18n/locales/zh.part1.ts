@@ -1637,6 +1637,7 @@ const zhPart1 = {
       edit: "编辑",
       delete: "删除",
       enable: "启用",
+      dragToReorder: "拖动调整顺序",
       inUse: "使用中",
       availableForNewCodexSessions: "新会话可选",
       currentConfig: "当前ClaudeCode配置",
@@ -1709,6 +1710,12 @@ const zhPart1 = {
         opusModelPlaceholder: "例如：claude-opus-4-5",
         modelMappingHint:
           "可选：指定默认使用的 Claude 模型，留空则使用系统默认。",
+        fetchModels: "拉取模型",
+        fetchModelsLoading: "拉取中…",
+        fetchModelsCount: "已加载 {{count}} 个模型",
+        fetchModelsEmpty: "未返回模型",
+        fetchModelsNeedUrl: "请先填写 API URL",
+        fetchModelsError: "拉取模型失败",
         jsonConfig: "JSON 配置",
         jsonConfigDescription:
           "此处可配置完整的 settings.json 内容，支持所有字段（如 model、alwaysThinkingEnabled、ccSwitchProviderId、codemossProviderId 等）",
@@ -2483,6 +2490,7 @@ const zhPart1 = {
     restoringHistory: "正在恢复会话历史…",
     restoringHistoryHint: "正在加载本地 transcript 和会话状态。",
     generatingResponse: "正在生成响应...",
+    codexWaitingForFirstText: "Codex 已启动，正在等待首段文本...",
     codexSilentSuspected: "Codex 暂时没有新输出，仍在监听运行状态...",
     nonStreamingHint: "该模型可能非流式返回，或网络暂不可达，请稍候...",
     proxyBadge: "代理",

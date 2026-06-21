@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from "react";
 import type {
   CustomPromptOption,
   DebugEntry,
+  ThreadSummary,
   WorkspaceInfo,
   WorkspaceSessionAttributionMode,
 } from "../../../types";
@@ -9,7 +10,6 @@ import { useAppServerEvents } from "../../app/hooks/useAppServerEvents";
 import { subscribeWebServiceReconnect } from "../../../services/events";
 import { createInitialThreadState, threadReducer } from "./useThreadsReducer";
 import {
-  type PendingAssistantCompletion,
   type PendingMemoryCapture,
   buildMemoryTurnKey,
   joinPendingAssistantCompletionText,
@@ -19,6 +19,18 @@ import {
   PENDING_MEMORY_STALE_MS,
   upsertPendingAssistantCompletionSegment,
 } from "./threadMemoryCaptureHelpers";
+import {
+  type CodexOwnershipFallbackCandidateInput,
+  type PendingAssistantCompletionBucket,
+  type PendingMemoryCaptureBucket,
+  THREAD_ITEM_CACHE_TRIM_WATERMARK,
+  computeThreadItemCacheMax,
+  deletePendingMemoryEntry,
+  getPendingMemoryEntries,
+  isCodexOwnershipFallbackCandidate,
+  setPendingMemoryEntry,
+  shouldKeepPendingCaptureForAdditionalAssistantSegments,
+} from "./threadRuntimeOwnershipHelpers";
 import { useThreadStorage } from "./useThreadStorage";
 import { useThreadLinking } from "./useThreadLinking";
 import { useThreadEventHandlers } from "./useThreadEventHandlers";
@@ -28,7 +40,6 @@ import { useThreadApprovals } from "./useThreadApprovals";
 import {
   cleanupThreadScopedRefs,
   createWorkspaceScopedMap,
-  workspaceScopedDelete,
   workspaceScopedEntries,
   workspaceScopedGet,
   workspaceScopedHas,
@@ -105,28 +116,14 @@ import {
   createDomainEventRuntimeController,
 } from "../domain-events";
 
+export { computeThreadItemCacheMax } from "./threadRuntimeOwnershipHelpers";
+
 const AUTO_TITLE_REQUEST_TIMEOUT_MS = 8_000;
 const AUTO_TITLE_MAX_ATTEMPTS = 2;
 const AUTO_TITLE_PENDING_STALE_MS = 20_000;
 const THREAD_ERROR_DUPLICATE_WINDOW_MS = 8_000;
 const THREAD_SWITCH_RESUME_DELAY_MS = 24;
 const THREAD_SWITCH_LOADED_REFRESH_MS = 20_000;
-const THREAD_ITEM_CACHE_DEFAULT_MAX = 12;
-const THREAD_ITEM_CACHE_TRIM_WATERMARK = 2;
-
-// chat-stream-render-isolation-2026-06 task 5: LRU adaptive. When
-// multiple threads stream in parallel we want the cache to grow so
-// the reducer hot path does not thrash evicted thread items back into
-// state. The formula is intentionally simple: in-flight count plus
-// a baseline headroom. When no thread is processing, the formula
-// returns the original `THREAD_ITEM_CACHE_DEFAULT_MAX` (backward-compat
-// with the prior 12-entry budget).
-export function computeThreadItemCacheMax(inFlightCount: number): number {
-  if (!Number.isFinite(inFlightCount) || inFlightCount <= 0) {
-    return THREAD_ITEM_CACHE_DEFAULT_MAX;
-  }
-  return Math.max(THREAD_ITEM_CACHE_DEFAULT_MAX, inFlightCount * 2 + 6);
-}
 
 function normalizeMemoryTurnId(turnId: string | null | undefined) {
   return turnId?.trim() || "__unknown_turn__";
@@ -137,62 +134,6 @@ function isSameMemoryTurn(
   rightTurnId: string | null | undefined,
 ) {
   return normalizeMemoryTurnId(leftTurnId) === normalizeMemoryTurnId(rightTurnId);
-}
-
-type PendingMemoryCaptureBucket = Record<string, PendingMemoryCapture>;
-type PendingAssistantCompletionBucket = Record<string, PendingAssistantCompletion>;
-
-function getPendingMemoryEntries<T extends { threadId: string }>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadIds: readonly string[],
-) {
-  return threadIds.flatMap((threadId) => {
-    const bucket = workspaceScopedGet(store, workspaceId, threadId);
-    if (!bucket) {
-      return [];
-    }
-    return Object.entries(bucket).map(([key, entry]) => ({ key, threadId, entry }));
-  });
-}
-
-function setPendingMemoryEntry<T>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadId: string,
-  key: string,
-  entry: T,
-) {
-  const bucket = {
-    ...(workspaceScopedGet(store, workspaceId, threadId) ?? {}),
-    [key]: entry,
-  };
-  workspaceScopedSet(store, workspaceId, threadId, bucket);
-}
-
-function deletePendingMemoryEntry<T>(
-  store: WorkspaceScopedMap<Record<string, T>>,
-  workspaceId: string | null | undefined,
-  threadId: string,
-  key: string,
-) {
-  const bucket = workspaceScopedGet(store, workspaceId, threadId);
-  if (!bucket || !(key in bucket)) {
-    return;
-  }
-  const nextBucket = { ...bucket };
-  delete nextBucket[key];
-  if (Object.keys(nextBucket).length === 0) {
-    workspaceScopedDelete(store, workspaceId, threadId);
-    return;
-  }
-  workspaceScopedSet(store, workspaceId, threadId, nextBucket);
-}
-
-function shouldKeepPendingCaptureForAdditionalAssistantSegments(
-  pending: Pick<PendingMemoryCapture, "engine" | "threadId">,
-) {
-  return pending.engine === "codex" || !pending.threadId.includes(":");
 }
 
 type UseThreadsOptions = {
@@ -300,6 +241,11 @@ export function useThreads({
   const itemsByThreadRef = useRef(state.itemsByThread);
   const activeTurnIdByThreadRef = useRef(state.activeTurnIdByThread);
   const threadsByWorkspaceRef = useRef(state.threadsByWorkspace);
+  const immediateThreadWorkspaceByIdRef = useRef<Record<string, string>>({});
+  const immediateThreadCodexCandidateByIdRef = useRef<Record<string, boolean>>({});
+  const immediateProcessingCodexThreadIdsByWorkspaceRef = useRef<
+    Record<string, Set<string>>
+  >({});
   const activeWorkspaceRef = useRef(activeWorkspace);
   const activeThreadIdRef = useRef<string | null>(null);
   const loadedThreadLastRefreshAtRef = useRef<Record<string, number>>({});
@@ -402,6 +348,99 @@ export function useThreads({
     dispatch,
   });
 
+  const rememberImmediateThreadOwner = useCallback(
+    (
+      workspaceId: string,
+      threadId: string,
+      thread?: CodexOwnershipFallbackCandidateInput,
+    ) => {
+      const normalizedWorkspaceId = workspaceId.trim();
+      const normalizedThreadId = threadId.trim();
+      if (!normalizedWorkspaceId || !normalizedThreadId) {
+        return;
+      }
+      immediateThreadWorkspaceByIdRef.current[normalizedThreadId] =
+        normalizedWorkspaceId;
+      if (thread) {
+        immediateThreadCodexCandidateByIdRef.current[normalizedThreadId] =
+          isCodexOwnershipFallbackCandidate(thread);
+        return;
+      }
+      if (
+        immediateThreadCodexCandidateByIdRef.current[normalizedThreadId] ===
+        undefined
+      ) {
+        immediateThreadCodexCandidateByIdRef.current[normalizedThreadId] =
+          isCodexOwnershipFallbackCandidate({ id: normalizedThreadId });
+      }
+    },
+    [],
+  );
+
+  const markImmediateCodexProcessingOwner = useCallback(
+    (
+      workspaceId: string | null | undefined,
+      threadId: string,
+      isProcessing: boolean,
+    ) => {
+      const normalizedThreadId = threadId.trim();
+      if (!normalizedThreadId) {
+        return;
+      }
+      const normalizedWorkspaceId =
+        workspaceId?.trim() ||
+        immediateThreadWorkspaceByIdRef.current[normalizedThreadId] ||
+        activeWorkspaceRef.current?.id?.trim() ||
+        "";
+      if (!normalizedWorkspaceId) {
+        if (!isProcessing) {
+          for (const threadIds of Object.values(
+            immediateProcessingCodexThreadIdsByWorkspaceRef.current,
+          )) {
+            threadIds.delete(normalizedThreadId);
+          }
+        }
+        return;
+      }
+      rememberImmediateThreadOwner(normalizedWorkspaceId, normalizedThreadId);
+      const isCodexCandidate =
+        immediateThreadCodexCandidateByIdRef.current[normalizedThreadId] ??
+        isCodexOwnershipFallbackCandidate({ id: normalizedThreadId });
+      if (!isCodexCandidate) {
+        for (const threadIds of Object.values(
+          immediateProcessingCodexThreadIdsByWorkspaceRef.current,
+        )) {
+          threadIds.delete(normalizedThreadId);
+        }
+        return;
+      }
+      let threadIds =
+        immediateProcessingCodexThreadIdsByWorkspaceRef.current[
+          normalizedWorkspaceId
+        ];
+      if (!threadIds) {
+        threadIds = new Set<string>();
+        immediateProcessingCodexThreadIdsByWorkspaceRef.current[
+          normalizedWorkspaceId
+        ] = threadIds;
+      }
+      if (isProcessing) {
+        threadIds.add(normalizedThreadId);
+        return;
+      }
+      threadIds.delete(normalizedThreadId);
+    },
+    [rememberImmediateThreadOwner],
+  );
+
+  const markProcessingWithImmediateOwner = useCallback(
+    (threadId: string, isProcessing: boolean) => {
+      markImmediateCodexProcessingOwner(null, threadId, isProcessing);
+      markProcessing(threadId, isProcessing);
+    },
+    [markImmediateCodexProcessingOwner, markProcessing],
+  );
+
   const pushThreadErrorMessage = useCallback(
     (workspaceId: string, threadId: string, message: string) => {
       const normalized = message.trim();
@@ -497,6 +536,35 @@ export function useThreads({
     itemsByThreadRef.current = state.itemsByThread;
     activeTurnIdByThreadRef.current = state.activeTurnIdByThread;
     threadsByWorkspaceRef.current = state.threadsByWorkspace;
+    const nextThreadWorkspaceById: Record<string, string> = {};
+    const nextThreadCodexCandidateById: Record<string, boolean> = {};
+    const nextProcessingCodexThreadIdsByWorkspace: Record<string, Set<string>> =
+      {};
+    for (const [workspaceId, threads] of Object.entries(state.threadsByWorkspace)) {
+      for (const thread of threads) {
+        nextThreadWorkspaceById[thread.id] = workspaceId;
+        const isCodexCandidate = isCodexOwnershipFallbackCandidate(thread);
+        nextThreadCodexCandidateById[thread.id] = isCodexCandidate;
+        if (!isCodexCandidate) {
+          continue;
+        }
+        if (!state.threadStatusById[thread.id]?.isProcessing) {
+          continue;
+        }
+        let processingThreadIds =
+          nextProcessingCodexThreadIdsByWorkspace[workspaceId];
+        if (!processingThreadIds) {
+          processingThreadIds = new Set<string>();
+          nextProcessingCodexThreadIdsByWorkspace[workspaceId] =
+            processingThreadIds;
+        }
+        processingThreadIds.add(thread.id);
+      }
+    }
+    immediateThreadWorkspaceByIdRef.current = nextThreadWorkspaceById;
+    immediateThreadCodexCandidateByIdRef.current = nextThreadCodexCandidateById;
+    immediateProcessingCodexThreadIdsByWorkspaceRef.current =
+      nextProcessingCodexThreadIdsByWorkspace;
   }, [
     state.activeThreadIdByWorkspace,
     state.threadStatusById,
@@ -1777,7 +1845,7 @@ export function useThreads({
     getCustomName,
     getThreadEngine,
     getThreadKind,
-    markProcessing,
+    markProcessing: markProcessingWithImmediateOwner,
     markReviewing,
     setActiveTurnId: setActiveTurnIdWithCompletionEmail,
     recordThreadActivity,
@@ -2413,6 +2481,14 @@ export function useThreads({
     [isAutoTitlePending],
   );
 
+  const getSingleProcessingCodexThreadId = useCallback((workspaceId: string) => {
+    const candidates = Array.from(
+      immediateProcessingCodexThreadIdsByWorkspaceRef.current[workspaceId] ??
+        [],
+    );
+    return candidates.length === 1 ? (candidates[0] ?? null) : null;
+  }, []);
+
   const handlers = useThreadEventHandlers({
     activeThreadId,
     dispatch,
@@ -2421,7 +2497,7 @@ export function useThreads({
     resolveCollaborationUiMode,
     isAutoTitlePending,
     isThreadHidden,
-    markProcessing,
+    markProcessing: markProcessingWithImmediateOwner,
     markReviewing,
     setActiveTurnId: setActiveTurnIdWithCompletionEmail,
     codexCompactionInFlightByThreadRef,
@@ -2448,8 +2524,8 @@ export function useThreads({
     onTurnCompletedExternal: (payload) => {
       handleTurnCompletedForHistoryReconcile(payload);
     },
-    onTurnTerminalExternal: ({ workspaceId, threadId, turnId, status }) => {
-      settleCompletionEmailIntent(workspaceId, threadId, turnId, status);
+    onTurnTerminalExternal: ({ workspaceId, threadId, turnId, rawTurnId, status }) => {
+      settleCompletionEmailIntent(workspaceId, threadId, rawTurnId ?? turnId, status);
     },
     onThreadTransientCleanupReady: (cleanup) => {
       cleanupThreadTransientStateRef.current = cleanup;
@@ -2496,7 +2572,90 @@ export function useThreads({
     },
   });
 
-  useAppServerEvents(handlers, {
+  const appServerEventHandlers = useMemo(
+    () => ({
+      ...handlers,
+      onThreadStarted: (workspaceId: string, thread: Record<string, unknown>) => {
+        const threadId = typeof thread.id === "string" ? thread.id : "";
+        if (threadId) {
+          rememberImmediateThreadOwner(workspaceId, threadId, {
+            id: threadId,
+            engineSource:
+              thread.engineSource === "codex" ||
+              thread.engineSource === "claude" ||
+              thread.engineSource === "gemini" ||
+              thread.engineSource === "opencode"
+                ? thread.engineSource
+                : undefined,
+            selectedEngine:
+              thread.selectedEngine === "codex" ||
+              thread.selectedEngine === "claude" ||
+              thread.selectedEngine === "gemini" ||
+              thread.selectedEngine === "opencode"
+                ? thread.selectedEngine
+                : undefined,
+            threadKind:
+              thread.threadKind === "native" || thread.threadKind === "shared"
+                ? thread.threadKind
+                : undefined,
+          });
+        }
+        handlers.onThreadStarted?.(workspaceId, thread as ThreadSummary);
+      },
+      onTurnStarted: (
+        workspaceId: string,
+        threadId: string,
+        turnId: string,
+      ) => {
+        markImmediateCodexProcessingOwner(workspaceId, threadId, true);
+        handlers.onTurnStarted?.(workspaceId, threadId, turnId);
+      },
+      onTurnCompleted: (
+        workspaceId: string,
+        threadId: string,
+        turnId: string,
+      ) => {
+        handlers.onTurnCompleted?.(workspaceId, threadId, turnId);
+      },
+      onTurnError: (
+        workspaceId: string,
+        threadId: string,
+        turnId: string,
+        payload: {
+          message: string;
+          willRetry: boolean;
+          engine?: "claude" | "codex" | "gemini" | "opencode" | null;
+        },
+      ) => {
+        handlers.onTurnError?.(workspaceId, threadId, turnId, payload);
+      },
+      onTurnStalled: (
+        workspaceId: string,
+        threadId: string,
+        turnId: string,
+        payload: {
+          message: string;
+          reasonCode: string;
+          stage: string;
+          source: string;
+          startedAtMs: number | null;
+          timeoutMs: number | null;
+          engine?: "claude" | "codex" | "gemini" | "opencode" | null;
+        },
+      ) => {
+        handlers.onTurnStalled?.(workspaceId, threadId, turnId, payload);
+      },
+      getSingleProcessingCodexThreadId,
+    }),
+    [
+      getSingleProcessingCodexThreadId,
+      handlers,
+      markImmediateCodexProcessingOwner,
+      rememberImmediateThreadOwner,
+    ],
+  );
+
+  useAppServerEvents(appServerEventHandlers, {
     useNormalizedRealtimeAdapters,
   });
 

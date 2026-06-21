@@ -2007,6 +2007,7 @@ describe("useThreadMessaging", () => {
         result: { turn: { id: "turn-fresh-draft" } },
       } as never);
     const refreshThread = vi.fn(async () => null);
+    const forkThreadForWorkspace = vi.fn(async () => "thread-fork-should-not-use");
     const startThreadForWorkspace = vi.fn(async () => "thread-fresh-draft");
     const dispatch = vi.fn();
     const { result, recordThreadActivity } = makeThreadMessagingHook("codex", {
@@ -2014,6 +2015,7 @@ describe("useThreadMessaging", () => {
       ensuredThreadId: "legacy-thread-id",
       startThreadForWorkspace,
       refreshThread,
+      forkThreadForWorkspace,
       dispatch,
       codexAcceptedTurnByThread: {
         "legacy-thread-id": {
@@ -2030,6 +2032,7 @@ describe("useThreadMessaging", () => {
 
     await waitFor(() => {
       expect(refreshThread).toHaveBeenCalledWith("ws-1", "legacy-thread-id");
+      expect(forkThreadForWorkspace).not.toHaveBeenCalled();
       expect(startThreadForWorkspace).toHaveBeenCalledWith("ws-1", {
         activate: true,
         engine: "codex",
@@ -2076,6 +2079,73 @@ describe("useThreadMessaging", () => {
       expect(recordThreadActivity).toHaveBeenCalledWith(
         "ws-1",
         "thread-fresh-draft",
+        expect.any(Number),
+      );
+    });
+  });
+
+  it("freshly resends first prompt when a newly started empty codex draft refreshes to the same missing thread", async () => {
+    vi.mocked(sendUserMessage)
+      .mockResolvedValueOnce({
+        error: {
+          message: "thread not found: legacy-thread-id",
+        },
+      } as never)
+      .mockResolvedValueOnce({
+        result: { turn: { id: "turn-fresh-after-same-id" } },
+      } as never);
+    const refreshThread = vi.fn(async () => "legacy-thread-id");
+    const forkThreadForWorkspace = vi.fn(async () => "thread-fork-should-not-use");
+    const startThreadForWorkspace = vi
+      .fn()
+      .mockResolvedValueOnce("legacy-thread-id")
+      .mockResolvedValueOnce("thread-fresh-after-same-id");
+    const dispatch = vi.fn();
+    const { result, recordThreadActivity } = makeThreadMessagingHook("codex", {
+      activeThreadId: null,
+      ensuredThreadId: null,
+      startThreadForWorkspace,
+      refreshThread,
+      forkThreadForWorkspace,
+      dispatch,
+    });
+
+    await act(async () => {
+      await result.current.sendUserMessage("hello codex");
+    });
+
+    await waitFor(() => {
+      expect(refreshThread).toHaveBeenCalledWith("ws-1", "legacy-thread-id");
+      expect(forkThreadForWorkspace).not.toHaveBeenCalled();
+      expect(startThreadForWorkspace).toHaveBeenCalledTimes(2);
+      expect(sendUserMessage).toHaveBeenCalledTimes(2);
+      expect(sendUserMessage).toHaveBeenNthCalledWith(
+        1,
+        "ws-1",
+        "legacy-thread-id",
+        "hello codex",
+        expect.any(Object),
+      );
+      expect(sendUserMessage).toHaveBeenNthCalledWith(
+        2,
+        "ws-1",
+        "thread-fresh-after-same-id",
+        "hello codex",
+        expect.any(Object),
+      );
+      expect(dispatch).toHaveBeenCalledWith({
+        type: "setActiveThreadId",
+        workspaceId: "ws-1",
+        threadId: "thread-fresh-after-same-id",
+      });
+      expect(recordThreadActivity).not.toHaveBeenCalledWith(
+        "ws-1",
+        "legacy-thread-id",
+        expect.any(Number),
+      );
+      expect(recordThreadActivity).toHaveBeenCalledWith(
+        "ws-1",
+        "thread-fresh-after-same-id",
         expect.any(Number),
       );
     });

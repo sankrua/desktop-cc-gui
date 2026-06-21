@@ -56,8 +56,8 @@ type DeferredTurnCompletion = {
 };
 
 export type DeferredCompletionFlushSource =
-  | "assistant-completed"
-  | "item-terminal";
+  | "item-terminal"
+  | "scoped-reconciliation-terminal";
 
 export type ThreadLifecycleSnapshot = {
   isProcessing: boolean;

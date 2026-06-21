@@ -8,6 +8,12 @@ export function loadFileTreeStyles() {
   ]);
 }
 
+export function loadDetachedFileExplorerStyles() {
+  return loadStyles([
+    () => import("./detached-file-explorer.css"),
+  ]);
+}
+
 export function loadFileViewStyles() {
   return loadStyles([
     () => import("./file-view-panel-shell.css"),

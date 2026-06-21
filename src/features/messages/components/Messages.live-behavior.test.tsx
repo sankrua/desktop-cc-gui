@@ -605,6 +605,59 @@ describe("Messages live behavior", () => {
     expect(workingText?.textContent ?? "").toContain("Compacting context");
   });
 
+  it("shows Codex first-text waiting state before assistant text arrives", () => {
+    const { container } = render(
+      <Messages
+        items={[
+          {
+            id: "user-codex-first-text",
+            kind: "message",
+            role: "user",
+            text: "继续推进",
+          },
+        ]}
+        threadId="codex-thread-first-text"
+        workspaceId="ws-1"
+        isThinking
+        processingStartedAt={Date.now() - 1_000}
+        activeEngine="codex"
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    expect(container.querySelector(".working-text")?.textContent ?? "").toContain(
+      "messages.codexWaitingForFirstText",
+    );
+  });
+
+  it("keeps Codex silent suspected state above the first-text waiting state", () => {
+    const { container } = render(
+      <Messages
+        items={[
+          {
+            id: "user-codex-silent",
+            kind: "message",
+            role: "user",
+            text: "继续推进",
+          },
+        ]}
+        threadId="codex-thread-silent"
+        workspaceId="ws-1"
+        isThinking
+        processingStartedAt={Date.now() - 13_000}
+        codexSilentSuspectedAt={Date.now() - 1_000}
+        activeEngine="codex"
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    const label = container.querySelector(".working-text")?.textContent ?? "";
+    expect(label).toContain("messages.codexSilentSuspected");
+    expect(label).not.toContain("messages.codexWaitingForFirstText");
+  });
+
   it("shows approval resume status as the primary working label for Claude file approvals", () => {
     const { container } = render(
       <Messages

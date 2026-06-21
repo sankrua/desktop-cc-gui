@@ -1121,7 +1121,13 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
     renderCountRef.current += 1;
     const [localAlwaysThinkingEnabled, setLocalAlwaysThinkingEnabled] =
       useState(false);
-    const hasResolvedAlwaysThinkingRef = useRef(alwaysThinkingEnabled !== undefined);
+    const hasResolvedAlwaysThinkingRef = useRef<{
+      resolved: boolean;
+      lastReported: boolean | null;
+    }>({
+      resolved: alwaysThinkingEnabled !== undefined,
+      lastReported: null,
+    });
     const [localStreamingEnabled, setLocalStreamingEnabled] = useState(
       () => readStoredStreamingEnabled(),
     );
@@ -1171,7 +1177,7 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
         return;
       }
       let cancelled = false;
-      hasResolvedAlwaysThinkingRef.current = false;
+      hasResolvedAlwaysThinkingRef.current.resolved = false;
       const loadActiveThinkingSetting = async () => {
         try {
           const providers = (await getClaudeProviders()) as ClaudeProviderLike[];
@@ -1182,20 +1188,30 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
           const activeProviderThinking =
             activeProvider?.settingsConfig?.alwaysThinkingEnabled;
           if (typeof activeProviderThinking === 'boolean') {
-            hasResolvedAlwaysThinkingRef.current = true;
+            hasResolvedAlwaysThinkingRef.current.resolved = true;
             setLocalAlwaysThinkingEnabled(
               activeProviderThinking,
             );
-            onResolvedAlwaysThinkingChange?.(activeProviderThinking);
+            if (
+              hasResolvedAlwaysThinkingRef.current.lastReported !==
+              activeProviderThinking
+            ) {
+              hasResolvedAlwaysThinkingRef.current.lastReported =
+                activeProviderThinking;
+              onResolvedAlwaysThinkingChange?.(activeProviderThinking);
+            }
             return;
           }
           const enabled = await getClaudeAlwaysThinkingEnabled();
           if (cancelled) {
             return;
           }
-          hasResolvedAlwaysThinkingRef.current = true;
+          hasResolvedAlwaysThinkingRef.current.resolved = true;
           setLocalAlwaysThinkingEnabled(enabled);
-          onResolvedAlwaysThinkingChange?.(enabled);
+          if (hasResolvedAlwaysThinkingRef.current.lastReported !== enabled) {
+            hasResolvedAlwaysThinkingRef.current.lastReported = enabled;
+            onResolvedAlwaysThinkingChange?.(enabled);
+          }
         } catch {
           // Keep the state unresolved on read failure so send-time logic does
           // not accidentally force-disable Claude thinking before settings load.
@@ -1205,7 +1221,11 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
       return () => {
         cancelled = true;
       };
-    }, [alwaysThinkingEnabled, isCodexEngine, onResolvedAlwaysThinkingChange]);
+    }, [
+      alwaysThinkingEnabled,
+      isCodexEngine,
+      onResolvedAlwaysThinkingChange,
+    ]);
 
     useEffect(() => {
       appendComposerRenderBudgetDiagnostic({
@@ -1257,7 +1277,7 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
         if (isCodexEngine) {
           return;
         }
-        hasResolvedAlwaysThinkingRef.current = true;
+        hasResolvedAlwaysThinkingRef.current.resolved = true;
         setLocalAlwaysThinkingEnabled(enabled);
         if (onToggleThinking) {
           onToggleThinking(enabled);
@@ -1340,11 +1360,18 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
       }
       if (
         alwaysThinkingEnabled === undefined &&
-        !hasResolvedAlwaysThinkingRef.current
+        !hasResolvedAlwaysThinkingRef.current.resolved
       ) {
         return;
       }
-      onResolvedAlwaysThinkingChange?.(resolvedAlwaysThinkingEnabled);
+      if (
+        hasResolvedAlwaysThinkingRef.current.lastReported !==
+        resolvedAlwaysThinkingEnabled
+      ) {
+        hasResolvedAlwaysThinkingRef.current.lastReported =
+          resolvedAlwaysThinkingEnabled;
+        onResolvedAlwaysThinkingChange?.(resolvedAlwaysThinkingEnabled);
+      }
     }, [
       alwaysThinkingEnabled,
       isCodexEngine,

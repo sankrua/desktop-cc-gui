@@ -6,6 +6,7 @@ import type { NormalizedThreadEvent } from "../contracts/conversationCurtainCont
 import {
   createRealtimeEventBatcher,
   type RealtimeBatcherFlush,
+  type RealtimeBatcherFlushReason,
 } from "../contracts/realtimeEventBatcher";
 import { asString } from "../utils/threadNormalize";
 import type { ConversationItem, DebugEntry } from "../../../types";
@@ -218,6 +219,26 @@ function shouldBatchNormalizedRealtimeEvent(event: NormalizedThreadEvent) {
 
 function shouldUseContractRealtimeBatcher(event: NormalizedThreadEvent) {
   return event.operation === "appendAgentMessageDelta";
+}
+
+export function shouldUrgentlyDispatchReasoningDelta(
+  event: NormalizedThreadEvent,
+  flushReason: RealtimeBatcherFlushReason,
+) {
+  return (
+    event.operation === "appendReasoningContentDelta" &&
+    flushReason === "first-token"
+  );
+}
+
+function shouldDispatchNormalizedRealtimeEventUrgently(
+  event: NormalizedThreadEvent,
+  flushReason: RealtimeBatcherFlushReason,
+) {
+  return (
+    event.operation === "appendAgentMessageDelta" ||
+    shouldUrgentlyDispatchReasoningDelta(event, flushReason)
+  );
 }
 
 function buildPendingNormalizedRealtimeOperationKey(event: NormalizedThreadEvent) {
@@ -584,19 +605,31 @@ export function useThreadItemEvents({
         useTransitionForDispatch?: boolean;
       } = {},
     ) => {
-      const run = () => {
-        if (
-          isRealtimeTurnTerminal(
-            normalizedEvent.threadId,
-            extractTurnIdFromNormalizedRealtimeEvent(normalizedEvent),
-          )
-        ) {
+      const {
+        ensuredThreads,
+        markedProcessingThreads,
+      } = options;
+      const eventTurnId = extractTurnIdFromNormalizedRealtimeEvent(normalizedEvent);
+      const isEventTurnTerminal = () =>
+        isRealtimeTurnTerminal(normalizedEvent.threadId, eventTurnId);
+      const shouldMarkProcessing = normalizedEvent.operation !== "itemCompleted";
+      const markProcessingIfNeeded = () => {
+        if (!shouldMarkProcessing) {
           return;
         }
-        const {
-          ensuredThreads,
-          markedProcessingThreads,
-        } = options;
+        if (markedProcessingThreads?.has(normalizedEvent.threadId)) {
+          return;
+        }
+        if (isEventTurnTerminal()) {
+          return;
+        }
+        markProcessing(normalizedEvent.threadId, true);
+        markedProcessingThreads?.add(normalizedEvent.threadId);
+      };
+      const run = (runOptions: { skipProcessingMark?: boolean } = {}) => {
+        if (isEventTurnTerminal()) {
+          return;
+        }
         if (!ensuredThreads?.has(normalizedEvent.threadId)) {
           dispatch({
             type: "ensureThread",
@@ -606,12 +639,8 @@ export function useThreadItemEvents({
           });
           ensuredThreads?.add(normalizedEvent.threadId);
         }
-        if (
-          normalizedEvent.operation !== "itemCompleted" &&
-          !markedProcessingThreads?.has(normalizedEvent.threadId)
-        ) {
-          markProcessing(normalizedEvent.threadId, true);
-          markedProcessingThreads?.add(normalizedEvent.threadId);
+        if (!runOptions.skipProcessingMark) {
+          markProcessingIfNeeded();
         }
         dispatch({
           type: "applyNormalizedRealtimeEvent",
@@ -656,7 +685,8 @@ export function useThreadItemEvents({
         run();
         return;
       }
-      scheduleRealtimeDispatch(run);
+      markProcessingIfNeeded();
+      scheduleRealtimeDispatch(() => run({ skipProcessingMark: true }));
     },
     [
       activeThreadId,
@@ -779,18 +809,35 @@ export function useThreadItemEvents({
       const ensuredThreads = new Set<string>();
       const markedProcessingThreads = new Set<string>();
       const flushEndedAt = Date.now();
-      // Reconstruct batch-flush-start from the earliest timestamp on the events
-      // in this flush (falls back to flushEndedAt for single-event first-token
-      // flushes where the start == end is the truthful signal).
-      let batchStart = flushEndedAt;
       for (const flush of flushes) {
+        // Reconstruct the batch wait window from event timestamps, but measure
+        // actual route work separately so evidence does not treat long streams
+        // as one giant route operation.
+        let batchStart = flushEndedAt;
         for (const event of flush.events) {
           if (typeof event.timestampMs === "number" && event.timestampMs < batchStart) {
             batchStart = event.timestampMs;
           }
         }
-      }
-      for (const flush of flushes) {
+        const routeStartedAt = Date.now();
+        for (const event of flush.events) {
+          const useTransitionForDispatch =
+            flush.reason !== "terminal" &&
+            !shouldDispatchNormalizedRealtimeEventUrgently(event, flush.reason);
+          applyNormalizedRealtimeEventNow(
+            {
+              event,
+              hasCustomName: operation.hasCustomName,
+            },
+            {
+              ensuredThreads,
+              markedProcessingThreads,
+              useTransitionForDispatch,
+              skipMessageActivity: false,
+            },
+          );
+        }
+        const routeEndedAt = Date.now();
         noteRealtimeCoalescedFlush({
           reason: flush.reason,
           eventCount: flush.events.length,
@@ -801,22 +848,10 @@ export function useThreadItemEvents({
           itemKind: operation.event.itemKind,
           startedAt: batchStart,
           endedAt: flushEndedAt,
+          routeStartedAt,
+          routeEndedAt,
           queueDepthAfter: 0,
         });
-        for (const event of flush.events) {
-          applyNormalizedRealtimeEventNow(
-            {
-              event,
-              hasCustomName: operation.hasCustomName,
-            },
-            {
-              ensuredThreads,
-              markedProcessingThreads,
-              useTransitionForDispatch: flush.reason !== "terminal",
-              skipMessageActivity: false,
-            },
-          );
-        }
       }
     },
     [applyNormalizedRealtimeEventNow, flushNormalizedRealtimeOps],
@@ -856,7 +891,10 @@ export function useThreadItemEvents({
                 hasCustomName: operation.hasCustomName,
               },
               {
-                useTransitionForDispatch: true,
+                useTransitionForDispatch: !shouldDispatchNormalizedRealtimeEventUrgently(
+                  event,
+                  flush.reason,
+                ),
               },
             );
           }

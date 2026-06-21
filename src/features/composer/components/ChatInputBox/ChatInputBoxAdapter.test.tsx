@@ -185,6 +185,20 @@ describe('ChatInputBoxAdapter toggle bridge', () => {
     });
   });
 
+  it('does not report the same resolved Claude thinking value repeatedly', async () => {
+    const onResolvedAlwaysThinkingChange = vi.fn();
+    renderAdapter({ onResolvedAlwaysThinkingChange });
+
+    await waitFor(() => {
+      expect(onResolvedAlwaysThinkingChange).toHaveBeenCalledWith(false);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(onResolvedAlwaysThinkingChange).toHaveBeenCalledTimes(1);
+  });
+
   it('does not report unresolved Claude thinking as disabled before settings load', async () => {
     let resolveProviders: (
       value: Array<{

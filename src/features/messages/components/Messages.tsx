@@ -76,6 +76,7 @@ import {
 import {
   countRenderableCollapsedEntries,
   findLastAssistantMessageIndex,
+  findLatestAssistantMessageIdAfterIndex,
   findLastUserMessageIndex,
   HistoryStickyCandidate,
   isMessagesPerfDebugEnabled,
@@ -221,6 +222,7 @@ export const Messages = memo(function Messages({
   const threadId = effectiveState.meta.threadId || legacyThreadId;
   const activeTurnId = effectiveState.meta.activeTurnId ?? null;
   const activeEngine = toConversationEngine(effectiveState.meta.engine);
+  const renderScopeKey = `${workspaceId ?? ""}\u0000${threadId ?? ""}`;
   const isThinking = conversationState
     ? effectiveState.meta.isThinking
     : legacyIsThinking;
@@ -318,6 +320,7 @@ export const Messages = memo(function Messages({
   const planPanelFocusTimeoutRef = useRef<number | null>(null);
   const planPanelFocusNodeRef = useRef<HTMLElement | null>(null);
   const assistantFinalizingTimerRef = useRef<number | null>(null);
+  const assistantFinalizingCompleteRenderedIdRef = useRef<string | null>(null);
   const lastVisibleTextReportRef = useRef<LastVisibleTextReport>({
     itemId: null,
     visibleTextLength: 0,
@@ -351,7 +354,18 @@ export const Messages = memo(function Messages({
     [effectiveItems, enableCollaborationBadge, isThinking, showAllHistoryItems],
   );
   const renderSourceItems = liveTailWorkingSet.items;
-  const deferredRenderSourceItems = useDeferredValue(renderSourceItems);
+  const renderSourceSnapshot = useMemo(
+    () => ({
+      scopeKey: renderScopeKey,
+      items: renderSourceItems,
+    }),
+    [renderScopeKey, renderSourceItems],
+  );
+  const deferredRenderSourceSnapshot = useDeferredValue(renderSourceSnapshot);
+  const deferredRenderSourceItems =
+    deferredRenderSourceSnapshot.scopeKey === renderScopeKey
+      ? deferredRenderSourceSnapshot.items
+      : renderSourceItems;
   const firstItemIdRef = useRef<string | null>(items[0]?.id ?? null);
   const activeUserInputRequest = resolveActiveUserInputRequest({
     requests: userInputRequests,
@@ -673,6 +687,10 @@ export const Messages = memo(function Messages({
     () => findLastUserMessageIndex(deferredRenderSourceItems),
     [deferredRenderSourceItems],
   );
+  const liveSourceLastUserMessageIndex = useMemo(
+    () => findLastUserMessageIndex(renderSourceItems),
+    [renderSourceItems],
+  );
   const reasoningWindowStartIndex = useMemo(() => {
     if (lastUserMessageIndex >= 0) {
       return lastUserMessageIndex;
@@ -853,19 +871,22 @@ export const Messages = memo(function Messages({
     return null;
   }, [deferredRenderSourceItems, isThinking, lastUserMessageIndex, t]);
 
-  const latestAssistantMessageId = useMemo(() => {
-    for (
-      let index = deferredRenderSourceItems.length - 1;
-      index > lastUserMessageIndex;
-      index -= 1
-    ) {
-      const item = deferredRenderSourceItems[index];
-      if (isAssistantMessageConversationItem(item)) {
-        return item.id;
-      }
-    }
-    return null;
-  }, [deferredRenderSourceItems, lastUserMessageIndex]);
+  const latestAssistantMessageId = useMemo(
+    () => findLatestAssistantMessageIdAfterIndex(
+      deferredRenderSourceItems,
+      lastUserMessageIndex,
+    ),
+    [deferredRenderSourceItems, lastUserMessageIndex],
+  );
+  const latestLiveSourceAssistantMessageId = useMemo(
+    () => findLatestAssistantMessageIdAfterIndex(
+      renderSourceItems,
+      liveSourceLastUserMessageIndex,
+    ),
+    [liveSourceLastUserMessageIndex, renderSourceItems],
+  );
+  const assistantFinalizingCandidateId =
+    latestLiveSourceAssistantMessageId ?? latestAssistantMessageId;
   const supportsAssistantFinalizingWindow =
     activeEngine === "claude" || activeEngine === "codex";
   const isAssistantCompletionFrame =
@@ -873,11 +894,11 @@ export const Messages = memo(function Messages({
     previousAssistantThreadIdRef.current === threadId &&
     previousAssistantThinkingRef.current &&
     !isThinking &&
-    latestAssistantMessageId !== null;
+    assistantFinalizingCandidateId !== null;
   const liveAssistantMessageId = isThinking
-    ? latestAssistantMessageId
+    ? assistantFinalizingCandidateId
     : finalizingAssistantMessageId ?? (
-        isAssistantCompletionFrame ? latestAssistantMessageId : null
+        isAssistantCompletionFrame ? assistantFinalizingCandidateId : null
       );
   const isAssistantFinalizing =
     !isThinking &&
@@ -891,6 +912,7 @@ export const Messages = memo(function Messages({
         window.clearTimeout(assistantFinalizingTimerRef.current);
         assistantFinalizingTimerRef.current = null;
       }
+      assistantFinalizingCompleteRenderedIdRef.current = null;
       if (finalizingAssistantMessageId !== null) {
         setFinalizingAssistantMessageId(null);
       }
@@ -901,33 +923,40 @@ export const Messages = memo(function Messages({
         window.clearTimeout(assistantFinalizingTimerRef.current);
         assistantFinalizingTimerRef.current = null;
       }
+      assistantFinalizingCompleteRenderedIdRef.current = null;
       if (finalizingAssistantMessageId !== null) {
         setFinalizingAssistantMessageId(null);
       }
       return;
     }
-    if (!previouslyThinking || !latestAssistantMessageId) {
+    if (!previouslyThinking || !assistantFinalizingCandidateId) {
       return;
     }
-    setFinalizingAssistantMessageId(latestAssistantMessageId);
+    setFinalizingAssistantMessageId((current) =>
+      current === assistantFinalizingCandidateId
+        ? current
+        : assistantFinalizingCandidateId,
+    );
     if (assistantFinalizingTimerRef.current !== null) {
       window.clearTimeout(assistantFinalizingTimerRef.current);
     }
+    assistantFinalizingCompleteRenderedIdRef.current = null;
     const finalizingWindowMs =
       activeEngine === "codex"
         ? CODEX_FINALIZING_LIVE_WINDOW_MS
         : ASSISTANT_FINALIZING_LIVE_WINDOW_MS;
     assistantFinalizingTimerRef.current = window.setTimeout(() => {
       assistantFinalizingTimerRef.current = null;
+      assistantFinalizingCompleteRenderedIdRef.current = null;
       setFinalizingAssistantMessageId((current) =>
-        current === latestAssistantMessageId ? null : current,
+        current === assistantFinalizingCandidateId ? null : current,
       );
     }, finalizingWindowMs);
   }, [
     activeEngine,
+    assistantFinalizingCandidateId,
     finalizingAssistantMessageId,
     isThinking,
-    latestAssistantMessageId,
     supportsAssistantFinalizingWindow,
     threadId,
   ]);
@@ -936,6 +965,7 @@ export const Messages = memo(function Messages({
       window.clearTimeout(assistantFinalizingTimerRef.current);
       assistantFinalizingTimerRef.current = null;
     }
+    assistantFinalizingCompleteRenderedIdRef.current = null;
   }, []);
   useEffect(() => {
     lastVisibleTextReportRef.current = {
@@ -982,9 +1012,15 @@ export const Messages = memo(function Messages({
     activeEngine === "codex" && codexSilentSuspectedAt !== null
       ? t("messages.codexSilentSuspected")
       : null;
+  const codexWaitingForFirstTextLabel =
+    activeEngine === "codex" && isThinking && waitingForFirstChunk
+      ? t("messages.codexWaitingForFirstText")
+      : null;
   const primaryWorkingLabel = isContextCompacting
     ? t("chat.contextDualViewCompacting")
-    : codexSilentSuspectedLabel ?? approvalResumeWorkingLabel;
+    : codexSilentSuspectedLabel ??
+      codexWaitingForFirstTextLabel ??
+      approvalResumeWorkingLabel;
   const enableClaudeRenderSafeMode =
     (isWindowsDesktop || isMacDesktop) &&
     activeEngine === "claude" &&
@@ -1222,10 +1258,29 @@ export const Messages = memo(function Messages({
     isThinking,
     timelineItems,
   ]);
-  const deferredPresentationRenderedItems = useDeferredValue(presentationRenderedItems);
+  const presentationRenderSnapshot = useMemo(
+    () => ({
+      scopeKey: renderScopeKey,
+      items: presentationRenderedItems,
+    }),
+    [presentationRenderedItems, renderScopeKey],
+  );
+  const deferredPresentationRenderSnapshot = useDeferredValue(
+    presentationRenderSnapshot,
+  );
+  const deferredPresentationRenderedItems =
+    deferredPresentationRenderSnapshot.scopeKey === renderScopeKey
+      ? deferredPresentationRenderSnapshot.items
+      : presentationRenderedItems;
   const shouldStabilizePresentationItems =
     supportsStreamingReadableWindowRecovery &&
     (isThinking || isAssistantFinalizing);
+  const livePresentationOverrideItemIds = useMemo(() => {
+    if (!liveAssistantMessageId) {
+      return undefined;
+    }
+    return new Set([liveAssistantMessageId]);
+  }, [liveAssistantMessageId]);
   const timelinePresentationItems = useMemo(() => {
     if (claudeHistoryTranscriptFallbackActive) {
       return timelineItems;
@@ -1237,11 +1292,19 @@ export const Messages = memo(function Messages({
       deferredPresentationRenderedItems,
       presentationRenderedItems,
       shouldStabilizePresentationItems,
+      livePresentationOverrideItemIds,
+      {
+        deferredScopeKey: deferredPresentationRenderSnapshot.scopeKey,
+        currentScopeKey: renderScopeKey,
+      },
     );
   }, [
     claudeHistoryTranscriptFallbackActive,
+    deferredPresentationRenderSnapshot.scopeKey,
     deferredPresentationRenderedItems,
+    livePresentationOverrideItemIds,
     presentationRenderedItems,
+    renderScopeKey,
     shouldStabilizePresentationItems,
     timelineItems,
   ]);
@@ -1684,15 +1747,23 @@ export const Messages = memo(function Messages({
       if (
         activeEngine === "codex" &&
         isAssistantFinalizing &&
-        payload.itemId === finalizingAssistantMessageId
+        payload.itemId === finalizingAssistantMessageId &&
+        targetTextLength > 0 &&
+        visibleTextLength >= targetTextLength &&
+        assistantFinalizingCompleteRenderedIdRef.current !== payload.itemId
       ) {
-        if (targetTextLength > 0 && visibleTextLength >= targetTextLength) {
-          if (assistantFinalizingTimerRef.current !== null) {
-            window.clearTimeout(assistantFinalizingTimerRef.current);
-            assistantFinalizingTimerRef.current = null;
-          }
-          setFinalizingAssistantMessageId(null);
+        assistantFinalizingCompleteRenderedIdRef.current = payload.itemId;
+        if (assistantFinalizingTimerRef.current !== null) {
+          window.clearTimeout(assistantFinalizingTimerRef.current);
         }
+        const completedAssistantMessageId = payload.itemId;
+        assistantFinalizingTimerRef.current = window.setTimeout(() => {
+          assistantFinalizingTimerRef.current = null;
+          assistantFinalizingCompleteRenderedIdRef.current = null;
+          setFinalizingAssistantMessageId((current) =>
+            current === completedAssistantMessageId ? null : current,
+          );
+        }, ASSISTANT_FINALIZING_LIVE_WINDOW_MS);
       }
     },
     [

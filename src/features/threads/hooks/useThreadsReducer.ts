@@ -91,6 +91,7 @@ import {
 import type {
   CodexCompactionLifecycleState,
   ThreadAction,
+  ThreadActivityStatus,
   ThreadState,
 } from "./threadReducerTypes";
 import {
@@ -221,18 +222,110 @@ function providerBindingFieldsEqual(
   );
 }
 
+function shallowRecordEqual(
+  left: Record<string, unknown>,
+  right: Record<string, unknown>,
+) {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) {
+    return false;
+  }
+  return leftKeys.every((key) => Object.is(left[key], right[key]));
+}
+
 function conversationItemsShallowEqual(
   left: ConversationItem,
   right: ConversationItem,
 ) {
-  const leftRecord = left as unknown as Record<string, unknown>;
-  const rightRecord = right as unknown as Record<string, unknown>;
-  const leftKeys = Object.keys(leftRecord);
-  const rightKeys = Object.keys(rightRecord);
-  if (leftKeys.length !== rightKeys.length) {
+  return shallowRecordEqual(
+    left as unknown as Record<string, unknown>,
+    right as unknown as Record<string, unknown>,
+  );
+}
+
+function threadActivityStatusEqual(
+  left: ThreadActivityStatus | undefined,
+  right: ThreadActivityStatus,
+) {
+  if (!left) {
     return false;
   }
-  return leftKeys.every((key) => Object.is(leftRecord[key], rightRecord[key]));
+  return shallowRecordEqual(
+    left as unknown as Record<string, unknown>,
+    right as unknown as Record<string, unknown>,
+  );
+}
+
+function stringArrayEqual(left: string[] | undefined, right: string[] | undefined) {
+  if (left === right) {
+    return true;
+  }
+  if (!left || !right || left.length !== right.length) {
+    return false;
+  }
+  return left.every((value, index) => value === right[index]);
+}
+
+function autoSessionEqual(
+  left: ThreadSummary["autoSession"],
+  right: ThreadSummary["autoSession"],
+) {
+  if (left === right) {
+    return true;
+  }
+  if (!left || !right) {
+    return (left ?? null) === (right ?? null);
+  }
+  return (
+    left.sessionPurpose === right.sessionPurpose &&
+    left.visibility === right.visibility &&
+    left.ownerFeature === right.ownerFeature &&
+    (left.autoArchive ?? null) === (right.autoArchive ?? null) &&
+    left.createdBy === right.createdBy
+  );
+}
+
+function threadSummaryEqual(left: ThreadSummary, right: ThreadSummary) {
+  return (
+    left.id === right.id &&
+    left.name === right.name &&
+    left.updatedAt === right.updatedAt &&
+    (left.archivedAt ?? null) === (right.archivedAt ?? null) &&
+    (left.threadKind ?? null) === (right.threadKind ?? null) &&
+    (left.sizeBytes ?? null) === (right.sizeBytes ?? null) &&
+    (left.engineSource ?? null) === (right.engineSource ?? null) &&
+    (left.selectedEngine ?? null) === (right.selectedEngine ?? null) &&
+    (left.source ?? null) === (right.source ?? null) &&
+    (left.provider ?? null) === (right.provider ?? null) &&
+    (left.sourceLabel ?? null) === (right.sourceLabel ?? null) &&
+    (left.providerProfileId ?? null) === (right.providerProfileId ?? null) &&
+    (left.providerProfileSource ?? null) ===
+      (right.providerProfileSource ?? null) &&
+    (left.providerProfileName ?? null) === (right.providerProfileName ?? null) &&
+    (left.providerAvailability ?? null) ===
+      (right.providerAvailability ?? null) &&
+    (left.partialSource ?? null) === (right.partialSource ?? null) &&
+    (left.isDegraded ?? false) === (right.isDegraded ?? false) &&
+    (left.degradedReason ?? null) === (right.degradedReason ?? null) &&
+    (left.folderId ?? null) === (right.folderId ?? null) &&
+    autoSessionEqual(left.autoSession ?? null, right.autoSession ?? null) &&
+    stringArrayEqual(left.nativeThreadIds, right.nativeThreadIds) &&
+    (left.parentThreadId ?? null) === (right.parentThreadId ?? null)
+  );
+}
+
+function threadSummaryListEqual(left: ThreadSummary[], right: ThreadSummary[]) {
+  if (left === right) {
+    return true;
+  }
+  if (left.length !== right.length) {
+    return false;
+  }
+  return left.every((thread, index) => {
+    const rightThread = right[index];
+    return rightThread ? threadSummaryEqual(thread, rightThread) : false;
+  });
 }
 
 function findEquivalentAssistantSnapshotIndex(
@@ -319,25 +412,47 @@ export function createInitialThreadState(snapshot?: SidebarSnapshot | null): Thr
 export function threadReducer(state: ThreadState, action: ThreadAction): ThreadState {
   threadsReducerProfileState.reducerDispatchCount += 1;
   switch (action.type) {
-    case "setActiveThreadId":
+    case "setActiveThreadId": {
+      const currentActiveThreadId =
+        state.activeThreadIdByWorkspace[action.workspaceId] ?? null;
+      const activeThreadUnchanged = currentActiveThreadId === action.threadId;
+      const nextActiveThreadIdByWorkspace = activeThreadUnchanged
+        ? state.activeThreadIdByWorkspace
+        : {
+            ...state.activeThreadIdByWorkspace,
+            [action.workspaceId]: action.threadId,
+          };
+      if (!action.threadId) {
+        return activeThreadUnchanged
+          ? state
+          : {
+              ...state,
+              activeThreadIdByWorkspace: nextActiveThreadIdByWorkspace,
+            };
+      }
+      const currentStatus = state.threadStatusById[action.threadId];
+      const nextStatus = {
+        ...withThreadStatusDefaults(currentStatus),
+        hasUnread: false,
+      };
+      const statusUnchanged = threadActivityStatusEqual(
+        currentStatus,
+        nextStatus,
+      );
+      if (activeThreadUnchanged && statusUnchanged) {
+        return state;
+      }
       return {
         ...state,
-        activeThreadIdByWorkspace: {
-          ...state.activeThreadIdByWorkspace,
-          [action.workspaceId]: action.threadId,
-        },
-        threadStatusById: action.threadId
-          ? {
+        activeThreadIdByWorkspace: nextActiveThreadIdByWorkspace,
+        threadStatusById: statusUnchanged
+          ? state.threadStatusById
+          : {
               ...state.threadStatusById,
-              [action.threadId]: {
-                ...withThreadStatusDefaults(
-                  state.threadStatusById[action.threadId],
-                ),
-                hasUnread: false,
-              },
-            }
-          : state.threadStatusById,
+              [action.threadId]: nextStatus,
+            },
       };
+    }
     case "ensureThread": {
       const hidden =
         state.hiddenThreadIdsByWorkspace[action.workspaceId]?.[action.threadId] ??
@@ -2363,6 +2478,9 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
               ...visibleThreads,
             ]
           : visibleThreads;
+      if (threadSummaryListEqual(existingThreads, mergedVisibleThreads)) {
+        return state;
+      }
       return {
         ...state,
         threadsByWorkspace: {
@@ -2372,6 +2490,12 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
       };
     }
     case "setThreadListLoading":
+      if (
+        (state.threadListLoadingByWorkspace[action.workspaceId] ?? false) ===
+        action.isLoading
+      ) {
+        return state;
+      }
       return {
         ...state,
         threadListLoadingByWorkspace: {
@@ -2380,6 +2504,12 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         },
       };
     case "setThreadListPaging":
+      if (
+        (state.threadListPagingByWorkspace[action.workspaceId] ?? false) ===
+        action.isLoading
+      ) {
+        return state;
+      }
       return {
         ...state,
         threadListPagingByWorkspace: {
@@ -2388,6 +2518,12 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         },
       };
     case "setThreadListCursor":
+      if (
+        (state.threadListCursorByWorkspace[action.workspaceId] ?? null) ===
+        action.cursor
+      ) {
+        return state;
+      }
       return {
         ...state,
         threadListCursorByWorkspace: {

@@ -84,5 +84,5 @@
 实际口径:
 - S-CHAT-100..104 已编进 `docs/perf/baseline.json` (lines 349/368/387/406/425),5 条均带完整 `target` + `hardFail` 块。
 - `npm run perf:archive-readiness -- --json` 当前返回 exit code 2,但 JSON 为 `ok: true`,status=`warn`,`hardFailures: []`;5 条 S-CHAT-* 不进入 `BUDGET_RESIDUALS` 表(`BUDGET_RESIDUALS` 是 pre-known missing 列表,新加的 budget 字段带完整块不进入)。
-- `git diff --numstat -- src` 排除 test 后为 +1006/-198,合计 1204 行,超过 10.7 的 1000 行 scope target;10.7 保持未勾选。
+- `git diff --numstat -- src` 排除 test 后为 +1006/-198,合计 1204 行,超过 10.7 的 1000 行 scope target;2026-06-17 closure pass 将其作为 documented scope exception 接受归档,不得解读为满足原始 `< 1000` 行目标。
 - sub-task 10.6/10.8 的"5 条 budget 命中"在 sandbox 内不可观测,留 11.1 follow-up。

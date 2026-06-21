@@ -91,6 +91,7 @@ export type ThreadEventHandlersOptions = {
     workspaceId: string;
     threadId: string;
     turnId: string;
+    rawTurnId?: string | null;
     status: "completed" | "error" | "stalled";
   }) => void;
   onThreadTransientCleanupReady?: (

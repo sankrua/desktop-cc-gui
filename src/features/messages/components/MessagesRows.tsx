@@ -317,6 +317,10 @@ function areMessageRowPropsEqual(
   previous: MessageRowProps,
   next: MessageRowProps,
 ) {
+  const compareStreamingOnlyProps =
+    previous.isStreaming === true || next.isStreaming === true;
+  const compareRuntimeReconnectProps =
+    previous.showRuntimeReconnectCard === true || next.showRuntimeReconnectCard === true;
   return (
     areMessageItemsEqual(previous.item, next.item) &&
     previous.workspaceId === next.workspaceId &&
@@ -327,18 +331,28 @@ function areMessageRowPropsEqual(
     previous.enableCollaborationBadge === next.enableCollaborationBadge &&
     previous.presentationProfile === next.presentationProfile &&
     previous.showRuntimeReconnectCard === next.showRuntimeReconnectCard &&
-    previous.onRecoverThreadRuntime === next.onRecoverThreadRuntime &&
-    previous.onRecoverThreadRuntimeAndResend === next.onRecoverThreadRuntimeAndResend &&
-    previous.onThreadRecoveryFork === next.onThreadRecoveryFork &&
-    previous.retryMessage?.text === next.retryMessage?.text &&
-    areMessageImagesEqual(previous.retryMessage?.images, next.retryMessage?.images) &&
+    (
+      !compareRuntimeReconnectProps ||
+      (
+        previous.onRecoverThreadRuntime === next.onRecoverThreadRuntime &&
+        previous.onRecoverThreadRuntimeAndResend === next.onRecoverThreadRuntimeAndResend &&
+        previous.onThreadRecoveryFork === next.onThreadRecoveryFork &&
+        previous.retryMessage?.text === next.retryMessage?.text &&
+        areMessageImagesEqual(previous.retryMessage?.images, next.retryMessage?.images)
+      )
+    ) &&
     previous.isCopied === next.isCopied &&
     previous.onCopy === next.onCopy &&
     previous.codeBlockCopyUseModifier === next.codeBlockCopyUseModifier &&
     previous.onOpenFileLink === next.onOpenFileLink &&
     previous.onOpenFileLinkMenu === next.onOpenFileLinkMenu &&
-    previous.streamMitigationProfile === next.streamMitigationProfile &&
-    previous.onAssistantVisibleTextRender === next.onAssistantVisibleTextRender &&
+    (
+      !compareStreamingOnlyProps ||
+      (
+        previous.streamMitigationProfile === next.streamMitigationProfile &&
+        previous.onAssistantVisibleTextRender === next.onAssistantVisibleTextRender
+      )
+    ) &&
     previous.suppressMemorySummaryCard === next.suppressMemorySummaryCard &&
     previous.suppressNoteCardSummaryCard === next.suppressNoteCardSummaryCard
   );
@@ -1132,6 +1146,17 @@ export const MessageRow = memo(function MessageRow({
   }, [
     displayText,
     handleRenderedAssistantValue,
+    usePlainTextStreamingSurface,
+  ]);
+  useEffect(() => {
+    if (usePlainTextStreamingSurface || !useLightweightStreamingMarkdown) {
+      return;
+    }
+    handleRenderedAssistantValue(displayText);
+  }, [
+    displayText,
+    handleRenderedAssistantValue,
+    useLightweightStreamingMarkdown,
     usePlainTextStreamingSurface,
   ]);
   useEffect(() => {

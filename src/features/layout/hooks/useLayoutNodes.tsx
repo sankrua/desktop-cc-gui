@@ -569,6 +569,21 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     },
     [],
   );
+  const globalRuntimeNoticeDock = useGlobalRuntimeNoticeDock(
+    options.workspaces,
+  );
+  const globalRuntimeNoticeDockNode = showGlobalRuntimeNoticeDock ? (
+    <GlobalRuntimeNoticeDock
+      notices={globalRuntimeNoticeDock.notices}
+      visibility={globalRuntimeNoticeDock.visibility}
+      status={globalRuntimeNoticeDock.status}
+      onExpand={globalRuntimeNoticeDock.expand}
+      onMinimize={globalRuntimeNoticeDock.minimize}
+      onClear={globalRuntimeNoticeDock.clear}
+    />
+  ) : null;
+  const sidebarRuntimeNoticeDockNode = options.isPhone ? null : globalRuntimeNoticeDockNode;
+  const appRuntimeNoticeDockNode = options.isPhone ? globalRuntimeNoticeDockNode : null;
 
   const sidebarNode = (
     <Profiler id="sidebar" onRender={handleRuntimeProfileRender}>
@@ -665,6 +680,7 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
         showTerminalButton={options.showTerminalButton}
         isTerminalOpen={options.terminalOpen}
         onToggleTerminal={options.onToggleTerminal}
+        runtimeNoticeDockNode={sidebarRuntimeNoticeDockNode}
       />
     </Profiler>
   );
@@ -672,6 +688,11 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
   const [localClaudeThinkingVisible, setLocalClaudeThinkingVisible] = useState<
     boolean | undefined
   >(undefined);
+  const reportedClaudeThinkingVisibleRef = useRef<boolean | undefined>(
+    typeof options.claudeThinkingVisible === "boolean"
+      ? options.claudeThinkingVisible
+      : undefined,
+  );
   const [selectedCodeAnnotations, setSelectedCodeAnnotations] = useState<
     CodeAnnotationSelection[]
   >([]);
@@ -727,10 +748,19 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     typeof options.claudeThinkingVisible === "boolean"
       ? options.claudeThinkingVisible
       : localClaudeThinkingVisible;
+  useEffect(() => {
+    if (typeof options.claudeThinkingVisible === "boolean") {
+      reportedClaudeThinkingVisibleRef.current = options.claudeThinkingVisible;
+    }
+  }, [options.claudeThinkingVisible]);
   const onResolvedClaudeThinkingVisibleChange =
     options.onResolvedClaudeThinkingVisibleChange;
   const handleResolvedAlwaysThinkingChange = useCallback(
     (enabled: boolean) => {
+      if (reportedClaudeThinkingVisibleRef.current === enabled) {
+        return;
+      }
+      reportedClaudeThinkingVisibleRef.current = enabled;
       setLocalClaudeThinkingVisible((previous) =>
         previous === enabled ? previous : enabled,
       );
@@ -987,9 +1017,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
       requestKey: (previous?.requestKey ?? 0) + 1,
     }));
   }, [openBottomStatusPanel]);
-  const globalRuntimeNoticeDock = useGlobalRuntimeNoticeDock(
-    options.workspaces,
-  );
   const composerRuntimeLifecycleState = resolveRuntimeLifecycleForComposer(
     globalRuntimeNoticeDock.runtimeRows,
     options.activeWorkspaceId,
@@ -1228,16 +1255,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
       onDismiss={options.onDismissErrorToast}
     />
   );
-  const globalRuntimeNoticeDockNode = showGlobalRuntimeNoticeDock ? (
-    <GlobalRuntimeNoticeDock
-      notices={globalRuntimeNoticeDock.notices}
-      visibility={globalRuntimeNoticeDock.visibility}
-      status={globalRuntimeNoticeDock.status}
-      onExpand={globalRuntimeNoticeDock.expand}
-      onMinimize={globalRuntimeNoticeDock.minimize}
-      onClear={globalRuntimeNoticeDock.clear}
-    />
-  ) : null;
   const homeWorkspaceOptions = getHomeWorkspaceOptions(
     options.groupedWorkspaces,
     options.workspaces,
@@ -2150,7 +2167,7 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     approvalToastsNode,
     updateToastNode,
     errorToastsNode,
-    globalRuntimeNoticeDockNode,
+    globalRuntimeNoticeDockNode: appRuntimeNoticeDockNode,
     homeNode,
     mainHeaderNode,
     desktopTopbarLeftNode,
