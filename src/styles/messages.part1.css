@@ -304,15 +304,14 @@
 }
 
 .message-runtime-recovery-card.is-transient {
-  gap: 8px;
-  padding: 10px 12px;
-  margin: 0 0 8px;
-  border-radius: 10px;
-  border-color: color-mix(in srgb, var(--border-strong) 72%, #60a5fa 12%);
-  background: color-mix(in srgb, var(--surface-card) 94%, #2563eb 6%);
-  box-shadow:
-    0 8px 18px color-mix(in srgb, #020617 8%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #ffffff 5%, transparent);
+  gap: 6px;
+  padding: 8px 10px;
+  margin: 0 0 6px;
+  border-radius: 8px;
+  border-color: color-mix(in srgb, var(--border-subtle) 82%, #2563eb 18%);
+  border-left: 2px solid color-mix(in srgb, #2563eb 52%, var(--border-subtle));
+  background: color-mix(in srgb, var(--surface-card) 97%, #2563eb 3%);
+  box-shadow: none;
 }
 
 .message-runtime-recovery-header {
@@ -324,6 +323,7 @@
 
 .message-runtime-recovery-card.is-transient .message-runtime-recovery-header {
   align-items: center;
+  gap: 9px;
 }
 
 .message-runtime-recovery-icon {
@@ -333,7 +333,7 @@
 
 .message-runtime-recovery-card.is-transient .message-runtime-recovery-icon {
   margin-top: 0;
-  color: color-mix(in srgb, #93c5fd 64%, var(--text-secondary));
+  color: color-mix(in srgb, #2563eb 56%, var(--text-muted));
 }
 
 .message-runtime-recovery-copy {
@@ -359,7 +359,26 @@
 
 .message-runtime-recovery-card.is-transient .message-runtime-recovery-title {
   font-size: var(--message-meta-font-size);
-  font-weight: 650;
+  font-weight: 620;
+  color: var(--text-secondary);
+}
+
+.message-runtime-recovery-card.is-transient .message-runtime-recovery-description {
+  color: var(--text-muted);
+}
+
+.message-runtime-recovery-card.is-transient .message-runtime-recovery-actions {
+  gap: 6px;
+}
+
+.message-runtime-recovery-card.is-transient .message-runtime-recovery-button {
+  min-width: 108px;
+  min-height: 28px;
+  padding-inline: 10px;
+  color: var(--text-secondary);
+  border-color: color-mix(in srgb, var(--border-subtle) 84%, transparent);
+  background: color-mix(in srgb, var(--surface-hover) 58%, transparent);
+  box-shadow: none;
 }
 
 .message-runtime-recovery-description {
@@ -401,7 +420,8 @@
 
 .message-runtime-recovery-card.is-transient .message-runtime-recovery-detail {
   font-size: var(--message-small-font-size);
-  color: color-mix(in srgb, var(--text-muted) 82%, transparent);
+  line-height: 1.35;
+  color: color-mix(in srgb, var(--text-muted) 70%, transparent);
 }
 
 .message-runtime-recovery-detail-label {

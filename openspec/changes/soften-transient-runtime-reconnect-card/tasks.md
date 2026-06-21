@@ -7,6 +7,7 @@
 
 - [x] 2.1 Update `RuntimeReconnectCard` to render transient cleanup diagnostics as low-interruption UI while keeping recovery actions available.
 - [x] 2.2 Adjust message card CSS and i18n copy for transient cleanup status without changing backend or lifecycle behavior.
+- [x] 2.3 Refine transient cleanup presentation into a lightweight notice style with theme-token based copy and CSS, preserving reconnect / resend behavior.
 
 ## 3. Verification
 
@@ -14,3 +15,4 @@
 - [x] 3.2 Run focused Vitest suites for runtime reconnect rendering.
 - [x] 3.3 Run `npm run typecheck`.
 - [x] 3.4 Run `openspec validate soften-transient-runtime-reconnect-card --strict --no-interactive`.
+- [x] 3.5 Check light / dark / system theme token coverage and rerun lint, typecheck, focused Vitest, and large-file checks.

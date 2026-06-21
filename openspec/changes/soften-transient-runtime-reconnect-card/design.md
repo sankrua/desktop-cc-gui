@@ -26,11 +26,14 @@
    - `transient` applies only to runtime-ended diagnostics that contain expected managed cleanup sources such as `stale_reuse_cleanup` or `internal_replacement`.
    - Alternative considered: suppress transient diagnostics entirely. Rejected because diagnostics are still useful and should remain visible.
 
-2. Render transient diagnostics as lightweight status
+2. Render transient diagnostics as lightweight notice
    - Use the same component to avoid duplicating recovery behavior.
-   - Add CSS class modifier for quieter spacing, border, background, and optional detail handling.
+   - Add CSS class modifier for quieter spacing, thin notice border, low-emphasis background, muted copy, and optional detail handling.
+   - Use theme tokens such as `--surface-card`, `--surface-hover`, `--border-subtle`, `--text-secondary`, and `--text-muted` so light / dark / system themes and Windows WebView2 light surfaces inherit existing platform tuning.
+   - Copy should describe `Runtime 切换中` / background cleanup, not a connection failure.
    - Preserve existing buttons so user-initiated recovery remains available if auto-recovery does not converge.
    - Alternative considered: create a separate component. Rejected because it would duplicate action handling without changing behavior.
+   - Alternative considered: hide the buttons for transient cleanup. Rejected because it would change the interaction contract and remove manual fallback.
 
 3. Keep backend and lifecycle untouched
    - The UI does not reinterpret terminal authority.
@@ -43,6 +46,8 @@
   - Mitigation: keep reconnect/resend actions available and only reduce visual severity, not functionality.
 - [Risk] Raw diagnostic detail becomes less visible.
   - Mitigation: keep detail available in the component, but style it as secondary metadata.
+- [Risk] Lightweight styling could lose contrast in one theme.
+  - Mitigation: reuse existing theme variables instead of platform-specific colors; validate light / dark / system token coverage and Windows light overrides.
 - [Risk] Tests could overfit translation keys.
   - Mitigation: focused tests assert role/card presence and raw diagnostic behavior using existing i18n test style.
 

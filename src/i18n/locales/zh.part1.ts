@@ -2522,7 +2522,7 @@ const zhPart1 = {
     streamingPlainTextCollapsed:
       "为保持实时渲染流畅，已折叠 {{omittedChars}} 字符。",
     runtimeReconnectTitle: "Runtime 连接已中断",
-    runtimeReconnectTransientTitle: "Runtime 正在恢复",
+    runtimeReconnectTransientTitle: "Runtime 切换中",
     runtimeReconnectBrokenPipe:
       "当前这条会话消息对应的 runtime pipe 已断开。你可以先重新连接 runtime，再重试发送。",
     runtimeReconnectWorkspaceNotConnected:
@@ -2530,7 +2530,7 @@ const zhPart1 = {
     runtimeReconnectEnded:
       "受管 runtime 在本轮对话结束前就已经退出。你可以先重新连接 runtime，再继续重试或重发上一条提示词。",
     runtimeReconnectTransientCleanup:
-      "系统正在清理旧 runtime 并切换到可用实例。通常会自动恢复；如果后续没有继续输出，再手动重连。",
+      "旧 runtime 正在后台清理，系统会切到可用实例。通常会自动继续；如果后续没有输出，再手动重连。",
     runtimeReconnectStoppingRace:
       "当前 runtime 正在停止或重建。你可以等待自动恢复，或手动重新连接 runtime。",
     runtimeReconnectQuarantined:
