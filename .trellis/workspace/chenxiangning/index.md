@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 893
+- **Total Sessions**: 894
 - **Last Active**: 2026-06-21
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~859 | Active |
+| `journal-23.md` | ~910 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 894 | 2026-06-21 | 修复超时引导卡片失败状态 | `6d69dd8c` | `feature/v0.5.11` |
 | 893 | 2026-06-21 | 合入 Claude 供应商排序与模型拉取 | `31732a32` | `feature/v0.5.11` |
 | 892 | 2026-06-20 | 归档性能证据债务提案 | `53e5e07a` | `feature/v0.5.11` |
 | 891 | 2026-06-20 | 修复门禁脚本失败 | `1646ee5a` | `feature/v0.5.11` |

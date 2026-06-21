@@ -857,3 +857,54 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 894: 修复超时引导卡片失败状态
+
+**Date**: 2026-06-21
+**Task**: 修复超时引导卡片失败状态
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+修复请求输入卡片在 5 分钟超时后 submit/skip/close 失败的问题，补齐 stale settlement 跨层 contract 与回归测试。
+
+### Main Changes
+
+- 新增 RequestUserInputSettlementOptions / RequestUserInputSettlementResult，显式表达 timed-out stale settlement。
+- useThreadUserInput 在 timeout hint 下识别 workspace disconnected / timeout / stale / cancelled 等后端失败为 stale cleanup，清理 pending queue，不把失败写成 submitted。
+- RequestUserInputMessage 在倒计时归零后的 auto-dismiss、Submit、Skip 中携带 timeout hint，并修复折叠 stale card 后继续 Skip 丢失上下文的问题。
+- usePlanApplyHandlers 透传 settlement options；当 settlement 为 stale 时阻断 plan apply / Codex resume 等后续副作用。
+- 补充 useThreadUserInput、RequestUserInputMessage、usePlanApplyHandlers 回归测试。
+- 新增 OpenSpec change: fix-user-input-stale-submit-settlement。
+
+验证：
+- npx vitest run src/features/threads/hooks/useThreadUserInput.test.tsx src/features/app/components/RequestUserInputMessage.test.tsx src/app-shell-parts/usePlanApplyHandlers.test.tsx
+- npm run typecheck
+- npm run lint
+- npm run check:large-files:gate
+- node --test scripts/check-large-files.test.mjs
+- npm run check:heavy-test-noise
+- node --test scripts/check-heavy-test-noise.test.mjs scripts/test-batched.test.mjs
+- npm run check:large-files:near-threshold
+- openspec validate fix-user-input-stale-submit-settlement --strict --no-interactive
+- git diff --check
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6d69dd8c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
