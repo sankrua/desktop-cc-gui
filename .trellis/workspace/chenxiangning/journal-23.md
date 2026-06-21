@@ -1053,3 +1053,51 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 898: 收紧 runtime 恢复提示展示
+
+**Date**: 2026-06-22
+**Task**: 收紧 runtime 恢复提示展示
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次继续处理 `soften-transient-runtime-reconnect-card`。
+
+- 收紧 `RuntimeReconnectCard` 展示范围：只在最新 assistant message 本身是 runtime reconnect diagnostic 时显示卡片。
+- 当后续已经有新的正常 assistant 输出时，旧 `[RUNTIME_ENDED]` / reconnect diagnostic 不再显示卡片，也不再作为普通 assistant 文本残留。
+- 保留用户追问后的恢复入口：如果 diagnostic 后面只有 user follow-up，没有新的 assistant 输出，卡片仍保持 active。
+- 继续保持 backend runtime lifecycle、recover/resend/fork handler 不变，只调整 message canvas UI 展示。
+- 同步 OpenSpec proposal/design/spec/tasks，记录 active diagnostic scope 和 stale diagnostic hide 规则。
+
+验证：
+- `openspec validate soften-transient-runtime-reconnect-card --strict --no-interactive`
+- `npx vitest run src/features/messages/components/runtimeReconnect.test.ts src/features/messages/components/Messages.runtime-reconnect.test.tsx`
+- `npm run typecheck`
+- `npm run lint -- --quiet`
+- `npm run check:large-files`
+- `git diff --check`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0dace55e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

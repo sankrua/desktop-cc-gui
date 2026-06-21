@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 897
+- **Total Sessions**: 898
 - **Last Active**: 2026-06-22
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~1055 | Active |
+| `journal-23.md` | ~1103 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 898 | 2026-06-22 | 收紧 runtime 恢复提示展示 | `0dace55e` | `feature/v0.5.12` |
 | 897 | 2026-06-22 | 弱化可恢复 runtime 提示样式 | `b5a9d3a8` | `feature/v0.5.12` |
 | 896 | 2026-06-22 | 降低瞬态 runtime 恢复提示干扰 | `cdd3a483` | `feature/v0.5.12` |
 | 895 | 2026-06-21 | 归档 Claude 供应商与 Codex 并行运行提案 | `351c48b5` | `feature/v0.5.11` |
