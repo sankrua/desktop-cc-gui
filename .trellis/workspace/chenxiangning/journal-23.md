@@ -1319,3 +1319,53 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 904: 收口 Markdown 渲染性能优化提案
+
+**Date**: 2026-06-22
+**Task**: 收口 Markdown 渲染性能优化提案
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+- Archived OpenSpec change `improve-markdown-render-performance` into `openspec/changes/archive/2026-06-22-improve-markdown-render-performance/`.
+- Synced 11 Markdown performance requirements into main OpenSpec specs.
+- Implemented large Markdown low-cost renderer selection, bounded fast preview diagnostics, source-line annotation overlay behavior, bounded outline reveal, rich preview placement cache, and message Markdown streaming guardrails.
+- Added synthetic long Markdown fixtures and focused regression coverage for fast renderer profile selection, bounded compile behavior, annotation overlay stability, rich outline compile reuse, and streaming outline throttling.
+
+## Verification
+- `openspec validate --all --strict --no-interactive`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run check:large-files`
+- `git diff --check`
+- `npx vitest run src/features/files/components/FileMarkdownPreview.test.tsx src/features/files/components/__tests__/FileMarkdownPreviewFast.test.tsx src/features/markdown/fastMarkdownRenderer/__tests__/resolveProfile.test.ts src/features/markdown/fastMarkdownRenderer/__tests__/compile.test.ts src/features/markdown/messageMarkdownPrecompute.test.ts src/features/messages/components/Markdown.lazy-runtime.test.ts src/features/messages/components/Markdown.outline-streaming.test.tsx src/features/messages/utils/messageOutlineExtractor.test.ts src/features/messages/components/Messages.codex-live-streaming.test.tsx`
+
+## Notes
+- User manually verified the Markdown preview flow after implementation and reported no functional regression / no worse perceived performance.
+- Remaining separate follow-up: investigate dev-mode app-wide lag when installed client and dev client are open simultaneously; current evidence points to dev/prod runtime state sharing and duplicate engine/runtime pressure rather than Markdown rendering alone.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4f231fbd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
