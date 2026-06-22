@@ -27,7 +27,6 @@ export function resolveFileMarkdownFastFeatureFlags(): FastMarkdownFeatureFlags 
       readBooleanStorageFlag("mossx.fileMarkdownBoundedFastHtml"),
     largeDocumentFastRendererDisabled:
       isEnabledFlag(import.meta.env.VITE_MOSSX_FILE_MARKDOWN_DISABLE_LARGE_FAST_HTML) ||
-      readBooleanStorageFlag("ccgui.fileMarkdownDisableLargeFastHtml") ||
-      readBooleanStorageFlag("mossx.fileMarkdownDisableLargeFastHtml"),
+      readBooleanStorageFlag("ccgui.fileMarkdownDisableLargeFastHtml"),
   };
 }
