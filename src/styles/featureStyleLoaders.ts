@@ -118,3 +118,10 @@ export function loadClientDocumentationStyles() {
     () => import("./client-documentation.css"),
   ]);
 }
+
+export function loadMermaidFullscreenStyles() {
+  return loadStyles([
+    () => import("viewerjs/dist/viewer.css"),
+    () => import("./mermaid-fullscreen.css"),
+  ]);
+}

@@ -39,6 +39,8 @@ const enPart1Base = {
     terminal: "Terminal",
     toggleTerminalPanel: "Toggle terminal panel",
     moreActions: "More actions",
+    markdownMermaidFullscreen: "Fullscreen",
+    markdownMermaidFullscreenHint: "Open diagram fullscreen",
   },
 
   // App

@@ -15,6 +15,11 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import Maximize2 from "lucide-react/dist/esm/icons/maximize-2";
+import {
+  MermaidFullscreenViewer,
+  preloadViewerjs,
+} from "../../markdown/mermaidFullscreen";
 import { useTranslation } from "react-i18next";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import type { Element } from "hast";
@@ -705,6 +710,7 @@ function FileMarkdownMermaidBlock({
 }) {
   const { t } = useTranslation();
   const [, setThemeVersion] = useState(0);
+  const [isFullscreenOpen, setIsFullscreenOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<MermaidBlockTab>(
     () => readCachedMermaidTabs(documentKey)[blockKey] ?? "source",
   );
@@ -838,6 +844,14 @@ function FileMarkdownMermaidBlock({
     return () => observer.disconnect();
   }, [activeTab, highlightedHtml, renderState, visibleSvg]);
 
+  // Warm the viewerjs import as soon as we have an SVG ready to display
+  // so the first Fullscreen click does not pay the dynamic-import cost.
+  useEffect(() => {
+    if (visibleSvg) {
+      void preloadViewerjs();
+    }
+  }, [visibleSvg]);
+
   return (
     <div className="fvp-file-markdown-codeblock fvp-file-markdown-mermaid">
       <div className="fvp-file-markdown-codeblock-label">
@@ -864,6 +878,17 @@ function FileMarkdownMermaidBlock({
             onClick={() => handleActiveTabChange("render")}
           >
             {t("files.markdownMermaidRender")}
+          </button>
+          <button
+            type="button"
+            className="fvp-file-markdown-mermaid-fullscreen"
+            onClick={() => setIsFullscreenOpen(true)}
+            disabled={activeTab !== "render" || !visibleSvg}
+            aria-label={t("common.markdownMermaidFullscreenHint")}
+            title={t("common.markdownMermaidFullscreen")}
+            data-testid="file-markdown-mermaid-fullscreen-button"
+          >
+            <Maximize2 size={14} aria-hidden />
           </button>
         </div>
       </div>
@@ -898,6 +923,12 @@ function FileMarkdownMermaidBlock({
           </div>
         )}
       </div>
+
+      <MermaidFullscreenViewer
+        open={isFullscreenOpen}
+        svg={visibleSvg ?? ""}
+        onClose={() => setIsFullscreenOpen(false)}
+      />
     </div>
   );
 }

@@ -39,6 +39,8 @@ const zhPart1 = {
     terminal: "终端",
     toggleTerminalPanel: "切换终端面板",
     moreActions: "更多操作",
+    markdownMermaidFullscreen: "全屏",
+    markdownMermaidFullscreenHint: "放大查看图表",
   },
 
   // 应用
