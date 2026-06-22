@@ -47,6 +47,10 @@ import {
 import { MessagesOutlineFloater } from "./MessagesOutlineFloater";
 import type { MarkdownOutlineEntry } from "../../markdown/fastMarkdownRenderer";
 import { useMessageOutlineActive } from "../hooks/useMessageOutlineActive";
+import {
+  resolveNextMessageOutlineSnapshot,
+  type MessageOutlineSnapshot,
+} from "./messagesOutlineState";
 import { appendRendererDiagnostic } from "../../../services/rendererDiagnostics";
 import { parseReasoning } from "./messagesReasoning";
 import type { RuntimeReconnectRecoveryCallbackResult } from "./runtimeReconnect";
@@ -269,16 +273,26 @@ export const MessagesTimeline = memo(function MessagesTimeline({
 }: MessagesTimelineProps) {
   const { t } = useTranslation();
   const [isStickyHeaderCollapsed, setIsStickyHeaderCollapsed] = useState(false);
-  const [currentOutline, setCurrentOutline] = useState<{
-    messageId: string;
-    outline: MarkdownOutlineEntry[];
-  } | null>(null);
-  const handleOutlineReady = useCallback(
-    (messageId: string) => (outline: MarkdownOutlineEntry[]) => {
-      setCurrentOutline({ messageId, outline });
+  const [currentOutline, setCurrentOutline] = useState<MessageOutlineSnapshot | null>(null);
+  const handleLiveOutlineReady = useCallback(
+    (snapshot: MessageOutlineSnapshot) => {
+      setCurrentOutline((previous) =>
+        resolveNextMessageOutlineSnapshot(previous, snapshot),
+      );
     },
     [],
   );
+  const liveAssistantOutlineReady = useMemo(() => {
+    if (!liveAssistantMessageId) {
+      return undefined;
+    }
+    return (outline: MarkdownOutlineEntry[]) => {
+      handleLiveOutlineReady({
+        messageId: liveAssistantMessageId,
+        outline,
+      });
+    };
+  }, [handleLiveOutlineReady, liveAssistantMessageId]);
   const floaterContainerRef = useRef<HTMLDivElement | null>(null);
   const { activeHeadingId } = useMessageOutlineActive(
     currentOutline?.outline ?? null,
@@ -629,7 +643,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               suppressNoteCardSummaryCard={suppressedUserNoteCardContextMessageIds.has(renderItem.id)}
               onOutlineReady={
                 renderItem.role === "assistant" && renderItem.id === liveAssistantMessageId
-                  ? handleOutlineReady(renderItem.id)
+                  ? liveAssistantOutlineReady
                   : undefined
               }
             />

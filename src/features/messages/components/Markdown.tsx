@@ -1480,6 +1480,10 @@ export const Markdown = memo(function Markdown({
     alt: string;
   } | null>(null);
   const lastUpdateRef = useRef(Date.now());
+  const outlineCacheRef = useRef<{
+    value: string;
+    outline: MarkdownOutlineEntry[];
+  } | null>(null);
 
   // Best-effort outline extraction for the floater. We use a lightweight
   // line-by-line scan over the raw markdown value (NOT the rendered
@@ -1493,7 +1497,17 @@ export const Markdown = memo(function Markdown({
     if (!onOutlineReady) {
       return;
     }
-    const outline = extractOutlineFromMarkdown(throttledValue);
+    const cachedOutline = outlineCacheRef.current;
+    const outline =
+      cachedOutline?.value === throttledValue
+        ? cachedOutline.outline
+        : extractOutlineFromMarkdown(throttledValue);
+    if (cachedOutline?.value !== throttledValue) {
+      outlineCacheRef.current = {
+        value: throttledValue,
+        outline,
+      };
+    }
     try {
       onOutlineReady(outline);
     } catch {

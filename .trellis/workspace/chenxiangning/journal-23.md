@@ -1587,3 +1587,56 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 911: 稳定流式对话目录渲染
+
+**Date**: 2026-06-22
+**Task**: 稳定流式对话目录渲染
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 背景 | 近期 messages outline floater 接入 live assistant Markdown 后，流式对话体感出现顿挫风险。|
+| 根因 | `MessagesTimeline` 为 live row 反复创建 `onOutlineReady` callback，`Markdown` effect 会因 callback identity 变化重复扫描相同 `throttledValue`；同时等价 outline payload 仍会提交新 state object。|
+| 修复 | 为 live assistant outline 建立 stable callback adapter；新增 `messagesOutlineState` helper，对同 message + 同 outline entries 返回 previous snapshot reference；`Markdown` 对最近的 visible source 做 one-entry outline extraction cache。|
+| 文档 | 新增 OpenSpec change `fix-message-outline-streaming-jank`，并补充 `.trellis/spec/frontend/messages-streaming-render-contract.md`，明确 outline / TOC 属于 auxiliary navigation state，不得反向驱动 live render hot path。|
+| 验证 | 通过 focused Vitest、`npm run typecheck`、`npm run lint`、`openspec validate fix-message-outline-streaming-jank --strict --no-interactive`。|
+
+**Updated Files**:
+- `.trellis/spec/frontend/messages-streaming-render-contract.md`
+- `openspec/changes/fix-message-outline-streaming-jank/proposal.md`
+- `openspec/changes/fix-message-outline-streaming-jank/design.md`
+- `openspec/changes/fix-message-outline-streaming-jank/tasks.md`
+- `openspec/changes/fix-message-outline-streaming-jank/specs/message-markdown-streaming-compatibility/spec.md`
+- `openspec/changes/fix-message-outline-streaming-jank/specs/messages-outline-floater/spec.md`
+- `src/features/messages/components/Markdown.tsx`
+- `src/features/messages/components/MessagesTimeline.tsx`
+- `src/features/messages/components/messagesOutlineState.ts`
+- `src/features/messages/components/Markdown.outline-streaming.test.tsx`
+- `src/features/messages/components/messagesOutlineState.test.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `17ffb6b5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
