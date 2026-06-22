@@ -668,6 +668,7 @@ export const APP_SHELL_DOMAIN_CONTEXT_OWNED_KEYS: Record<
     "effectiveReasoningSupported",
     "effectiveSelectedModel",
     "effectiveSelectedModelId",
+    "providerModelCatalogs",
     "reasoningOptions",
     "reasoningSupported",
     "resolvedEffort",

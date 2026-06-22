@@ -1133,6 +1133,7 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
           providerProfileLabel={activeProviderProfileLabel}
           onSelectEngine={options.onSelectEngine}
           models={options.models}
+          providerModelCatalogs={options.providerModelCatalogs}
           selectedModelId={options.selectedModelId}
           onSelectModel={options.onSelectModel}
           reasoningOptions={options.reasoningOptions}

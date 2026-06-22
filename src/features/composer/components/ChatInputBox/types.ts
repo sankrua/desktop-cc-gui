@@ -342,6 +342,7 @@ export interface ProviderInfo {
 }
 
 export type ProviderId = 'claude' | 'codex' | 'gemini' | 'opencode';
+export type ProviderModelCatalogs = Partial<Record<ProviderId, ModelInfo[]>>;
 export type CodexSpeedMode = 'standard' | 'fast' | 'unknown';
 export type StreamActivityPhase = 'idle' | 'waiting' | 'ingress';
 
@@ -515,6 +516,8 @@ export interface ChatInputBoxProps {
   selectedModel?: string;
   /** Optional dynamic model list from host engine */
   models?: ModelInfo[];
+  /** Optional model catalogs keyed by provider for grouped selector surfaces */
+  providerModelCatalogs?: ProviderModelCatalogs;
   /** Current permission mode */
   permissionMode?: PermissionMode;
   /** Current provider */
