@@ -26,7 +26,9 @@ import type {
   ContextSelectionChip,
   DualContextUsageViewModel,
   MemoryReferenceMode,
+  ModelInfo,
   PermissionMode,
+  ProviderModelCatalogs,
   ReasoningEffort,
   SelectedAgent,
   StreamActivityPhase,
@@ -82,6 +84,35 @@ type ClaudeProviderLike = {
   };
   [key: string]: unknown;
 };
+
+type AdapterModelOption = {
+  id: string;
+  displayName?: string;
+  model?: string;
+  description?: string;
+  source?: string;
+};
+
+function normalizeAdapterModelOptions(
+  modelOptions: AdapterModelOption[] | undefined,
+): ModelInfo[] | undefined {
+  if (!modelOptions || modelOptions.length === 0) {
+    return undefined;
+  }
+  return modelOptions.map((modelOption) => {
+    const runtimeModel = modelOption.model || modelOption.id;
+    const label = modelOption.displayName || runtimeModel || modelOption.id;
+    return {
+      id: modelOption.id,
+      model: runtimeModel,
+      label,
+      description:
+        modelOption.description ||
+        (runtimeModel && runtimeModel !== label ? runtimeModel : undefined),
+      source: modelOption.source,
+    };
+  });
+}
 
 type ManualMemorySelection = {
   id: string;
@@ -466,7 +497,8 @@ export interface ChatInputBoxAdapterProps {
   isSharedSession?: boolean;
   engines?: AdapterEngineInfo[];
   onSelectEngine?: (engine: EngineType) => void;
-  models?: { id: string; displayName: string; model: string; source?: string }[];
+  models?: AdapterModelOption[];
+  providerModelCatalogs?: Partial<Record<EngineType, AdapterModelOption[]>>;
   onSelectModel?: (id: string) => void;
 
   // Reasoning
@@ -1038,6 +1070,7 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
       engines,
       onSelectEngine,
       models,
+      providerModelCatalogs,
       onSelectModel,
       reasoningOptions,
       selectedEffort,
@@ -1134,21 +1167,24 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
     const [codexSpeedMode, setCodexSpeedMode] = useState<CodexSpeedMode>('unknown');
     const isCodexEngine = selectedEngine === 'codex';
     const normalizedModels = useMemo(() => {
-      if (!models || models.length === 0) {
+      return normalizeAdapterModelOptions(models);
+    }, [models]);
+    const normalizedProviderModelCatalogs = useMemo(() => {
+      if (!providerModelCatalogs) {
         return undefined;
       }
-      return models.map((modelOption) => ({
-        id: modelOption.id,
-        model: modelOption.model,
-        label: modelOption.displayName || modelOption.model || modelOption.id,
-        description:
-          modelOption.model &&
-          modelOption.model !== modelOption.displayName
-            ? modelOption.model
-            : undefined,
-        source: modelOption.source,
-      }));
-    }, [models]);
+      const catalogs: ProviderModelCatalogs = {};
+      (Object.entries(providerModelCatalogs) as [
+        EngineType,
+        AdapterModelOption[] | undefined,
+      ][]).forEach(([engineType, catalog]) => {
+        const normalizedCatalog = normalizeAdapterModelOptions(catalog);
+        if (normalizedCatalog && normalizedCatalog.length > 0) {
+          catalogs[engineType] = normalizedCatalog;
+        }
+      });
+      return Object.keys(catalogs).length > 0 ? catalogs : undefined;
+    }, [providerModelCatalogs]);
     const resolvedSelectedModelId = useMemo(() => {
       if (selectedModelId) {
         return selectedModelId;
@@ -2109,6 +2145,7 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
         sendShortcut={sendShortcut}
         selectedModel={resolvedSelectedModelId}
         models={normalizedModels}
+        providerModelCatalogs={normalizedProviderModelCatalogs}
         permissionMode={permissionMode}
         currentProvider={engineToProvider(selectedEngine)}
         providerProfileLabel={providerProfileLabel}

@@ -32,6 +32,7 @@ export type MarkdownHeavyBlockKind =
 export type FastMarkdownFeatureFlags = {
   fastHtmlRendererEnabled?: boolean;
   boundedFastHtmlRendererEnabled?: boolean;
+  largeDocumentFastRendererDisabled?: boolean;
 };
 
 export type MarkdownSourceLineAnchor = {
@@ -63,6 +64,7 @@ export type FastMarkdownRenderDiagnostics = {
   profile: FastMarkdownRendererProfileId;
   contentHash: string;
   cacheKey: string;
+  cacheState: "hit" | "miss";
   compileDurationMs: number;
   sanitizeDurationMs: number;
   totalSourceLines: number;

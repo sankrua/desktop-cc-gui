@@ -39,6 +39,10 @@ const zhPart1 = {
     terminal: "终端",
     toggleTerminalPanel: "切换终端面板",
     moreActions: "更多操作",
+    markdownMermaidFullscreen: "全屏",
+    markdownMermaidFullscreenHint: "放大查看图表",
+    markdownImageFullscreen: "全屏",
+    markdownImageFullscreenHint: "放大查看图片",
   },
 
   // 应用
@@ -2454,6 +2458,11 @@ const zhPart1 = {
 
   // 消息
   messages: {
+    outlineShow: "显示目录",
+    outlineHide: "隐藏目录",
+    outlinePin: "固定目录",
+    outlineUnpin: "取消固定",
+    outlineEmpty: "此消息没有可导航的标题",
     userMessage: "你",
     assistantMessage: "助手",
     thinking: "思考中…",
@@ -2522,12 +2531,17 @@ const zhPart1 = {
     streamingPlainTextCollapsed:
       "为保持实时渲染流畅，已折叠 {{omittedChars}} 字符。",
     runtimeReconnectTitle: "Runtime 连接已中断",
+    runtimeReconnectTransientTitle: "Runtime 切换中",
     runtimeReconnectBrokenPipe:
       "当前这条会话消息对应的 runtime pipe 已断开。你可以先重新连接 runtime，再重试发送。",
     runtimeReconnectWorkspaceNotConnected:
       "当前工作区没有可用的受管 runtime。你可以先重新连接 runtime，再继续发送。",
     runtimeReconnectEnded:
       "受管 runtime 在本轮对话结束前就已经退出。你可以先重新连接 runtime，再继续重试或重发上一条提示词。",
+    runtimeReconnectTransientCleanup:
+      "正在切换到可用 runtime，通常会自动继续。",
+    runtimeReconnectStoppingRace:
+      "当前 runtime 正在停止或重建。你可以等待自动恢复，或手动重新连接 runtime。",
     runtimeReconnectQuarantined:
       "Runtime 正在冷却恢复窗口内。请等待短暂冷却结束后，再重新连接或重发上一条提示词。",
     runtimeReconnectAction: "重新连接 runtime",

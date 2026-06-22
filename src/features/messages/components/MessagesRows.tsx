@@ -133,6 +133,7 @@ type MessageRowProps = {
   }) => void;
   suppressMemorySummaryCard?: boolean;
   suppressNoteCardSummaryCard?: boolean;
+  onOutlineReady?: (outline: import("../../markdown/fastMarkdownRenderer").MarkdownOutlineEntry[]) => void;
 };
 
 type DeferredImageState = {
@@ -346,6 +347,7 @@ function areMessageRowPropsEqual(
     previous.codeBlockCopyUseModifier === next.codeBlockCopyUseModifier &&
     previous.onOpenFileLink === next.onOpenFileLink &&
     previous.onOpenFileLinkMenu === next.onOpenFileLinkMenu &&
+    previous.onOutlineReady === next.onOutlineReady &&
     (
       !compareStreamingOnlyProps ||
       (
@@ -691,6 +693,7 @@ export const MessageRow = memo(function MessageRow({
   onAssistantVisibleTextRender,
   suppressMemorySummaryCard = false,
   suppressNoteCardSummaryCard = false,
+  onOutlineReady,
 }: MessageRowProps) {
   const renderStartedAtMs = readHighResolutionNowMs();
   const renderCountRef = useRef(0);
@@ -1194,6 +1197,10 @@ export const MessageRow = memo(function MessageRow({
     ),
     [agentTaskNotification, item],
   );
+  const showActiveRuntimeReconnectCard =
+    Boolean(runtimeReconnectHint) &&
+    showRuntimeReconnectCard;
+  const suppressRuntimeReconnectText = Boolean(runtimeReconnectHint);
 
   const bubbleNode = (
     <div className={`bubble message-bubble${agentTaskNotification ? " message-bubble-agent-task" : ""}`}>
@@ -1308,7 +1315,7 @@ export const MessageRow = memo(function MessageRow({
           })}
         </div>
       ) : null}
-      {runtimeReconnectHint && showRuntimeReconnectCard ? (
+      {runtimeReconnectHint && showActiveRuntimeReconnectCard ? (
         <RuntimeReconnectCard
           hint={runtimeReconnectHint}
           workspaceId={workspaceId}
@@ -1325,7 +1332,7 @@ export const MessageRow = memo(function MessageRow({
             content={displayText}
             parsedContent={parsedUserTextContent ?? undefined}
           />
-        ) : runtimeReconnectHint && showRuntimeReconnectCard ? null : usePlainTextStreamingSurface ? (
+        ) : suppressRuntimeReconnectText ? null : usePlainTextStreamingSurface ? (
           <div className={livePlainTextClassName}>
             {useLongFoldedMarkdownStreamingSurface ? liveFoldedStreamingSurfaceText : displayText}
           </div>
@@ -1349,6 +1356,7 @@ export const MessageRow = memo(function MessageRow({
             liveRenderMode={useLightweightStreamingMarkdown ? "lightweight" : "full"}
             progressiveReveal={useLightweightStreamingMarkdown}
             onRenderedValueChange={handleMarkdownRenderedAssistantValue}
+            onOutlineReady={onOutlineReady}
           />
         )
       )}
@@ -1411,8 +1419,8 @@ export const MessageRow = memo(function MessageRow({
     agentTaskNotification
     || imageItems.length > 0
     || deferredImageItems.length > 0
-    || (Boolean(runtimeReconnectHint) && showRuntimeReconnectCard)
-    || hasText
+    || showActiveRuntimeReconnectCard
+    || (hasText && !suppressRuntimeReconnectText)
     || shouldRenderMessageActions;
   const memoryPayloadDialogNode =
     memoryPayloadDialogOpen && memorySummaryRawPayload && typeof document !== "undefined"

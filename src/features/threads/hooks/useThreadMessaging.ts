@@ -219,6 +219,10 @@ type UseThreadMessagingOptions = {
     workspaceId: string,
     threadId: string,
   ) => "native" | "shared";
+  getThreadProviderProfileId?: (
+    workspaceId: string,
+    threadId: string,
+  ) => string | null | undefined;
   markProcessing: (threadId: string, isProcessing: boolean) => void;
   markReviewing: (threadId: string, isReviewing: boolean) => void;
   setActiveTurnId: (threadId: string, turnId: string | null) => void;
@@ -250,6 +254,7 @@ type UseThreadMessagingOptions = {
       engine?: "claude" | "codex" | "gemini" | "opencode";
       folderId?: string | null;
       autoSession?: AutoSessionMetadata | null;
+      providerProfileId?: string | null;
     },
   ) => Promise<string | null>;
   resolveOpenCodeAgent?: (threadId: string | null) => string | null;
@@ -295,6 +300,7 @@ export function useThreadMessaging({
   getCustomName,
   getThreadEngine,
   getThreadKind,
+  getThreadProviderProfileId,
   markProcessing,
   markReviewing,
   setActiveTurnId,
@@ -1034,6 +1040,8 @@ export function useThreadMessaging({
           onDebug,
           errorMessage,
           refreshErrorMessage,
+          providerProfileId:
+            getThreadProviderProfileId?.(workspace.id, threadId) ?? null,
         });
         if (!reboundThreadId || recoveryAttempt.isUnverifiedSameThreadMissingRebind) {
           if (
@@ -1733,6 +1741,7 @@ export function useThreadMessaging({
       recordThreadActivity,
       reconcileClaudePendingThreadFromCandidate,
       resolveComposerSelection,
+      getThreadProviderProfileId,
       resolveThreadKind,
       resolveThreadEngine,
       resolveOpenCodeAgent,

@@ -27,6 +27,7 @@ export type CodexMessageRecoveryAttemptDeps = {
   startThreadForMessageSend: (
     workspace: WorkspaceInfo,
     provider: "codex",
+    options?: { providerProfileId?: string | null },
   ) => Promise<string | null>;
   forkThreadForWorkspace: (
     workspaceId: string,
@@ -37,6 +38,7 @@ export type CodexMessageRecoveryAttemptDeps = {
   onDebug?: (event: DebugEntry) => void;
   errorMessage: string;
   refreshErrorMessage?: string | null;
+  providerProfileId?: string | null;
 };
 
 export type CodexMessageRecoveryAttempt = {
@@ -54,6 +56,11 @@ export type UseCodexMessageRecoveryResult = {
 
 function normalizeRecoveryId(value: string | null | undefined): string {
   return typeof value === "string" ? value.trim() : "";
+}
+
+function normalizeProviderProfileId(value: string | null | undefined): string | null {
+  const normalized = typeof value === "string" ? value.trim() : "";
+  return normalized || null;
 }
 
 function errorToMessage(error: unknown): string {
@@ -81,6 +88,8 @@ export function useCodexMessageRecovery(): UseCodexMessageRecoveryResult {
         deps.reboundThreadId === deps.threadId &&
         canUseFreshDraftReplacementForMissingThread;
       let freshDraftReplacementAttempted = false;
+      const providerProfileId = normalizeProviderProfileId(deps.providerProfileId);
+      const providerSelection = providerProfileId ? { providerProfileId } : undefined;
 
       const tryFreshDraftReplacement = async (
         fallbackReason: string | null,
@@ -89,10 +98,13 @@ export function useCodexMessageRecovery(): UseCodexMessageRecoveryResult {
           return false;
         }
         freshDraftReplacementAttempted = true;
-        const freshThreadId = await deps.startThreadForMessageSend(
-          deps.workspace,
-          "codex",
-        );
+        const freshThreadId = providerSelection
+          ? await deps.startThreadForMessageSend(
+              deps.workspace,
+              "codex",
+              providerSelection,
+            )
+          : await deps.startThreadForMessageSend(deps.workspace, "codex");
         if (!freshThreadId) {
           return false;
         }
@@ -113,6 +125,7 @@ export function useCodexMessageRecovery(): UseCodexMessageRecoveryResult {
                 ? `${deps.errorMessage}; ${fallbackReason}`
                 : deps.errorMessage,
             }),
+            providerProfileId,
             reasonCode: deps.staleRecoveryClassification?.reasonCode ?? null,
             staleReason: deps.staleRecoveryClassification?.staleReason ?? null,
             userAction: deps.staleRecoveryClassification?.userAction ?? null,
@@ -140,7 +153,10 @@ export function useCodexMessageRecovery(): UseCodexMessageRecoveryResult {
           forkedThreadId = await deps.forkThreadForWorkspace(
             deps.workspace.id,
             deps.threadId,
-            { activate: true },
+            {
+              activate: true,
+              ...(providerProfileId ? { providerProfileId } : {}),
+            },
           );
         } catch (forkError) {
           forkErrorMessage = errorToMessage(forkError);
@@ -170,6 +186,7 @@ export function useCodexMessageRecovery(): UseCodexMessageRecoveryResult {
                 : deps.errorMessage,
             }),
             forkedThreadId: normalizedForkedThreadId,
+            providerProfileId,
             reasonCode: deps.staleRecoveryClassification?.reasonCode ?? null,
             staleReason: deps.staleRecoveryClassification?.staleReason ?? null,
             userAction: "start-fresh-thread",

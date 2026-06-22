@@ -255,14 +255,11 @@ export const Messages = memo(function Messages({
       if (!item || item.kind !== "message" || item.role !== "assistant") {
         continue;
       }
-      if (
-        resolveAssistantRuntimeReconnectHint(
-          item,
-          Boolean(parseAgentTaskNotification(item.text)),
-        )
-      ) {
-        return item.id;
-      }
+      const runtimeReconnectHint = resolveAssistantRuntimeReconnectHint(
+        item,
+        Boolean(parseAgentTaskNotification(item.text)),
+      );
+      return runtimeReconnectHint ? item.id : null;
     }
     return null;
   }, [items]);

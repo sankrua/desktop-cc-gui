@@ -908,3 +908,735 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 895: 归档 Claude 供应商与 Codex 并行运行提案
+
+**Date**: 2026-06-21
+**Task**: 归档 Claude 供应商与 Codex 并行运行提案
+**Branch**: `feature/v0.5.11`
+
+### Summary
+
+核对 Claude provider 管理与 Codex 并行 runtime ended 隔离实现证据，同步 OpenSpec 主规格，并归档两个已完成 change。
+
+### Main Changes
+
+本次完成两个 OpenSpec change 的真实收尾：
+
+- add-claude-provider-management-order-and-model-fetch
+- fix-codex-parallel-runtime-ended-isolation
+
+关键动作：
+- 核对相关前后端代码、hook、事件归属逻辑和测试文件。
+- 补齐主 specs：claude-provider-management、codex-conversation-liveness、codex-provider-scoped-session-launch、conversation-realtime-cpu-stability。
+- 对未真实执行的人工验证项保留 caveat，没有伪造完成状态。
+- 使用 openspec archive --skip-specs 归档两个 change，因为主 specs 已手动同步。
+
+验证结果：
+- npm run typecheck 通过。
+- Claude provider focused Vitest：123 tests passed。
+- Codex ownership/liveness focused Vitest：97 tests passed。
+- Rust vendor tests：12 tests passed。
+- openspec validate --all --strict --no-interactive：356 passed, 0 failed。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `351c48b5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 896: 降低瞬态 runtime 恢复提示干扰
+
+**Date**: 2026-06-22
+**Task**: 降低瞬态 runtime 恢复提示干扰
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+调整实时对话中 transient managed-runtime cleanup 的恢复提示展示，保留后端 lifecycle 语义与恢复动作，仅降低 UI 干扰。
+
+### Main Changes
+
+本次修复实时对话中 `Runtime 连接已中断` 卡片对 transient cleanup 的误导式展示：
+
+- 新增 OpenSpec change：`soften-transient-runtime-reconnect-card`。
+- 在 `runtimeReconnect` hint 增加 UI-only `tone: blocking | transient`。
+- 将 `stale_reuse_cleanup` / `internal_replacement` 分类为 transient managed-runtime cleanup。
+- `RuntimeReconnectCard` 对 transient 状态显示轻量 “Runtime 正在恢复” 提示。
+- `MessagesRows` 只在 blocking reconnect 时隐藏 assistant 原文；transient cleanup 卡片与原文同时保留。
+- 未修改后端、`runtime/ended` payload、runtime lifecycle ownership 或 terminal settlement 规则。
+
+验证：
+- `npx vitest run src/features/messages/components/runtimeReconnect.test.ts src/features/messages/components/Messages.runtime-reconnect.test.tsx`：30 tests passed。
+- `npm run typecheck`：通过。
+- `openspec validate soften-transient-runtime-reconnect-card --strict --no-interactive`：通过。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `cdd3a483` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 897: 弱化可恢复 runtime 提示样式
+
+**Date**: 2026-06-22
+**Task**: 弱化可恢复 runtime 提示样式
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Item | Details |
+|------|---------|
+| Goal | 将可自动恢复的 transient runtime cleanup 提示从 recovery/error card 弱化为 lightweight notice，避免用户误判为断联失败。 |
+| OpenSpec | 回写 `soften-transient-runtime-reconnect-card` proposal / design / spec delta / tasks，明确 transient cleanup 使用轻量 notice、theme tokens、保留交互逻辑。 |
+| UI | 更新 `messages.part1.css` 的 `.message-runtime-recovery-card.is-transient`，降低阴影、边框、背景、按钮权重；保留 reconnect / resend 行为。 |
+| i18n | 将中英文文案调整为 `Runtime 切换中` / `Runtime switching`，强调后台 cleanup 与自动继续。 |
+| Validation | `openspec validate soften-transient-runtime-reconnect-card --strict --no-interactive`; focused Vitest runtime reconnect suites; `npm run typecheck`; `npm run lint -- --quiet`; `npm run check:large-files` all passed. |
+
+**Updated Files**:
+- `openspec/changes/soften-transient-runtime-reconnect-card/proposal.md`
+- `openspec/changes/soften-transient-runtime-reconnect-card/design.md`
+- `openspec/changes/soften-transient-runtime-reconnect-card/specs/conversation-live-message-canvas-rendering/spec.md`
+- `openspec/changes/soften-transient-runtime-reconnect-card/tasks.md`
+- `src/i18n/locales/en.part1.ts`
+- `src/i18n/locales/zh.part1.ts`
+- `src/styles/messages.part1.css`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b5a9d3a8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 898: 收紧 runtime 恢复提示展示
+
+**Date**: 2026-06-22
+**Task**: 收紧 runtime 恢复提示展示
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次继续处理 `soften-transient-runtime-reconnect-card`。
+
+- 收紧 `RuntimeReconnectCard` 展示范围：只在最新 assistant message 本身是 runtime reconnect diagnostic 时显示卡片。
+- 当后续已经有新的正常 assistant 输出时，旧 `[RUNTIME_ENDED]` / reconnect diagnostic 不再显示卡片，也不再作为普通 assistant 文本残留。
+- 保留用户追问后的恢复入口：如果 diagnostic 后面只有 user follow-up，没有新的 assistant 输出，卡片仍保持 active。
+- 继续保持 backend runtime lifecycle、recover/resend/fork handler 不变，只调整 message canvas UI 展示。
+- 同步 OpenSpec proposal/design/spec/tasks，记录 active diagnostic scope 和 stale diagnostic hide 规则。
+
+验证：
+- `openspec validate soften-transient-runtime-reconnect-card --strict --no-interactive`
+- `npx vitest run src/features/messages/components/runtimeReconnect.test.ts src/features/messages/components/Messages.runtime-reconnect.test.tsx`
+- `npm run typecheck`
+- `npm run lint -- --quiet`
+- `npm run check:large-files`
+- `git diff --check`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0dace55e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 899: 修复 Codex conversation not found 会话恢复
+
+**Date**: 2026-06-22
+**Task**: 修复 Codex conversation not found 会话恢复
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+本次修复 GitHub issue #711 对应的 Codex 旧对话恢复问题：runtime 返回 `conversation not found` / `conversation_not_found` 时，前端和 Rust 侧原本只按普通失败处理，没有进入 stale thread binding recovery。
+
+改动内容：
+- 前端 `stabilityDiagnostics` 将 `conversation not found` 归类为可恢复 stale binding，并保持 `staleReason=thread-not-found`。
+- `useThreadActions.helpers` 同步补齐相同错误形态，避免恢复提示/手动恢复链路与发送链路漂移。
+- Rust `codex_core` 的 `turn/start` retry classifier 同步识别 `conversation not found` / `conversation_not_found`，保持 same-runtime `thread/resume` + bounded retry 策略。
+- 增加 Vitest 与 Rust classifier 回归测试，覆盖 issue 报错形态。
+
+验证：
+- `npm exec vitest run src/features/threads/utils/stabilityDiagnostics.test.ts src/features/threads/hooks/useThreadMessaging.test.tsx`
+- `cargo test --manifest-path src-tauri/Cargo.toml thread_not_found_classifier -- --nocapture`
+- `npm run typecheck`
+- `cargo test --manifest-path src-tauri/Cargo.toml --no-run`
+- `npm run lint`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `9ed9e648` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 900: 优化 release Rust 编译缓存
+
+**Date**: 2026-06-22
+**Task**: 优化 release Rust 编译缓存
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Details |
+|------|---------|
+| CI release cache | Updated `.github/workflows/release.yml` to add stable `swatinem/rust-cache` `shared-key` values and `cache-on-failure: true` for macOS arm64, macOS x86_64, Linux x64, and Windows x64 release jobs. |
+| sccache activation | Added `Configure sccache environment` steps that write `RUSTC_WRAPPER=sccache`, `SCCACHE_GHA_ENABLED=true`, and platform-specific `SCCACHE_DIR` into `$GITHUB_ENV`, then install `mozilla-actions/sccache-action@v0.0.10` so the real Tauri build step inherits the wrapper. |
+| OpenSpec | Added change `2026-06-22-release-pipeline-cache-sccache` with proposal, design, tasks, and `release-pipeline-ci-cache-perf` spec delta. Documented the root problem as slow `workflow_dispatch` release packaging, especially macOS x86_64 run `27905632604`, and captured live verification requirements for future GitHub Actions runs. |
+| Verification | Ran `openspec validate 2026-06-22-release-pipeline-cache-sccache --strict --no-interactive`, YAML parse for `.github/workflows/release.yml`, and `npm run typecheck`. Locally attempted macOS x86_64 Tauri build on Apple Silicon; frontend build and Rust x86_64 compilation started with sccache stats, but full local package was blocked by OpenSSL cross-compilation (`HOST=aarch64-apple-darwin`, `TARGET=x86_64-apple-darwin`), which does not represent the real Intel GitHub runner. |
+
+**Follow-up**:
+- Trigger a real `workflow_dispatch` release run and check cache hit logs, `sccache --show-stats`, artifact upload, and platform wall-clock values.
+- Keep OpenSpec archive pending until live GitHub Actions verification passes.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `11b64eb5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 901: Mermaid 图表全屏查看
+
+**Date**: 2026-06-22
+**Task**: Mermaid 图表全屏查看
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 功能 | 为消息侧 `MermaidBlock` 与文件预览侧 `FileMarkdownMermaidBlock` 增加 icon-only 全屏入口。 |
+| Viewer | 新增共享 `src/features/markdown/mermaidFullscreen/`，使用 `viewerjs@^1.11.7`、单例 active viewer、显式 `viewer.show()`、StrictMode / panel-lock / theme mutation 防御。 |
+| 主题 | 新增 `src/styles/mermaid-fullscreen.css`，按 dark / light / dim 分别适配 backdrop、toolbar、close button 与 viewerjs sprite icon filter。 |
+| 测试 | 新增 messages/files/viewer-show/theme 回归测试，目标 vitest 23/23 通过。 |
+| OpenSpec | 新增 `openspec/changes/2026-06-22-add-mermaid-block-fullscreen-viewer/` proposal/design/tasks/spec delta，阶段性提交保留 archive gate 未执行。 |
+
+验证已跑：
+- `npm run lint`
+- `npm run typecheck`
+- `npx vitest run src/features/messages/components/MermaidBlock.fullscreen.test.tsx src/features/messages/components/MermaidBlock.viewer-show.test.tsx src/features/files/components/FileMarkdownPreview.mermaid-fullscreen.test.tsx src/styles/mermaid-fullscreen.theme.test.ts`
+- `npx openspec validate 2026-06-22-add-mermaid-block-fullscreen-viewer --strict --no-interactive`
+- `npm run check:large-files`
+- `npm run build`
+- `npm run check:bundle-chunking`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4c38fa13` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 902: Markdown 图片全屏与消息目录
+
+**Date**: 2026-06-22
+**Task**: Markdown 图片全屏与消息目录
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+完成并归档 OpenSpec change add-image-fullscreen-and-messages-outline：新增 Markdown 图片全屏 viewer、消息 outline 浮窗、文件预览本地相对图片兼容修复；同步主 specs，补充 focused tests，并通过 typecheck、lint、OpenSpec specs validate、large-file check 与 54 个 focused vitest 用例。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `12f99419` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 903: 修复 CI 品牌检查与文件面板测试抖动
+
+**Date**: 2026-06-22
+**Task**: 修复 CI 品牌检查与文件面板测试抖动
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+修复 doctor:win branding gate 与 FileViewPanel typing latency flaky timeout
+
+### Main Changes
+
+本次只提交 CI 修复相关的 3 个文件：
+- src/features/markdown/mermaidFullscreen/activeViewer.ts：移除 shipping surface 注释中的 legacy brand 命中词。
+- src/styles/mermaid-fullscreen.css：移除 shipping surface 注释中的 legacy brand 命中词。
+- src/features/files/components/FileViewPanel.typing-latency.test.tsx：将 active code anchor debounce 测试从真实 setTimeout/waitFor 改为在初始 render 后使用 fake timers 精确推进，避免 CI 批量调度下 5s timeout。
+
+验证：
+- npm run check:branding：通过。
+- npx vitest run src/features/files/components/FileViewPanel.typing-latency.test.tsx --reporter verbose：通过。
+- npx vitest run src/features/files/components/FileViewPanel.test.tsx src/features/files/components/FileViewPanel.typing-latency.test.tsx src/features/files/components/FileViewPanel.lazy-race.test.tsx src/features/files/contracts/fileInteractionEvidenceGate.test.ts --reporter verbose：通过。
+- npm run doctor:win：通过。
+- npm run test 跑到历史失败点 batch 59 已通过；后续在 batch 78 暴露既有 markdown fast renderer profile 测试契约漂移，未纳入本次提交。
+
+边界：未处理、未提交工作区中已有的 markdown performance 相关改动和 openspec/changes/improve-markdown-render-performance/。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea2e348c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 904: 收口 Markdown 渲染性能优化提案
+
+**Date**: 2026-06-22
+**Task**: 收口 Markdown 渲染性能优化提案
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+## Summary
+- Archived OpenSpec change `improve-markdown-render-performance` into `openspec/changes/archive/2026-06-22-improve-markdown-render-performance/`.
+- Synced 11 Markdown performance requirements into main OpenSpec specs.
+- Implemented large Markdown low-cost renderer selection, bounded fast preview diagnostics, source-line annotation overlay behavior, bounded outline reveal, rich preview placement cache, and message Markdown streaming guardrails.
+- Added synthetic long Markdown fixtures and focused regression coverage for fast renderer profile selection, bounded compile behavior, annotation overlay stability, rich outline compile reuse, and streaming outline throttling.
+
+## Verification
+- `openspec validate --all --strict --no-interactive`
+- `npm run typecheck`
+- `npm run lint`
+- `npm run check:large-files`
+- `git diff --check`
+- `npx vitest run src/features/files/components/FileMarkdownPreview.test.tsx src/features/files/components/__tests__/FileMarkdownPreviewFast.test.tsx src/features/markdown/fastMarkdownRenderer/__tests__/resolveProfile.test.ts src/features/markdown/fastMarkdownRenderer/__tests__/compile.test.ts src/features/markdown/messageMarkdownPrecompute.test.ts src/features/messages/components/Markdown.lazy-runtime.test.ts src/features/messages/components/Markdown.outline-streaming.test.tsx src/features/messages/utils/messageOutlineExtractor.test.ts src/features/messages/components/Messages.codex-live-streaming.test.tsx`
+
+## Notes
+- User manually verified the Markdown preview flow after implementation and reported no functional regression / no worse perceived performance.
+- Remaining separate follow-up: investigate dev-mode app-wide lag when installed client and dev client are open simultaneously; current evidence points to dev/prod runtime state sharing and duplicate engine/runtime pressure rather than Markdown rendering alone.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4f231fbd` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 905: 归档 Mermaid 全屏 viewer OpenSpec
+
+**Date**: 2026-06-22
+**Task**: 归档 Mermaid 全屏 viewer OpenSpec
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| Change | `2026-06-22-add-mermaid-block-fullscreen-viewer` |
+| 本次工作 | 审计剩余任务后确认仅剩 OpenSpec archive gate，完成 main spec 同步并将 change 移入 archive。 |
+| 关键处理 | 当前 `openspec` CLI 拒绝以数字开头的 change id，无法直接执行 `openspec archive 2026-...`；采用等价手工 archive：同步 `markdown-mermaid-block-fullscreen-viewer` main spec、移动 change 目录、更新 tasks 勾选状态。 |
+| 验证 | `openspec validate --specs --strict --no-interactive` 通过，357 passed / 0 failed。 |
+
+**Updated Files**:
+- `openspec/specs/markdown-mermaid-block-fullscreen-viewer/spec.md`
+- `openspec/changes/archive/2026-06-22-add-mermaid-block-fullscreen-viewer/**`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `18e0ae99` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 906: 修复 Codex provider 恢复绑定
+
+**Date**: 2026-06-22
+**Task**: 修复 Codex provider 恢复绑定
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+修复 Codex stale thread recovery 在 provider-scoped 会话下丢失 provider binding 的问题；补 canonical backend lookup、frontend provider inheritance、AppShell 稳定 resolver 防 update loop，并清理 focused heavy-test-noise act warning。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `db554da4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 907: 修复 Messages Vitest OOM 与 branding gate
+
+**Date**: 2026-06-22
+**Task**: 修复 Messages Vitest OOM 与 branding gate
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+拆分 Messages live streaming 测试，避免 full Markdown runtime 在批量 Vitest 中触发 OOM；清理 file markdown feature flag 中的 mossx disable key，恢复 doctor:win branding gate。
+
+### Main Changes
+
+- 将 Messages.test.tsx 中的 live streaming / finalizing / selection freeze / rapid reasoning contract 测试迁移到 Messages.live-markdown-streaming.test.tsx，并 mock Markdown renderer，保留 Messages 层行为断言。
+- 删除 Messages.test.tsx 中重复覆盖且成本过高的 live inline code throttle 集成测试；该行为由 Markdown.file-links.test.tsx、Markdown streaming throttle 测试与 MessagesRows.stream-mitigation.test.tsx 分层覆盖。
+- 移除 src/features/files/utils/fileMarkdownFeatureFlags.ts 中的 mossx.fileMarkdownDisableLargeFastHtml legacy storage read，保留 ccgui key。
+- 验证：doctor:win、typecheck、lint --quiet、Messages 失败批次附近组合测试、Messages live markdown streaming、MessagesRows stream mitigation、Markdown file links 均通过。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `39bdbb13` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 908: 移除首页最近会话入口
+
+**Date**: 2026-06-22
+**Task**: 移除首页最近会话入口
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+删除 HomeChat 首页最近会话展示区，回写 workspace-home-shadcn-ux OpenSpec 主规范，并验证 focused HomeChat tests、typecheck、lint、large-file 与 OpenSpec strict validation。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `118e4eb7` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 909: 修复供应商模型目录与 Codex 刷新断联
+
+**Date**: 2026-06-22
+**Task**: 修复供应商模型目录与 Codex 刷新断联
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 问题 | Codex 模型选择器刷新会触发 runtime reload，导致运行中的 Codex 会话出现 `settings_restart` 断联；grouped selector 使用 active engine models 导致 Codex/Claude 自定义模型在非当前 provider 下不可见。 |
+| 修复 | 将 Codex selector refresh 改为 catalog-only；移除 provider switch 的隐式 runtime reload；新增 provider-scoped model catalog 传递链路；Codex provider `customModels` additive merge 到 composer-visible custom model store。 |
+| 验证 | `npm run lint`、`npm run typecheck`、focused Vitest 15 tests passed、`openspec validate --changes fix-provider-model-catalog-and-codex-refresh-isolation --strict --no-interactive` 通过。 |
+| Commit | `657d1351 fix(composer): 修复供应商模型目录与 Codex 刷新断联` |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `657d1351` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 910: 修复 Mermaid 全屏测试竞态
+
+**Date**: 2026-06-22
+**Task**: 修复 Mermaid 全屏测试竞态
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+定位 MermaidBlock fullscreen 测试偶发 timeout 根因：测试在按钮存在但仍 disabled 时点击，click 被忽略后等待 portal 超过 testTimeout。新增 waitForEnabledFullscreenButton 辅助函数，统一等待按钮存在且可用后再点击；验证目标批次、全量 test、typecheck、lint 与 heavy-test-noise 均通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `4cc6389e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
+
+
+## Session 911: 稳定流式对话目录渲染
+
+**Date**: 2026-06-22
+**Task**: 稳定流式对话目录渲染
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 背景 | 近期 messages outline floater 接入 live assistant Markdown 后，流式对话体感出现顿挫风险。|
+| 根因 | `MessagesTimeline` 为 live row 反复创建 `onOutlineReady` callback，`Markdown` effect 会因 callback identity 变化重复扫描相同 `throttledValue`；同时等价 outline payload 仍会提交新 state object。|
+| 修复 | 为 live assistant outline 建立 stable callback adapter；新增 `messagesOutlineState` helper，对同 message + 同 outline entries 返回 previous snapshot reference；`Markdown` 对最近的 visible source 做 one-entry outline extraction cache。|
+| 文档 | 新增 OpenSpec change `fix-message-outline-streaming-jank`，并补充 `.trellis/spec/frontend/messages-streaming-render-contract.md`，明确 outline / TOC 属于 auxiliary navigation state，不得反向驱动 live render hot path。|
+| 验证 | 通过 focused Vitest、`npm run typecheck`、`npm run lint`、`openspec validate fix-message-outline-streaming-jank --strict --no-interactive`。|
+
+**Updated Files**:
+- `.trellis/spec/frontend/messages-streaming-render-contract.md`
+- `openspec/changes/fix-message-outline-streaming-jank/proposal.md`
+- `openspec/changes/fix-message-outline-streaming-jank/design.md`
+- `openspec/changes/fix-message-outline-streaming-jank/tasks.md`
+- `openspec/changes/fix-message-outline-streaming-jank/specs/message-markdown-streaming-compatibility/spec.md`
+- `openspec/changes/fix-message-outline-streaming-jank/specs/messages-outline-floater/spec.md`
+- `src/features/messages/components/Markdown.tsx`
+- `src/features/messages/components/MessagesTimeline.tsx`
+- `src/features/messages/components/messagesOutlineState.ts`
+- `src/features/messages/components/Markdown.outline-streaming.test.tsx`
+- `src/features/messages/components/messagesOutlineState.test.ts`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `17ffb6b5` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

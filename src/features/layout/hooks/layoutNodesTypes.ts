@@ -615,6 +615,7 @@ export type LayoutNodesFlatOptions = {
   onSelectEngine?: (engine: EngineType) => void;
   // Model props
   models: ModelOption[];
+  providerModelCatalogs?: Partial<Record<EngineType, ModelOption[]>>;
   selectedModelId: string | null;
   projectMapDatasetController?: ProjectMapDatasetController;
   onSelectModel: (id: string | null) => void;
@@ -1063,6 +1064,7 @@ export type ComposerLayoutNodesOptions = Pick<
   | "usePresentationProfile"
   | "onSelectEngine"
   | "models"
+  | "providerModelCatalogs"
   | "selectedModelId"
   | "projectMapDatasetController"
   | "onSelectModel"

@@ -2505,6 +2505,11 @@ const enPart1 = {
 
   // Messages
   messages: {
+    outlineShow: "Show outline",
+    outlineHide: "Hide outline",
+    outlinePin: "Pin outline",
+    outlineUnpin: "Unpin outline",
+    outlineEmpty: "No headings in this message",
     userMessage: "You",
     assistantMessage: "Assistant",
     thinking: "Thinking…",
@@ -2578,12 +2583,17 @@ const enPart1 = {
     streamingPlainTextCollapsed:
       "{{omittedChars}} chars omitted to keep live rendering smooth.",
     runtimeReconnectTitle: "Runtime connection lost",
+    runtimeReconnectTransientTitle: "Runtime switching",
     runtimeReconnectBrokenPipe:
       "The runtime pipe for this session message has been closed. Reconnect the runtime, then retry your send.",
     runtimeReconnectWorkspaceNotConnected:
       "This workspace does not currently have an available managed runtime. Reconnect the runtime, then retry your send.",
     runtimeReconnectEnded:
       "The managed runtime ended before this conversation turn settled. Reconnect the runtime, then retry or resend the previous prompt.",
+    runtimeReconnectTransientCleanup:
+      "Switching to an available runtime. Output usually continues automatically.",
+    runtimeReconnectStoppingRace:
+      "The runtime is stopping or being rebuilt. Wait for automatic recovery, or reconnect the runtime manually.",
     runtimeReconnectQuarantined:
       "The runtime is cooling down after repeated recovery failures. Wait a moment, then reconnect or resend the previous prompt.",
     runtimeReconnectAction: "Reconnect runtime",

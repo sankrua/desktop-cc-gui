@@ -39,6 +39,7 @@ export {
 } from "./sanitize";
 
 export {
+  FAST_MARKDOWN_RENDERER_LIMITS,
   resolveFastMarkdownRendererProfile,
   resolveFastMarkdownProfileInputs,
 } from "./resolveProfile";

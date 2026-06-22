@@ -118,3 +118,23 @@ export function loadClientDocumentationStyles() {
     () => import("./client-documentation.css"),
   ]);
 }
+
+export function loadMermaidFullscreenStyles() {
+  return loadStyles([
+    () => import("viewerjs/dist/viewer.css"),
+    () => import("./mermaid-fullscreen.css"),
+  ]);
+}
+
+export function loadImageFullscreenStyles() {
+  return loadStyles([
+    () => import("viewerjs/dist/viewer.css"),
+    () => import("./image-fullscreen.css"),
+  ]);
+}
+
+export function loadMessagesOutlineFloaterStyles() {
+  return loadStyles([
+    () => import("./messages-outline-floater.css"),
+  ]);
+}

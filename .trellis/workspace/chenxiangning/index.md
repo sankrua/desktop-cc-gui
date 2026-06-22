@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 894
-- **Last Active**: 2026-06-21
+- **Total Sessions**: 911
+- **Last Active**: 2026-06-22
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~910 | Active |
+| `journal-23.md` | ~1642 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,23 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 911 | 2026-06-22 | 稳定流式对话目录渲染 | `17ffb6b5` | `feature/v0.5.12` |
+| 910 | 2026-06-22 | 修复 Mermaid 全屏测试竞态 | `4cc6389e` | `feature/v0.5.12` |
+| 909 | 2026-06-22 | 修复供应商模型目录与 Codex 刷新断联 | `657d1351` | `feature/v0.5.12` |
+| 908 | 2026-06-22 | 移除首页最近会话入口 | `118e4eb7` | `feature/v0.5.12` |
+| 907 | 2026-06-22 | 修复 Messages Vitest OOM 与 branding gate | `39bdbb13` | `feature/v0.5.12` |
+| 906 | 2026-06-22 | 修复 Codex provider 恢复绑定 | `db554da4` | `feature/v0.5.12` |
+| 905 | 2026-06-22 | 归档 Mermaid 全屏 viewer OpenSpec | `18e0ae99` | `feature/v0.5.12` |
+| 904 | 2026-06-22 | 收口 Markdown 渲染性能优化提案 | `4f231fbd` | `feature/v0.5.12` |
+| 903 | 2026-06-22 | 修复 CI 品牌检查与文件面板测试抖动 | `ea2e348c` | `feature/v0.5.12` |
+| 902 | 2026-06-22 | Markdown 图片全屏与消息目录 | `12f99419` | `feature/v0.5.12` |
+| 901 | 2026-06-22 | Mermaid 图表全屏查看 | `4c38fa13` | `feature/v0.5.12` |
+| 900 | 2026-06-22 | 优化 release Rust 编译缓存 | `11b64eb5` | `feature/v0.5.12` |
+| 899 | 2026-06-22 | 修复 Codex conversation not found 会话恢复 | `9ed9e648` | `feature/v0.5.12` |
+| 898 | 2026-06-22 | 收紧 runtime 恢复提示展示 | `0dace55e` | `feature/v0.5.12` |
+| 897 | 2026-06-22 | 弱化可恢复 runtime 提示样式 | `b5a9d3a8` | `feature/v0.5.12` |
+| 896 | 2026-06-22 | 降低瞬态 runtime 恢复提示干扰 | `cdd3a483` | `feature/v0.5.12` |
+| 895 | 2026-06-21 | 归档 Claude 供应商与 Codex 并行运行提案 | `351c48b5` | `feature/v0.5.11` |
 | 894 | 2026-06-21 | 修复超时引导卡片失败状态 | `6d69dd8c` | `feature/v0.5.11` |
 | 893 | 2026-06-21 | 合入 Claude 供应商排序与模型拉取 | `31732a32` | `feature/v0.5.11` |
 | 892 | 2026-06-20 | 归档性能证据债务提案 | `53e5e07a` | `feature/v0.5.11` |
