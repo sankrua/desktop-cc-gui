@@ -133,6 +133,7 @@ type MessageRowProps = {
   }) => void;
   suppressMemorySummaryCard?: boolean;
   suppressNoteCardSummaryCard?: boolean;
+  onOutlineReady?: (outline: import("../../markdown/fastMarkdownRenderer").MarkdownOutlineEntry[]) => void;
 };
 
 type DeferredImageState = {
@@ -346,6 +347,7 @@ function areMessageRowPropsEqual(
     previous.codeBlockCopyUseModifier === next.codeBlockCopyUseModifier &&
     previous.onOpenFileLink === next.onOpenFileLink &&
     previous.onOpenFileLinkMenu === next.onOpenFileLinkMenu &&
+    previous.onOutlineReady === next.onOutlineReady &&
     (
       !compareStreamingOnlyProps ||
       (
@@ -691,6 +693,7 @@ export const MessageRow = memo(function MessageRow({
   onAssistantVisibleTextRender,
   suppressMemorySummaryCard = false,
   suppressNoteCardSummaryCard = false,
+  onOutlineReady,
 }: MessageRowProps) {
   const renderStartedAtMs = readHighResolutionNowMs();
   const renderCountRef = useRef(0);
@@ -1353,6 +1356,7 @@ export const MessageRow = memo(function MessageRow({
             liveRenderMode={useLightweightStreamingMarkdown ? "lightweight" : "full"}
             progressiveReveal={useLightweightStreamingMarkdown}
             onRenderedValueChange={handleMarkdownRenderedAssistantValue}
+            onOutlineReady={onOutlineReady}
           />
         )
       )}

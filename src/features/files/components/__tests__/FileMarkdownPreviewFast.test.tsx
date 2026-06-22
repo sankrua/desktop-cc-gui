@@ -274,6 +274,30 @@ describe("FileMarkdownPreviewFast", () => {
     expect(compileSpy).toHaveBeenCalled();
   });
 
+  it("falls back to the rich preview for local markdown image references", async () => {
+    const onFallback = vi.fn();
+    await renderUnderAct(
+      <FileMarkdownPreviewFast
+        value="![local](assets/images/local.png)"
+        documentKey="doc-local-image"
+        sourceFilePath="/repo/docs/report.md"
+        rendererProfile="fast-html"
+        featureFlags={{ fastHtmlRendererEnabled: true }}
+        onFastRendererFallback={onFallback}
+      />,
+    );
+
+    await waitFor(() => {
+      expect(screen.queryByTestId("file-markdown-preview")).toBeTruthy();
+    });
+    expect(screen.getByRole("img", { name: "local" }).getAttribute("src")).toBe(
+      "asset://localhost//repo/docs/assets/images/local.png",
+    );
+    expect(onFallback).toHaveBeenCalledWith(
+      "fast-renderer-fallback:local-image-rich-fallback",
+    );
+  });
+
   it("stays on the fast path when the compile succeeds", async () => {
     await renderUnderAct(
       <FileMarkdownPreviewFast

@@ -1801,7 +1801,9 @@ export function FileViewPanel({
   // ── Content area ──
   const renderContent = () => (
     <FileViewBody
+      workspaceId={workspaceId}
       filePath={filePath}
+      sourceFilePath={absolutePath}
       documentKey={`${workspaceId}:${fileReadTarget.domain}:${workspaceRelativeFilePath}`}
       imageSrc={imageSrc}
       imageInfo={imageInfo}

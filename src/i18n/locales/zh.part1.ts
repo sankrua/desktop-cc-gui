@@ -41,6 +41,8 @@ const zhPart1 = {
     moreActions: "更多操作",
     markdownMermaidFullscreen: "全屏",
     markdownMermaidFullscreenHint: "放大查看图表",
+    markdownImageFullscreen: "全屏",
+    markdownImageFullscreenHint: "放大查看图片",
   },
 
   // 应用
@@ -2456,6 +2458,11 @@ const zhPart1 = {
 
   // 消息
   messages: {
+    outlineShow: "显示目录",
+    outlineHide: "隐藏目录",
+    outlinePin: "固定目录",
+    outlineUnpin: "取消固定",
+    outlineEmpty: "此消息没有可导航的标题",
     userMessage: "你",
     assistantMessage: "助手",
     thinking: "思考中…",

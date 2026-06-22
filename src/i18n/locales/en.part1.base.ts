@@ -41,6 +41,8 @@ const enPart1Base = {
     moreActions: "More actions",
     markdownMermaidFullscreen: "Fullscreen",
     markdownMermaidFullscreenHint: "Open diagram fullscreen",
+    markdownImageFullscreen: "Fullscreen",
+    markdownImageFullscreenHint: "Open image fullscreen",
   },
 
   // App

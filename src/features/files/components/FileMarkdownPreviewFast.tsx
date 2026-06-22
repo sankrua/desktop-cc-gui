@@ -10,6 +10,10 @@ import { FileMarkdownPreview, type FileMarkdownPreviewProps } from "./FileMarkdo
 import { PreviewOutlineSidebar } from "./PreviewOutlineSidebar";
 import type { PreviewOutlineItem } from "../utils/filePreviewOutline";
 
+const LOCAL_MARKDOWN_IMAGE_TARGET_REGEX =
+  /\.(?:apng|avif|bmp|gif|jpe?g|png|svg|webp)(?:[?#][^\s)]*)?$/i;
+const BROWSER_IMAGE_TARGET_REGEX = /^(?:https?:|data:|blob:|asset:)/i;
+
 export type FileMarkdownPreviewFastProps = FileMarkdownPreviewProps & {
   /**
    * Profile id for the renderer. The wrapper decides whether to
@@ -70,6 +74,8 @@ export function FileMarkdownPreviewFast({
   value,
   documentKey,
   className,
+  workspaceId,
+  sourceFilePath,
   rendererProfile,
   featureFlags,
   onFastRendererFallback,
@@ -110,8 +116,12 @@ export function FileMarkdownPreviewFast({
     rendererProfile === "fast-html" || rendererProfile === "bounded-fast-html";
   const hasRenderedAnnotationState =
     annotationDraft !== null || annotations.length > 0;
-  const localFallbackReason = isFastProfile && hasRenderedAnnotationState
-    ? "annotation-overlay-rich-fallback"
+  const localFallbackReason = isFastProfile
+    ? hasRenderedAnnotationState
+      ? "annotation-overlay-rich-fallback"
+      : hasLocalMarkdownImageReference(value)
+        ? "local-image-rich-fallback"
+        : null
     : null;
   const useFastPath =
     isFastProfile && !shouldFallBackToRichPath && localFallbackReason === null;
@@ -350,6 +360,8 @@ export function FileMarkdownPreviewFast({
             value={value}
             documentKey={documentKey}
             className={className}
+            workspaceId={workspaceId}
+            sourceFilePath={sourceFilePath}
             onAnnotationStart={onAnnotationStart}
             annotationDraft={annotationDraft}
             annotations={annotations}
@@ -419,6 +431,39 @@ function flattenPreviewOutlineItems(items: PreviewOutlineItem[]): PreviewOutline
   };
   items.forEach(visit);
   return flattenedItems;
+}
+
+function hasLocalMarkdownImageReference(value: string): boolean {
+  const markdownImageRegex = /!\[[^\]]*]\(([^)\s]+)(?:\s+["'][^"']*["'])?\)/g;
+  for (const match of value.matchAll(markdownImageRegex)) {
+    if (isLocalImageTarget(match[1] ?? "")) {
+      return true;
+    }
+  }
+
+  const htmlImageRegex = /<img\b[^>]*\bsrc=(?:"([^"]+)"|'([^']+)'|([^\s>]+))/gi;
+  for (const match of value.matchAll(htmlImageRegex)) {
+    if (isLocalImageTarget(match[1] ?? match[2] ?? match[3] ?? "")) {
+      return true;
+    }
+  }
+
+  const imageTagRegex = /<image>\s*([\s\S]*?)\s*<\/image>|<image\b[^>]*\bsrc=(?:"([^"]+)"|'([^']+)'|([^\s/>]+))[^>]*\/?>/gi;
+  for (const match of value.matchAll(imageTagRegex)) {
+    if (isLocalImageTarget(match[1] ?? match[2] ?? match[3] ?? match[4] ?? "")) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function isLocalImageTarget(value: string): boolean {
+  const target = value.trim().replace(/^<(.+)>$/, "$1").replace(/^['"](.+)['"]$/, "$1");
+  if (!target || BROWSER_IMAGE_TARGET_REGEX.test(target)) {
+    return false;
+  }
+  return LOCAL_MARKDOWN_IMAGE_TARGET_REGEX.test(target.split(/[?#]/, 1)[0] ?? target);
 }
 
 function translatePreviewLabel(

@@ -125,3 +125,16 @@ export function loadMermaidFullscreenStyles() {
     () => import("./mermaid-fullscreen.css"),
   ]);
 }
+
+export function loadImageFullscreenStyles() {
+  return loadStyles([
+    () => import("viewerjs/dist/viewer.css"),
+    () => import("./image-fullscreen.css"),
+  ]);
+}
+
+export function loadMessagesOutlineFloaterStyles() {
+  return loadStyles([
+    () => import("./messages-outline-floater.css"),
+  ]);
+}

@@ -2505,6 +2505,11 @@ const enPart1 = {
 
   // Messages
   messages: {
+    outlineShow: "Show outline",
+    outlineHide: "Hide outline",
+    outlinePin: "Pin outline",
+    outlineUnpin: "Unpin outline",
+    outlineEmpty: "No headings in this message",
     userMessage: "You",
     assistantMessage: "Assistant",
     thinking: "Thinking…",

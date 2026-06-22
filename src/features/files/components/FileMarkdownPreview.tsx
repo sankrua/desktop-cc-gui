@@ -15,7 +15,10 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { convertFileSrc } from "@tauri-apps/api/core";
 import Maximize2 from "lucide-react/dist/esm/icons/maximize-2";
+import { ImageFullscreenViewer } from "../../markdown/imageFullscreen";
+import { LocalImage } from "../../../components/common/LocalImage";
 import {
   MermaidFullscreenViewer,
   preloadViewerjs,
@@ -55,6 +58,8 @@ export type FileMarkdownPreviewProps = {
   value: string;
   documentKey?: string;
   className?: string;
+  workspaceId?: string | null;
+  sourceFilePath?: string | null;
   onAnnotationStart?: (lineRange: CodeAnnotationLineRange) => void;
   annotationDraft?: { lineRange: CodeAnnotationLineRange; body: string } | null;
   annotations?: CodeAnnotationSelection[];
@@ -131,6 +136,9 @@ const LARGE_MARKDOWN_BLOCK_THRESHOLD = 1_800;
 const LARGE_MARKDOWN_HEAVY_BLOCK_THRESHOLD = 60;
 const HEAVY_CODE_BLOCK_LINE_THRESHOLD = 80;
 const HEAVY_CODE_BLOCK_BYTE_THRESHOLD = 12_000;
+const FILE_MARKDOWN_IMAGE_EXTENSION_REGEX =
+  /\.(?:apng|avif|bmp|gif|jpe?g|png|svg|webp)(?:[?#].*)?$/i;
+const BROWSER_LOADABLE_IMAGE_SRC_REGEX = /^(?:https?:|data:|blob:|asset:)/i;
 const mermaidTabSessionCache = new Map<string, Record<string, MermaidBlockTab>>();
 const mermaidRenderCache = new Map<string, string>();
 const katexRenderCache = new Map<string, string | null>();
@@ -246,6 +254,100 @@ function createStableRuntimeId(prefix: string) {
       ? crypto.randomUUID()
       : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${randomId}`;
+}
+
+function safeDecodeMarkdownImageSrc(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function stripMarkdownImageDecorators(value: string) {
+  return safeDecodeMarkdownImageSrc(
+    value
+      .trim()
+      .replace(/^<(.+)>$/, "$1")
+      .replace(/^['"](.+)['"]$/, "$1")
+      .trim(),
+  );
+}
+
+function removeUrlSuffix(value: string) {
+  const suffixIndex = value.search(/[?#]/);
+  return suffixIndex >= 0 ? value.slice(0, suffixIndex) : value;
+}
+
+function dirname(path: string) {
+  const normalized = path.replace(/\\/g, "/");
+  const slashIndex = normalized.lastIndexOf("/");
+  return slashIndex >= 0 ? normalized.slice(0, slashIndex) : "";
+}
+
+function normalizePathSegments(path: string) {
+  const isAbsolute = path.startsWith("/");
+  const segments = path.replace(/\\/g, "/").split("/");
+  const resolvedSegments: string[] = [];
+  for (const segment of segments) {
+    if (!segment || segment === ".") {
+      continue;
+    }
+    if (segment === "..") {
+      if (resolvedSegments.length > 0 && resolvedSegments[resolvedSegments.length - 1] !== "..") {
+        resolvedSegments.pop();
+      } else if (!isAbsolute) {
+        resolvedSegments.push(segment);
+      }
+      continue;
+    }
+    resolvedSegments.push(segment);
+  }
+  return `${isAbsolute ? "/" : ""}${resolvedSegments.join("/")}`;
+}
+
+function resolveFileMarkdownLocalImagePath(src: string, sourceFilePath?: string | null) {
+  const cleaned = stripMarkdownImageDecorators(src);
+  if (!cleaned || BROWSER_LOADABLE_IMAGE_SRC_REGEX.test(cleaned)) {
+    return null;
+  }
+
+  const pathOnly = removeUrlSuffix(cleaned);
+  if (!pathOnly || !FILE_MARKDOWN_IMAGE_EXTENSION_REGEX.test(pathOnly)) {
+    return null;
+  }
+
+  if (pathOnly.startsWith("file://")) {
+    const withoutScheme = pathOnly.slice("file://".length);
+    const withoutHost = withoutScheme.startsWith("localhost/")
+      ? withoutScheme.slice("localhost/".length)
+      : withoutScheme;
+    return withoutHost.startsWith("/") ? withoutHost : `/${withoutHost}`;
+  }
+
+  if (
+    pathOnly.startsWith("/") ||
+    /^[A-Za-z]:[\\/]/.test(pathOnly) ||
+    /^\\\\[^\\]/.test(pathOnly)
+  ) {
+    return pathOnly;
+  }
+
+  const sourceDir = sourceFilePath ? dirname(sourceFilePath) : "";
+  return normalizePathSegments(sourceDir ? `${sourceDir}/${pathOnly}` : pathOnly);
+}
+
+function resolveFileMarkdownImageRenderSource(src: string, sourceFilePath?: string | null) {
+  const cleaned = stripMarkdownImageDecorators(src);
+  const localPath = resolveFileMarkdownLocalImagePath(cleaned, sourceFilePath);
+  if (!localPath) {
+    return { src: cleaned, localPath: null };
+  }
+  try {
+    return { src: convertFileSrc(localPath), localPath };
+  } catch {
+    return { src: cleaned, localPath };
+  }
 }
 
 function readCachedMermaidRender(cacheKey: string) {
@@ -937,6 +1039,8 @@ export function FileMarkdownPreview({
   value,
   documentKey,
   className = "fvp-file-markdown",
+  workspaceId = null,
+  sourceFilePath = null,
   onAnnotationStart,
   annotationDraft = null,
   annotations = [],
@@ -978,6 +1082,10 @@ export function FileMarkdownPreview({
   const [visibleLineLimit, setVisibleLineLimit] = useState(
     effectiveInitialLineLimit,
   );
+  const [imageFullscreen, setImageFullscreen] = useState<{
+    src: string;
+    alt: string;
+  } | null>(null);
   useEffect(() => {
     setVisibleLineLimit(effectiveInitialLineLimit);
   }, [compiledDocument.cacheKey, effectiveInitialLineLimit]);
@@ -1174,6 +1282,30 @@ export function FileMarkdownPreview({
           {children}
         </a>
       ),
+      img: ({ src, alt }) => {
+        const resolvedImage = resolveFileMarkdownImageRenderSource(
+          typeof src === "string" ? src : "",
+          sourceFilePath,
+        );
+        if (!resolvedImage.src) {
+          return null;
+        }
+        return (
+          <LocalImage
+            src={resolvedImage.src}
+            localPath={resolvedImage.localPath}
+            alt={typeof alt === "string" ? alt : "image"}
+            loading="lazy"
+            workspaceId={workspaceId}
+            onClick={() =>
+              setImageFullscreen({
+                src: resolvedImage.localPath ?? resolvedImage.src,
+                alt: alt ?? "image",
+              })
+            }
+          />
+        );
+      },
       blockquote: ({ node, children }) => renderAnnotatableBlock("blockquote", node, children, blockStartLine),
       h1: ({ node, children }) => renderAnnotatableBlock("h1", node, children, blockStartLine),
       h2: ({ node, children }) => renderAnnotatableBlock("h2", node, children, blockStartLine),
@@ -1291,7 +1423,9 @@ export function FileMarkdownPreview({
     renderAnnotatableBlock,
     renderProjection.kind,
     shouldUsePassiveCadence,
+    sourceFilePath,
     t,
+    workspaceId,
   ]);
 
   return (
@@ -1303,6 +1437,13 @@ export function FileMarkdownPreview({
       data-markdown-total-lines={compiledDocument.metrics.lineCount}
       data-testid="file-markdown-preview"
     >
+      <ImageFullscreenViewer
+        open={!!imageFullscreen}
+        src={imageFullscreen?.src ?? ""}
+        alt={imageFullscreen?.alt}
+        workspaceId={workspaceId}
+        onClose={() => setImageFullscreen(null)}
+      />
       {compiledDocument.frontmatterFields.length > 0 ? (
         <section className="fvp-file-markdown-frontmatter" data-testid="file-markdown-frontmatter">
           <div className="fvp-file-markdown-frontmatter-label">
