@@ -128,6 +128,49 @@ describe("useCodexMessageRecovery", () => {
     expect(deps.retrySendOnThread).toHaveBeenCalledTimes(1);
   });
 
+  it("freshly continues on the current Codex provider binding", async () => {
+    const deps = makeDeps({
+      providerProfileId: "provider-openai",
+    });
+    const { result } = renderHook(() => useCodexMessageRecovery());
+    const attempt = result.current.createRecoveryAttempt(deps);
+
+    let recovered = false;
+    await act(async () => {
+      recovered = await attempt.tryFreshDraftReplacement(null);
+    });
+
+    expect(recovered).toBe(true);
+    expect(deps.startThreadForMessageSend).toHaveBeenCalledWith(
+      workspace,
+      "codex",
+      { providerProfileId: "provider-openai" },
+    );
+    expect(deps.onDebug).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({
+          providerProfileId: "provider-openai",
+        }),
+      }),
+    );
+  });
+
+  it("omits blank Codex provider binding during fresh continuation", async () => {
+    const deps = makeDeps({
+      providerProfileId: "   ",
+    });
+    const { result } = renderHook(() => useCodexMessageRecovery());
+    const attempt = result.current.createRecoveryAttempt(deps);
+
+    let recovered = false;
+    await act(async () => {
+      recovered = await attempt.tryFreshDraftReplacement(null);
+    });
+
+    expect(recovered).toBe(true);
+    expect(deps.startThreadForMessageSend).toHaveBeenCalledWith(workspace, "codex");
+  });
+
   it("does not fresh-replace when local optimistic intent is absent", async () => {
     const deps = makeDeps({
       acceptedTurnResolution: unknownResolution,
@@ -174,6 +217,28 @@ describe("useCodexMessageRecovery", () => {
       threadId: "fork-thread-id",
     });
     expect(deps.retrySendOnThread).toHaveBeenCalledWith("fork-thread-id");
+  });
+
+  it("forks a stale durable thread on the current Codex provider binding", async () => {
+    const deps = makeDeps({
+      acceptedTurnResolution: acceptedResolution,
+      optimisticUserItem: null,
+      providerProfileId: "provider-openai",
+    });
+    const { result } = renderHook(() => useCodexMessageRecovery());
+    const attempt = result.current.createRecoveryAttempt(deps);
+
+    let recovered = false;
+    await act(async () => {
+      recovered = await attempt.tryForkFromMessage("refresh failed");
+    });
+
+    expect(recovered).toBe(true);
+    expect(deps.forkThreadForWorkspace).toHaveBeenCalledWith(
+      "ws-1",
+      "legacy-thread-id",
+      { activate: true, providerProfileId: "provider-openai" },
+    );
   });
 
   it("leaves verified rebound retry to useThreadMessaging", async () => {

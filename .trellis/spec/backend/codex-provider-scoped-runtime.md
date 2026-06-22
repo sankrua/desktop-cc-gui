@@ -32,6 +32,7 @@
 - Managed materialization MUST extract top-level `model`, `model_provider`, `approval_policy`, and `sandbox_mode` from `configToml` into `codex_args_override` as `-c key=value` pairs so project `.codex/config.toml` cannot silently override launch-critical settings.
 - `start_thread` MUST normalize selected provider id, ensure that provider runtime, call `thread/start`, and record `CodexProviderBinding` only after a thread id is returned.
 - Thread-bound commands MUST call `resolve_thread_provider_profile_id` from metadata before ensuring/sending to a runtime. Missing metadata MAY default to disk for legacy threads; unavailable managed provider MUST surface a provider error from provider resolution.
+- `resolve_thread_provider_profile_id` MUST prefer the catalog canonical key `codex:<workspaceId>:<threadId>` before compatibility keys such as `codex::<workspaceId>::<threadId>`, bare `threadId`, or `codex:<threadId>`. Blank `threadId` MUST NOT produce lookup keys. This prevents a stale legacy disk binding from overriding a canonical managed-provider binding.
 - Provider-selected fork defaults to parent provider when `providerProfileId` is blank. Cross-provider fork MUST validate/ensure selected provider first, then native-fork in the parent provider runtime, copy the native child history into the selected provider home when homes differ, then record child binding.
 - Stale `turn/start` recovery stays inside the same `WorkspaceSession`: classify `thread not found` / `thread_not_found`, clear foreground work, send bounded `thread/resume`, then use short bounded readiness backoff before retrying the original `turn/start`; if the retry still reports missing thread, it may retry once more and MUST clear foreground work if recovery fails.
 - Daemon adapter currently supports only disk Codex runtime. It MUST parse `providerProfileId`; `None`, blank, and `__disk__` are allowed; managed provider ids return an explicit unsupported provider-scoped runtime error.
@@ -45,6 +46,7 @@
 | 新建 managed provider 会话 | materialize provider home，启动 provider-scoped runtime，记录 managed binding | 写入全局 `~/.codex` 或复用 disk runtime |
 | provider 缺失/删除后继续发送 | 返回 provider not found / unavailable 类错误 | 静默按 `__disk__` 发送 |
 | thread metadata 缺失的旧会话 | 作为 legacy disk thread 处理 | 标记为 managed provider |
+| canonical 和 legacy binding 同时存在 | 优先使用 canonical workspace key | 因 legacy 裸 id / `codex:<threadId>` 把 managed thread 路由回 disk |
 | cross-provider fork | parent runtime native fork -> copy child history -> record selected provider binding | transcript seed turn 或隐藏/改写 parent thread |
 | `turn/start` stale thread | same runtime `thread/resume` + short bounded readiness retry | 重新路由到 disk、无限 retry 或立即把 cold-start race 当成用户恢复卡 |
 | daemon 收到 managed provider id | 显式 unsupported error | 丢弃 `providerProfileId` 后创建 disk thread |
@@ -63,6 +65,7 @@
 
 - Rust tests for `codex_runtime_key`, disk legacy key behavior, provider id sanitization, managed materialization, auth JSON validation, owner-only permissions where platform supports it, and launch-critical override extraction.
 - Rust tests for thread binding metadata read/write and catalog projection fields `providerProfileId/source/name/availability`.
+- Rust tests for provider binding lookup key order: canonical `codex:<workspaceId>:<threadId>`, legacy double-colon, bare id, `codex:<threadId>`, trimmed inputs, blank thread id.
 - Rust tests for fork response enrichment and cross-provider history copy failure diagnostics.
 - Rust tests for stale thread classifier and same-runtime retry behavior; at minimum classifier tests must cover both response error shapes and unrelated errors.
 - Rust tests for `codex-tui` version parsing and GUI control-plane classification for `codex-tui + experimentalApi`.

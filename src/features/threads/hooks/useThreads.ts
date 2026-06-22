@@ -635,6 +635,15 @@ export function useThreads({
     [state.threadsByWorkspace],
   );
 
+  const getThreadProviderProfileId = useCallback(
+    (workspaceId: string, threadId: string): string | null => {
+      const threads = threadsByWorkspaceRef.current[workspaceId] ?? [];
+      const thread = threads.find((t) => t.id === threadId);
+      return thread?.providerProfileId?.trim() || null;
+    },
+    [],
+  );
+
   const updateSharedSessionEngineSelection = useCallback(
     (
       workspaceId: string,
@@ -1845,6 +1854,7 @@ export function useThreads({
     getCustomName,
     getThreadEngine,
     getThreadKind,
+    getThreadProviderProfileId,
     markProcessing: markProcessingWithImmediateOwner,
     markReviewing,
     setActiveTurnId: setActiveTurnIdWithCompletionEmail,

@@ -63,7 +63,7 @@ describe("FileMarkdownPreviewFast", () => {
   });
 
   it("renders the rich preview when no profile is provided", async () => {
-    render(
+    await renderUnderAct(
       <FileMarkdownPreviewFast
         value="# title"
         documentKey="doc-rich-default"
@@ -71,6 +71,7 @@ describe("FileMarkdownPreviewFast", () => {
     );
     // Rich path uses the existing `data-testid="file-markdown-preview"`.
     expect(screen.queryByTestId("file-markdown-preview")).toBeTruthy();
+    await screen.findByRole("button", { name: "Show outline" });
   });
 
   it("renders parser-derived outline for the default rich preview", async () => {
