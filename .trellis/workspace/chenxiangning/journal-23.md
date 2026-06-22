@@ -1273,3 +1273,49 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 903: 修复 CI 品牌检查与文件面板测试抖动
+
+**Date**: 2026-06-22
+**Task**: 修复 CI 品牌检查与文件面板测试抖动
+**Branch**: `feature/v0.5.12`
+
+### Summary
+
+修复 doctor:win branding gate 与 FileViewPanel typing latency flaky timeout
+
+### Main Changes
+
+本次只提交 CI 修复相关的 3 个文件：
+- src/features/markdown/mermaidFullscreen/activeViewer.ts：移除 shipping surface 注释中的 legacy brand 命中词。
+- src/styles/mermaid-fullscreen.css：移除 shipping surface 注释中的 legacy brand 命中词。
+- src/features/files/components/FileViewPanel.typing-latency.test.tsx：将 active code anchor debounce 测试从真实 setTimeout/waitFor 改为在初始 render 后使用 fake timers 精确推进，避免 CI 批量调度下 5s timeout。
+
+验证：
+- npm run check:branding：通过。
+- npx vitest run src/features/files/components/FileViewPanel.typing-latency.test.tsx --reporter verbose：通过。
+- npx vitest run src/features/files/components/FileViewPanel.test.tsx src/features/files/components/FileViewPanel.typing-latency.test.tsx src/features/files/components/FileViewPanel.lazy-race.test.tsx src/features/files/contracts/fileInteractionEvidenceGate.test.ts --reporter verbose：通过。
+- npm run doctor:win：通过。
+- npm run test 跑到历史失败点 batch 59 已通过；后续在 batch 78 暴露既有 markdown fast renderer profile 测试契约漂移，未纳入本次提交。
+
+边界：未处理、未提交工作区中已有的 markdown performance 相关改动和 openspec/changes/improve-markdown-render-performance/。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ea2e348c` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
