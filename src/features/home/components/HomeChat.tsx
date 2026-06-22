@@ -66,9 +66,6 @@ function getEngineLabel(engine: EngineType): string {
 }
 
 export function HomeChat({
-  latestAgentRuns,
-  isLoadingLatestAgents,
-  onSelectThread,
   workspaces,
   selectedWorkspaceId = null,
   onSelectWorkspace,
@@ -347,26 +344,6 @@ export function HomeChat({
             <div className="home-chat-composer-host">{composerNode}</div>
           </section>
 
-          {latestAgentRuns.length > 0 || isLoadingLatestAgents ? (
-            <section className="home-chat-recent-conversations" aria-label={t("homeChat.recentConversations", "Recent conversations")}>
-              <span>{t("homeChat.recentConversations", "Recent conversations")}</span>
-              {isLoadingLatestAgents ? (
-                <span className="home-chat-recent-conversations-loading">
-                  {t("homeChat.loadingRecentAgents", "Loading recent work")}
-                </span>
-              ) : null}
-              {latestAgentRuns.map((run) => (
-                <button
-                  key={`${run.workspaceId}:${run.threadId}`}
-                  type="button"
-                  onClick={() => onSelectThread(run.workspaceId, run.threadId)}
-                >
-                  <span>{run.projectName}</span>
-                  <span>{run.message}</span>
-                </button>
-              ))}
-            </section>
-          ) : null}
         </section>
       </div>
     </div>

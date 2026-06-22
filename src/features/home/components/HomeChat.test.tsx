@@ -139,7 +139,7 @@ describe("HomeChat", () => {
     expect(markup).not.toContain("home-chat-run-detail");
   });
 
-  it("opens recent conversations from the lightweight recent list", () => {
+  it("does not render recent conversations on the home page", () => {
     const handleSelectThread = vi.fn();
 
     render(
@@ -157,9 +157,9 @@ describe("HomeChat", () => {
       />,
     );
 
-    fireEvent.click(screen.getByText("Follow up"));
-
-    expect(handleSelectThread).toHaveBeenCalledWith("ws-1", "thread-1");
+    expect(screen.queryByText("Follow up")).toBeNull();
+    expect(screen.queryByText("Recent conversations")).toBeNull();
+    expect(handleSelectThread).not.toHaveBeenCalled();
   });
 });
 
