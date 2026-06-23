@@ -1929,3 +1929,37 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 919: 修复 CI 中的 file preview outline 和 composer guard
+
+**Date**: 2026-06-24
+**Task**: 修复 CI 中的 file preview outline 和 composer guard
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+修复 bounded fast markdown outline 在异步补全时重新折叠导致 Tail Heading 无法点击的问题；记录 composer responsiveness guard 已改为结构化提取 useCallback 块。验证 lint、typecheck、相关 Vitest batch 通过。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `00ae0873` | (see git log) |
+| `b49e19dc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
