@@ -8,8 +8,8 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 911
-- **Last Active**: 2026-06-22
+- **Total Sessions**: 912
+- **Last Active**: 2026-06-23
 <!-- @@@/auto:current-status -->
 
 ---
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~1642 | Active |
+| `journal-23.md` | ~1690 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 912 | 2026-06-23 | 恢复 Codex 命令写文件变更回放 | `0eb7cb74` | `feature/v0.5.13` |
 | 911 | 2026-06-22 | 稳定流式对话目录渲染 | `17ffb6b5` | `feature/v0.5.12` |
 | 910 | 2026-06-22 | 修复 Mermaid 全屏测试竞态 | `4cc6389e` | `feature/v0.5.12` |
 | 909 | 2026-06-22 | 修复供应商模型目录与 Codex 刷新断联 | `657d1351` | `feature/v0.5.12` |

@@ -1640,3 +1640,51 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 912: 恢复 Codex 命令写文件变更回放
+
+**Date**: 2026-06-23
+**Task**: 恢复 Codex 命令写文件变更回放
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+排查 springboot-demo MiniMax Codex 会话中右侧 Git 面板显示 8 个 File Changes、但聊天幕布未显示文件变更卡片的问题。确认根因是该会话没有使用 apply_patch，而是通过 exec_command 的 shell heredoc / sed / python 命令写文件；原 conversation item 转换逻辑只会把 apply_patch commandExecution 升级为 fileChange。
+
+实现内容：
+- 在 src/utils/threadItemsFileChanges.ts 新增 inferMutatingFileChangesFromCommand，复用现有 shell tokenizer，仅从命令文本识别重定向写入、追加、删除和 narrow create token。
+- 在 src/utils/threadItems.ts 中让成功的非 apply_patch mutating commandExecution 还原为 File changes，同时保留 apply_patch 的 richer diff 路径。
+- 过滤 .diff/.patch 临时 patch artifact，避免“只写 patch 文件但未 apply”误报为源码变更。
+- 新增 OpenSpec change fix-codex-exec-command-file-change-replay，记录目标边界、风险 review、spec delta 和验收口径。
+
+验证：
+- openspec validate fix-codex-exec-command-file-change-replay --strict --no-interactive
+- npx vitest run src/utils/threadItems.test.ts src/utils/threadItemsFileChanges.test.ts src/features/threads/loaders/historyLoaders.test.ts
+- npm run typecheck
+- npm run lint
+
+风险边界：不从 command output / git status output 推断文件变更，只在 commandExecution 成功且命令文本本身包含 mutation token 时生成 File changes；复杂脚本内部写文件可能仍少报，这是有意保守取舍。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `0eb7cb74` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
