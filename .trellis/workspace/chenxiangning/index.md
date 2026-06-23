@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-23.md`
-- **Total Sessions**: 915
+- **Total Sessions**: 916
 - **Last Active**: 2026-06-23
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-23.md` | ~1810 | Active |
+| `journal-23.md` | ~1865 | Active |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
 | `journal-20.md` | ~1997 | Archived |
@@ -51,6 +51,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 916 | 2026-06-23 | 修复实时渲染调度续排卡顿 | `f9ca354f` | `feature/v0.5.13` |
 | 915 | 2026-06-23 | 阶段性收口工具调用卡顿治理 | `1b04db4f` | `feature/v0.5.13` |
 | 914 | 2026-06-23 | Fix Codex provider composer cold start binding | `ffd18f6b` | `feature/v0.5.13` |
 | 913 | 2026-06-23 | 归档已验证 OpenSpec 提案 | `bbbf3f39` | `feature/v0.5.13` |

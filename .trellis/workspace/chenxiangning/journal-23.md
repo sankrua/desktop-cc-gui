@@ -1808,3 +1808,58 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 916: 修复实时渲染调度续排卡顿
+
+**Date**: 2026-06-23
+**Task**: 修复实时渲染调度续排卡顿
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| 代码提交 | `f9ca354f fix(perf): 修复实时渲染调度续排卡顿` |
+| OpenSpec change | `2026-06-24-harden-realtime-interaction-jank-during-tool-call` |
+| 核心修复 | `useRenderScheduler` 在 budget / input-pending yield 后继续自动 drain，避免剩余队列等待新事件才续排。 |
+| 回滚修复 | `streamingScheduleTier=baseline` 改为 `budgetMs=0` / `idleTimeoutMs=0`，确保 baseline 是真正绕过 idle/budget 的 rollback path。 |
+| 测试补强 | 增加 scheduler input-pending / budget yield 续排测试；更新 baseline policy 测试；增加 baseline 不调用 `requestIdleCallback` 的 batch dispatch 测试。 |
+| 自动验证 | focused tests、realtime/backpressure/layout tests、full `npm run test`、Rust `cargo test`、typecheck、lint、doctor、OpenSpec strict validate、runtime evidence gates 等均已通过。 |
+| 未完事项 | release Tauri run、真实 UX 截图验收、cold-start firstPaint / firstInteractive marker、真实 app.emit critical integration 仍需人工或 release 环境补齐。 |
+
+**Updated Files**:
+- `src/hooks/useRenderScheduler.ts`
+- `src/hooks/useRenderScheduler.test.tsx`
+- `src/features/threads/utils/renderSchedulingPolicy.ts`
+- `src/features/threads/utils/renderSchedulingPolicy.test.ts`
+- `src/features/app/hooks/useAppServerEventBatchDispatch.test.tsx`
+- `openspec/changes/2026-06-24-harden-realtime-interaction-jank-during-tool-call/tasks.md`
+- `docs/perf/cold-start-baseline.json`
+- `docs/perf/realtime-runtime-evidence.json`
+- `docs/perf/runtime-evidence-gates.json`
+- `docs/perf/runtime-evidence-gates.md`
+- `openspec/docs/runtime-evidence-gates-2026-05-24.md`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f9ca354f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
