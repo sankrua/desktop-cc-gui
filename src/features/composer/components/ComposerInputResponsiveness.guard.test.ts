@@ -6,14 +6,41 @@ function readSource(relativePath: string): string {
   return readFileSync(resolve(process.cwd(), relativePath), "utf8");
 }
 
+function extractUseCallbackBlock(source: string, callbackName: string): string | undefined {
+  const declaration = `const ${callbackName} = useCallback(`;
+  const start = source.indexOf(declaration);
+  if (start === -1) {
+    return undefined;
+  }
+
+  const openParen = source.indexOf("(", start);
+  let depth = 0;
+
+  for (let index = openParen; index < source.length; index += 1) {
+    const char = source[index];
+
+    if (char === "(") {
+      depth += 1;
+      continue;
+    }
+
+    if (char === ")") {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(start, index + 1);
+      }
+    }
+  }
+
+  return undefined;
+}
+
 describe("composer input responsiveness guard", () => {
   it("keeps ChatInputBoxAdapter text propagation out of React transitions", () => {
     const source = readSource(
       "src/features/composer/components/ChatInputBox/ChatInputBoxAdapter.tsx",
     );
-    const handleInputBlock = source.match(
-      /const handleInput = useCallback\([\s\S]*?\n {4}\}, \[onTextChange\]\);/,
-    )?.[0];
+    const handleInputBlock = extractUseCallbackBlock(source, "handleInput");
 
     expect(handleInputBlock).toBeTruthy();
     expect(handleInputBlock).toContain("onTextChange(content, null)");
@@ -22,9 +49,7 @@ describe("composer input responsiveness guard", () => {
 
   it("keeps active thread draft updates out of React transitions", () => {
     const source = readSource("src/features/app/hooks/useComposerController.ts");
-    const handleDraftChangeBlock = source.match(
-      /const handleDraftChange = useCallback\([\s\S]*?\n {4}\[activeThreadId\],\n {2}\);/,
-    )?.[0];
+    const handleDraftChangeBlock = extractUseCallbackBlock(source, "handleDraftChange");
 
     expect(handleDraftChangeBlock).toBeTruthy();
     expect(handleDraftChangeBlock).toContain("setComposerDraftsByThread");
