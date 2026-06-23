@@ -8,7 +8,6 @@
 import {
   forwardRef,
   memo,
-  startTransition,
   useCallback,
   useEffect,
   useImperativeHandle,
@@ -1278,9 +1277,7 @@ export const ChatInputBoxAdapter = memo(forwardRef<ChatInputBoxHandle, ChatInput
 
     // Handle input from ChatInputBox -> Composer text state
     const handleInput = useCallback((content: string) => {
-      startTransition(() => {
-        onTextChange(content, null);
-      });
+      onTextChange(content, null);
     }, [onTextChange]);
 
     // Handle submit from ChatInputBox
