@@ -1737,3 +1737,41 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 914: Fix Codex provider composer cold start binding
+
+**Date**: 2026-06-23
+**Task**: Fix Codex provider composer cold start binding
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+补齐 Codex Composer 首发 managed provider 绑定和 create-session loading timeout。
+
+### Main Changes
+
+- Created OpenSpec change `fix-codex-provider-composer-cold-start-binding` with proposal, design, tasks, and spec deltas for provider-scoped launch, model selector provider origin, and send-readiness loading behavior.
+- Added optional `providerProfileId` propagation across Codex custom model storage, model options, Composer selection resolver, and Codex first-send thread creation.
+- Added safe upgrade enrichment for existing stored custom models only when provider origin is uniquely identifiable; ambiguous model ids remain unbound.
+- Added bounded client-side timeout for create-session loading so initialization stalls close the overlay and surface a diagnostic error.
+- Verified with OpenSpec strict validation, focused Vitest suites, typecheck, and lint.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ffd18f6b` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
