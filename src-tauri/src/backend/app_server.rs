@@ -20,6 +20,7 @@ use crate::backend::events::{AppServerEvent, EventSink, TerminalOutput};
 use crate::codex::collaboration_policy::strict_local_collaboration_profile_enabled;
 use crate::codex::thread_mode_state::ThreadModeState;
 use crate::runtime::{RuntimeEndedRecord, RuntimeManager};
+use crate::snapshot_throttle::SnapshotThrottle;
 use crate::types::WorkspaceEntry;
 
 #[path = "app_server_event_helpers.rs"]
@@ -504,6 +505,7 @@ pub(crate) struct WorkspaceSession {
     resume_pending_turns: Mutex<HashMap<String, ResumePendingTurnState>>,
     codex_turn_timing: Mutex<HashMap<String, CodexTurnTimingState>>,
     runtime_manager: StdMutex<Option<Arc<RuntimeManager>>>,
+    pub(crate) snapshot_throttle: Mutex<SnapshotThrottle>,
     active_turns: Mutex<HashMap<String, String>>,
     manual_shutdown_requested: AtomicBool,
     shutdown_source: StdMutex<Option<RuntimeShutdownSource>>,
@@ -1120,6 +1122,7 @@ async fn spawn_workspace_session_once<E: EventSink>(
         resume_pending_turns: Mutex::new(HashMap::new()),
         codex_turn_timing: Mutex::new(HashMap::new()),
         runtime_manager: StdMutex::new(None),
+        snapshot_throttle: Mutex::new(SnapshotThrottle::default()),
         active_turns: Mutex::new(HashMap::new()),
         manual_shutdown_requested: AtomicBool::new(false),
         shutdown_source: StdMutex::new(None),
@@ -1258,6 +1261,7 @@ pub(crate) async fn make_test_workspace_session(id: &str) -> Arc<WorkspaceSessio
         resume_pending_turns: Mutex::new(HashMap::new()),
         codex_turn_timing: Mutex::new(HashMap::new()),
         runtime_manager: StdMutex::new(None),
+        snapshot_throttle: Mutex::new(SnapshotThrottle::default()),
         active_turns: Mutex::new(HashMap::new()),
         manual_shutdown_requested: AtomicBool::new(false),
         shutdown_source: StdMutex::new(None),

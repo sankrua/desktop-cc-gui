@@ -47,6 +47,7 @@ describe("OtherSection performance diagnostics", () => {
   it("clears known realtime performance overrides and asks for reload", () => {
     window.localStorage.setItem("ccgui.perf.realtimeBatching", "0");
     window.localStorage.setItem("ccgui.perf.backgroundRenderGating", "off");
+    window.localStorage.setItem("ccgui.perf.streamingScheduleTier", "aggressive");
     window.localStorage.setItem("ccgui.other.flag", "kept");
 
     renderOtherSection();
@@ -59,10 +60,27 @@ describe("OtherSection performance diagnostics", () => {
 
     expect(window.localStorage.getItem("ccgui.perf.realtimeBatching")).toBeNull();
     expect(window.localStorage.getItem("ccgui.perf.backgroundRenderGating")).toBeNull();
+    expect(window.localStorage.getItem("ccgui.perf.streamingScheduleTier")).toBeNull();
     expect(window.localStorage.getItem("ccgui.other.flag")).toBe("kept");
     expect(
-      screen.getByText("settings.performanceFlagsResetDone:2"),
+      screen.getByText("settings.performanceFlagsResetDone:3"),
     ).toBeTruthy();
+  });
+
+  it("defaults streaming schedule tier to guarded and persists changes", () => {
+    renderOtherSection();
+
+    const select = screen.getByRole("combobox", {
+      name: "settings.streamingScheduleTierTitle",
+    }) as HTMLSelectElement;
+    expect(select.value).toBe("guarded");
+
+    fireEvent.change(select, { target: { value: "baseline" } });
+
+    expect(select.value).toBe("baseline");
+    expect(window.localStorage.getItem("ccgui.perf.streamingScheduleTier")).toBe(
+      "baseline",
+    );
   });
 
   it("reports default state when there are no overrides to clear", () => {

@@ -11,6 +11,7 @@ import {
   type ProfilerOnRenderCallback,
   type ReactNode,
 } from "react";
+import { useDeferredFrameAccumulator } from "./useDeferredFrameAccumulator";
 import { useTranslation } from "react-i18next";
 import { Sidebar } from "../../app/components/Sidebar";
 import { HomeChat } from "../../home/components/HomeChat";
@@ -415,8 +416,17 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
   );
   const deferredComposerLiveInputs = useDeferredValue(composerLiveInputs);
   const backgroundRenderGatingEnabled = isBackgroundRenderGatingEnabled();
+  // 2026-06-24-harden-realtime-interaction-jank-during-tool-call §7.1
+  // Accumulate background items across 3 rAF frames before exposing them to
+  // non-active threads. Active thread switching (via `resetKey`) drains
+  // immediately so the new active thread renders without a multi-frame lag.
+  const threadItemsAccumulator = useDeferredFrameAccumulator<typeof options.threadItemsByThread>({
+    value: options.threadItemsByThread,
+    framesToAccumulate: 3,
+    resetKey: options.activeThreadId ?? null,
+  });
   const deferredThreadItemsByThreadValue = useDeferredValue(
-    options.threadItemsByThread,
+    threadItemsAccumulator.committed,
   );
   const deferredThreadStatusByIdValue = useDeferredValue(
     options.threadStatusById,

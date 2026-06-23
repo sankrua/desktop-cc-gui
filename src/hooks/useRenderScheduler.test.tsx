@@ -1,0 +1,105 @@
+// @vitest-environment jsdom
+import { act, renderHook } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { useRenderScheduler } from "./useRenderScheduler";
+
+describe("useRenderScheduler", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it("schedules chunks via setTimeout fallback in test env and continues while run() returns true", () => {
+    const { result } = renderHook(() =>
+      useRenderScheduler({ budgetMs: 0, idleTimeoutMs: 0 }),
+    );
+
+    let calls = 0;
+    const run = () => {
+      calls += 1;
+      return calls < 3;
+    };
+
+    act(() => {
+      result.current.scheduleChunk(run);
+    });
+    // First chunk runs on the next macrotask.
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(calls).toBe(1);
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(calls).toBe(2);
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(calls).toBe(3);
+    // No more pending work after run() returned false.
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(calls).toBe(3);
+
+    const instr = result.current.__getInstrumentationForTests();
+    expect(instr.chunkCount).toBe(3);
+    expect(instr.idleCallbackCount).toBe(0);
+    expect(instr.timeoutFallbackCount).toBeGreaterThan(0);
+  });
+
+  it("yields on input-pending when isInputPending returns true", () => {
+    const onYield = vi.fn();
+    const { result } = renderHook(() =>
+      useRenderScheduler({
+        budgetMs: 0,
+        idleTimeoutMs: 0,
+        isInputPending: () => true,
+        onYield,
+      }),
+    );
+
+    act(() => {
+      result.current.scheduleChunk(() => true);
+    });
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+
+    expect(onYield).toHaveBeenCalledWith("input-pending");
+    const instr = result.current.__getInstrumentationForTests();
+    expect(instr.inputPendingYieldCount).toBe(1);
+  });
+
+  it("cancels pending callbacks on unmount and does not run the chunk", () => {
+    const onChunk = vi.fn();
+    const { result, unmount } = renderHook(() =>
+      useRenderScheduler({ budgetMs: 0, idleTimeoutMs: 0, onChunk }),
+    );
+
+    act(() => {
+      result.current.scheduleChunk(() => true);
+    });
+    unmount();
+    act(() => {
+      vi.runOnlyPendingTimers();
+    });
+    expect(onChunk).not.toHaveBeenCalled();
+  });
+
+  it("flush() runs the chunk synchronously without queuing a callback", () => {
+    const onChunk = vi.fn();
+    const { result } = renderHook(() =>
+      useRenderScheduler({ budgetMs: 0, idleTimeoutMs: 0, onChunk }),
+    );
+
+    act(() => {
+      result.current.flush(() => false);
+    });
+    expect(onChunk).toHaveBeenCalledTimes(1);
+  });
+});

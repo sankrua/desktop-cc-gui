@@ -872,6 +872,16 @@ const zhPart1 = {
     performanceDiagnosticsTitle: "性能诊断",
     performanceDiagnosticsDescription:
       "当并行对话表现异常卡顿时，重置本机 realtime performance 覆盖项。",
+    streamingScheduleTierTitle: "实时流调度档位",
+    streamingScheduleTierDescription:
+      "控制工具调用密集 turn 的 realtime event pacing。",
+    streamingScheduleTierRestartHint:
+      "新 turn 会使用当前档位。如需验证模块级缓存，请重载窗口。",
+    streamingScheduleTier: {
+      baseline: "Baseline",
+      guarded: "Guarded",
+      aggressive: "Aggressive",
+    },
     performanceFlagsResetTitle: "重置性能开关",
     performanceFlagsResetDescription:
       "清除已知 ccgui.perf.* localStorage 覆盖项。模块级读取缓存需要重载窗口后刷新。",

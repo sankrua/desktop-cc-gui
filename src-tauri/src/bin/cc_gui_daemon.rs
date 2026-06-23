@@ -42,6 +42,8 @@ mod file_policy;
 mod git_utils;
 #[path = "cc_gui_daemon/rpc_params.rs"]
 mod rpc_params;
+#[path = "../snapshot_throttle.rs"]
+mod snapshot_throttle;
 // `local_usage.rs` is shared with the desktop Tauri app and references
 // `crate::state::AppState` in command wrappers. The daemon only reuses the
 // workspace-backed filesystem helpers, so a minimal stub keeps the shared

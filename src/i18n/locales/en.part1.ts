@@ -785,6 +785,16 @@ const enPart1 = {
     performanceDiagnosticsTitle: "Performance diagnostics",
     performanceDiagnosticsDescription:
       "Reset local realtime performance overrides when parallel conversations behave worse than expected.",
+    streamingScheduleTierTitle: "Streaming schedule tier",
+    streamingScheduleTierDescription:
+      "Controls realtime event pacing for tool-heavy turns.",
+    streamingScheduleTierRestartHint:
+      "New turns use the selected tier. Reload the window when verifying module-level caches.",
+    streamingScheduleTier: {
+      baseline: "Baseline",
+      guarded: "Guarded",
+      aggressive: "Aggressive",
+    },
     performanceFlagsResetTitle: "Reset performance flags",
     performanceFlagsResetDescription:
       "Clears known ccgui.perf.* localStorage overrides. A reload is required for module-level readers.",

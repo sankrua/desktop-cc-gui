@@ -3,16 +3,24 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AppServerEvent } from "../../../types";
-import { subscribeAppServerEvents } from "../../../services/events";
+import {
+  subscribeAppServerEvents,
+  subscribeRawAppServerEvents,
+} from "../../../services/events";
 import {
   CANONICAL_REALTIME_FIXTURES,
   LEGACY_REALTIME_ALIAS_FIXTURES,
 } from "../../threads/contracts/realtimeEventContract";
 import { useAppServerEvents } from "./useAppServerEvents";
 
-vi.mock("../../../services/events", () => ({
-  subscribeAppServerEvents: vi.fn(),
-}));
+vi.mock("../../../services/events", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../../../services/events")>();
+  return {
+    ...actual,
+    subscribeAppServerEvents: vi.fn(),
+    subscribeRawAppServerEvents: vi.fn(),
+  };
+});
 
 type Handlers = Parameters<typeof useAppServerEvents>[0];
 type HookOptions = Parameters<typeof useAppServerEvents>[1];
@@ -35,6 +43,10 @@ beforeEach(() => {
   listener = null;
   unlisten.mockReset();
   vi.mocked(subscribeAppServerEvents).mockImplementation((cb) => {
+    listener = cb;
+    return unlisten;
+  });
+  vi.mocked(subscribeRawAppServerEvents).mockImplementation((cb) => {
     listener = cb;
     return unlisten;
   });
