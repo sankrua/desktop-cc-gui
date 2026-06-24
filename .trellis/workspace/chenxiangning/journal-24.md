@@ -85,3 +85,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 922: 修复会话选择迁移重复写入
+
+**Date**: 2026-06-24
+**Task**: 修复会话选择迁移重复写入
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+修复 pending thread finalized 后 composer/agent 选择迁移重复写入，避免 React maximum update depth 循环；补充对应 hook 回归测试。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `acb8bc4e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
