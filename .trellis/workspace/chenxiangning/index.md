@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-24.md`
-- **Total Sessions**: 920
+- **Total Sessions**: 921
 - **Last Active**: 2026-06-24
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-24.md` | ~46 | Active |
+| `journal-24.md` | ~87 | Active |
 | `journal-23.md` | ~1965 | Archived |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
@@ -52,6 +52,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 921 | 2026-06-24 | 提交幕布 File changes 误判修复 | `3112e90f` | `feature/v0.5.13` |
 | 920 | 2026-06-24 | 修复幕布 File changes 误判输出捕获 | - | `feature/v0.5.13` |
 | 919 | 2026-06-24 | 修复 CI 中的 file preview outline 和 composer guard | `00ae0873`, `b49e19dc` | `feature/v0.5.13` |
 | 918 | 2026-06-23 | 修复 fast Markdown 标注入口 | `f3ceddc4` | `feature/v0.5.13` |

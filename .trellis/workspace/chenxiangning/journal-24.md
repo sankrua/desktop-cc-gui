@@ -44,3 +44,44 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 921: 提交幕布 File changes 误判修复
+
+**Date**: 2026-06-24
+**Task**: 提交幕布 File changes 误判修复
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+单独提交幕布 File changes 误判修复，并补充验证结果。
+
+### Main Changes
+
+| 项目 | 内容 |
+|---|---|
+| Code commit | `3112e90f fix(messages): 修复文件变更幕布误判` |
+| 变更范围 | 仅提交 `src/utils/threadItemsFileChanges.ts`、`src/utils/threadItemsFileChanges.test.ts`、`src/utils/threadItems.test.ts`。 |
+| 修复内容 | 收窄 `commandExecution` 的 shell redirection 文件变更推断，避免 help capture、grep/head、rg/read 类输出捕获或探测命令被误展示为 `File changes`。 |
+| 保留行为 | `apply_patch`、明确 heredoc/内容写入命令仍可生成 file mutation；输出捕获命令保持普通 `commandExecution`。 |
+| 验证 | `npx vitest run src/utils/threadItemsFileChanges.test.ts src/utils/threadItems.test.ts` 通过，118 tests；`npm run typecheck` 通过。 |
+| 工作区 | 仍存在与本次提交无关的 app-shell/OpenSpec 未提交改动，未纳入本次 commit。 |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3112e90f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
