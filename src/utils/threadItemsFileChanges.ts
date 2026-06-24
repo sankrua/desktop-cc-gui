@@ -93,12 +93,32 @@ function looksLikeFilePathToken(path: string) {
     normalized.includes("\\") ||
     normalized.startsWith("./") ||
     normalized.startsWith("../") ||
-    /^[A-Za-z]:[\\/]/.test(normalized) ||
-    normalized.includes(".")
+    /^[A-Za-z]:[\\/]/.test(normalized)
   ) {
     return true;
   }
-  return false;
+  return looksLikeRootFileNameToken(normalized);
+}
+
+function looksLikeRootFileNameToken(token: string) {
+  if (!token.includes(".")) {
+    return false;
+  }
+  if (token.startsWith(".") || token.endsWith(".")) {
+    return false;
+  }
+  if (/[\s"'`{}()[\]<>=:;]/.test(token)) {
+    return false;
+  }
+  if (/^\.+$/.test(token)) {
+    return false;
+  }
+  const extension = token.slice(token.lastIndexOf(".") + 1);
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]{0,15}$/.test(extension)) {
+    return false;
+  }
+  const basename = token.slice(0, token.lastIndexOf("."));
+  return /[A-Za-z0-9]/.test(basename);
 }
 
 function isStructuredFieldPathToken(token: string) {

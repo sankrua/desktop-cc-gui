@@ -188,6 +188,23 @@ describe("threadItemsFileChanges.mergeToolChanges", () => {
     expect(inferred).toEqual([]);
   });
 
+  it("does not treat status-prefixed code fragments as file changes", () => {
+    const inferred = inferFileChangesFromPayload(
+      [
+        "(A) ... }",
+        "(A) { engine::gemini_history::delete_gemini_session }",
+        '(A) { engine::commands::opencode_delete_session }',
+        '(A) "Gemini CLI".to_string',
+        "(A) { ... }",
+        "(A) detect_gemini_status(None).await.inspect",
+        "(A) detect_opencode_status(None).await.inspect",
+        '(A) entry.type === "opencode"',
+      ].join("\n"),
+    );
+
+    expect(inferred).toEqual([]);
+  });
+
   it("keeps actual file paths when payload also contains dotted field names", () => {
     const inferred = inferFileChangesFromPayload([
       {
