@@ -13,12 +13,19 @@ The system MUST treat Codex provider selection as a new-conversation launch deci
 - **THEN** the provider selector MUST include a default option representing the current disk `.codex` / `CODEX_HOME` configuration
 - **AND** that option MUST preserve the existing Codex launch behavior when selected
 
-#### Scenario: managed providers are available as launch options
+#### Scenario: disk create-session auto-recovers before surfacing manual reconnect
 
-- **WHEN** the client has stored Codex managed provider records
-- **THEN** the provider selector MUST show those providers as selectable launch options
-- **AND** selecting a managed provider MUST apply only to the conversation being created
-- **AND** it MUST NOT change a global active Codex provider for existing conversations
+- **WHEN** a new Codex conversation is created with no provider profile id or with `__disk__`
+- **AND** the first create-session attempt fails because the managed runtime is recovering or because the just-started thread fails readiness confirmation
+- **THEN** the client MUST automatically ensure the disk Codex runtime is ready and retry creation once
+- **AND** it MUST only show the manual reconnect/retry notice if the retry still fails
+
+#### Scenario: managed provider create-session does not use disk auto-recovery
+
+- **WHEN** a new Codex conversation is created with a managed provider profile id
+- **AND** the first create-session attempt fails
+- **THEN** the client MUST NOT run default disk `ensureRuntimeReady` as a recovery shortcut for that managed provider
+- **AND** it MUST preserve the existing provider-scoped creation error behavior
 
 #### Scenario: provider selection is persisted with the created conversation
 
@@ -128,6 +135,20 @@ The system MUST isolate Codex runtime sessions by workspace and provider profile
 - **AND** blank `threadId` MUST NOT produce a metadata lookup key
 - **AND** missing metadata MAY default to the disk provider only for legacy compatibility
 - **AND** an existing non-disk canonical binding MUST NOT be bypassed by a legacy disk binding.
+
+#### Scenario: disk thread start confirms readiness without changing managed providers
+
+- **WHEN** backend `thread/start` returns a thread id for the disk provider profile
+- **THEN** the backend MUST perform a bounded readiness confirmation against the same disk runtime before returning success to the caller
+- **AND** readiness confirmation failure MUST be surfaced as a create-session failure rather than marking the UI thread as loaded
+- **AND** the same confirmation MUST NOT be applied to managed provider `thread/start` calls unless a future spec explicitly enables it
+
+#### Scenario: app-server capability probe reuses successful evidence safely
+
+- **WHEN** Codex app-server capability has recently been successfully probed for the same resolved binary, PATH environment, codex args, and launch options
+- **THEN** subsequent runtime starts MAY reuse that successful probe evidence within a bounded TTL
+- **AND** failed probes MUST NOT be cached as blocking evidence
+- **AND** probe reuse MUST NOT collapse distinct managed provider launch args or wrapper launch modes
 
 ### Requirement: Codex Supplier Management MUST Not Expose Misleading Global Enablement
 
