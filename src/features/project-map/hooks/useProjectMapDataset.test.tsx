@@ -89,6 +89,29 @@ describe("useProjectMapDataset", () => {
     expect(runProjectMapGenerationWorker).not.toHaveBeenCalled();
   });
 
+  it("keeps the disabled cold-start empty dataset reference stable on reload", async () => {
+    const spring = workspace({
+      id: "ws-spring",
+      name: "springboot-demo",
+      path: "/repo/springboot-demo",
+    });
+
+    const { result } = renderHook(() =>
+      useProjectMapDataset(spring, { enabled: false }),
+    );
+    const coldStartDataset = result.current.dataset;
+
+    await act(async () => {
+      await result.current.reload();
+    });
+
+    expect(result.current.status).toBe("empty");
+    expect(result.current.dataset).toBe(coldStartDataset);
+    expect(readProjectMapDataset).not.toHaveBeenCalled();
+    expect(projectMemoryList).not.toHaveBeenCalled();
+    expect(runProjectMapGenerationWorker).not.toHaveBeenCalled();
+  });
+
   it("loads the dataset when a previously disabled surface becomes active", async () => {
     const spring = workspace({
       id: "ws-spring",

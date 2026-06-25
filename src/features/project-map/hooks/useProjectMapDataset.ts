@@ -56,6 +56,24 @@ const activeProjectMapWorkerKeys = new Set<string>();
 
 type ProjectMapDatasetStatus = "loading" | "empty" | "persisted" | "error";
 
+function isEmptyDatasetForStorageKey(dataset: ProjectMapDataset, storageKey: string): boolean {
+  return (
+    dataset.manifest.storageKey === storageKey &&
+    dataset.nodes.length === 0 &&
+    dataset.runs.length === 0 &&
+    (dataset.relations?.length ?? 0) === 0 &&
+    (dataset.candidates?.length ?? 0) === 0 &&
+    (dataset.evidenceRecords?.length ?? 0) === 0 &&
+    (dataset.diagramDocuments?.length ?? 0) === 0
+  );
+}
+
+function isEmptyStorageDirByLocation(
+  storageDirByLocation: Record<ProjectMapStorageLocation, string | null>,
+): boolean {
+  return storageDirByLocation.global === null && storageDirByLocation.project === null;
+}
+
 export type ProjectMapGenerationDefaults = {
   engine?: EngineType | null;
   model?: string | null;
@@ -687,6 +705,26 @@ export function useProjectMapDataset(
   const generationDefaults = options.generationDefaults ?? null;
   const preferredLanguage = options.preferredLanguage ?? "zh";
 
+  const resetToEmptyState = useCallback(() => {
+    setDataset((current) =>
+      isEmptyDatasetForStorageKey(current, expectedStorageKey)
+        ? current
+        : createEmptyProjectMapDataset({ identity, storageKey: expectedStorageKey }),
+    );
+    setStatus((current) => (current === "empty" ? current : "empty"));
+    setStorageDir((current) => (current === null ? current : null));
+    setStorageDirByLocation((current) =>
+      isEmptyStorageDirByLocation(current) ? current : { global: null, project: null },
+    );
+    setActiveReadLocation((current) =>
+      current === DEFAULT_STORAGE_LOCATION ? current : DEFAULT_STORAGE_LOCATION,
+    );
+    setError((current) => (current === null ? current : null));
+    setPendingRequest((current) => (current === null ? current : null));
+    setRelationshipContextPack((current) => (current === null ? current : null));
+    setRelationshipStaleSummary((current) => (current === null ? current : null));
+  }, [expectedStorageKey, identity]);
+
   const persistDataset = useCallback(
     async (
       nextDataset: ProjectMapDataset,
@@ -712,8 +750,8 @@ export function useProjectMapDataset(
 
   const loadRelationshipContextFromLocation = useCallback(async (readLocation: ProjectMapStorageLocation) => {
     if (!enabled || !workspaceId) {
-      setRelationshipContextPack(null);
-      setRelationshipStaleSummary(null);
+      setRelationshipContextPack((current) => (current === null ? current : null));
+      setRelationshipStaleSummary((current) => (current === null ? current : null));
       return;
     }
     try {
@@ -733,15 +771,7 @@ export function useProjectMapDataset(
     const loadSequence = loadSequenceRef.current + 1;
     loadSequenceRef.current = loadSequence;
     if (!enabled || !workspaceId) {
-      setDataset(createEmptyProjectMapDataset({ identity, storageKey: expectedStorageKey }));
-      setStatus("empty");
-      setStorageDir(null);
-      setStorageDirByLocation({ global: null, project: null });
-      setActiveReadLocation(DEFAULT_STORAGE_LOCATION);
-      setError(null);
-      setPendingRequest(null);
-      setRelationshipContextPack(null);
-      setRelationshipStaleSummary(null);
+      resetToEmptyState();
       return;
     }
 
@@ -804,7 +834,7 @@ export function useProjectMapDataset(
       setRelationshipContextPack(null);
       setRelationshipStaleSummary(null);
     }
-  }, [enabled, expectedStorageKey, identity, loadRelationshipContextFromLocation, workspaceId]);
+  }, [enabled, expectedStorageKey, identity, loadRelationshipContextFromLocation, resetToEmptyState, workspaceId]);
 
   const reload = useCallback(async () => {
     await loadDatasetFromLocation(activeReadLocation);
