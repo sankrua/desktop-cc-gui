@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-24.md`
-- **Total Sessions**: 929
+- **Total Sessions**: 930
 - **Last Active**: 2026-06-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-24.md` | ~395 | Active |
+| `journal-24.md` | ~428 | Active |
 | `journal-23.md` | ~1965 | Archived |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
@@ -52,6 +52,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 930 | 2026-06-25 | 闭环实时幕布交互隔离 | `b2f00f40` | `feature/v0.5.13` |
 | 929 | 2026-06-25 | 实时幕布与控制区隔离 Phase 1 | `823c657f` | `feature/v0.5.13` |
 | 928 | 2026-06-25 | 稳定实时对话渲染与 Codex 创建 | `982f6ed0` | `feature/v0.5.13` |
 | 927 | 2026-06-25 | 归档实时交互卡顿补强 | `6e2c663d` | `feature/v0.5.13` |

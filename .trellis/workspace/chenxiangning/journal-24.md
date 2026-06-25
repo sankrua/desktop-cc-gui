@@ -393,3 +393,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 930: 闭环实时幕布交互隔离
+
+**Date**: 2026-06-25
+**Task**: 闭环实时幕布交互隔离
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+完成 isolate-conversation-canvas-runtime：新增 interaction/canvas/background lane policy；realtime dispatch 进入 bounded canvas lane；收敛 streaming timeline overscan 并钳制 virtual row placeholder，防止空白幕布块被撑大；补 scheduler cleanup diagnostics 测试与 interaction guard；通过 lint/typecheck/runtime contracts/large-files/heavy-test-noise/OpenSpec strict validate。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `b2f00f40` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
