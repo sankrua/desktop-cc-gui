@@ -534,3 +534,50 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 934: Externalize active canvas state selectors
+
+**Date**: 2026-06-25
+**Task**: Externalize active canvas state selectors
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| Frontend | Added feature-local active canvas external store with selector/comparator subscriptions, plus Composer and StatusPanel selector-backed node boundaries. |
+| Layout | Kept `useLayoutNodes` public composition surface while moving heavy active canvas state consumption out of shell-facing props. |
+| OpenSpec | Archived `externalize-active-canvas-state-selectors`, `isolate-conversation-canvas-runtime`, and `shell-first-lazy-runtime-isolation`; synced related main specs. |
+| Trellis | Archived completed task `06-25-externalize-active-canvas-state-selectors`. |
+
+**Verification**:
+- [OK] `openspec validate externalize-active-canvas-state-selectors --strict --no-interactive`
+- [OK] `openspec archive externalize-active-canvas-state-selectors -y`
+- [OK] `openspec validate --specs --strict --no-interactive`
+- [OK] `npm exec vitest run src/features/layout/hooks/activeCanvasStore.test.tsx src/features/layout/hooks/useLayoutNodes.client-ui-visibility.test.tsx src/features/status-panel/components/StatusPanel.test.tsx src/features/composer/components/Composer.status-panel-toggle.test.tsx`
+- [OK] `npm run typecheck`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `40c49757` | (see git log) |
+| `774d1354` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

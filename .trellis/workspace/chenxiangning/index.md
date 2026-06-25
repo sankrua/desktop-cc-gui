@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-24.md`
-- **Total Sessions**: 933
+- **Total Sessions**: 934
 - **Last Active**: 2026-06-25
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-24.md` | ~536 | Active |
+| `journal-24.md` | ~583 | Active |
 | `journal-23.md` | ~1965 | Archived |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
@@ -52,6 +52,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 934 | 2026-06-25 | Externalize active canvas state selectors | `40c49757`, `774d1354` | `feature/v0.5.13` |
 | 933 | 2026-06-25 | 降级临时 runtime 重连提示 | `809e8234` | `feature/v0.5.13` |
 | 932 | 2026-06-25 | 修复 ProjectMap 冷启动空态循环 | `5dabbcc6` | `feature/v0.5.13` |
 | 931 | 2026-06-25 | Shell-first lazy runtime isolation | `4c8d3191` | `feature/v0.5.13` |
