@@ -581,3 +581,46 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 935: Archive Codex disk session start readiness
+
+**Date**: 2026-06-25
+**Task**: Archive Codex disk session start readiness
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| OpenSpec | Archived `harden-codex-disk-session-start-readiness` into `openspec/changes/archive/2026-06-25-harden-codex-disk-session-start-readiness/`. |
+| Specs | Synced `codex-provider-scoped-session-launch` main spec with disk auto-recovery, disk ready confirmation, managed-provider isolation, and app-server probe cache requirements. |
+| Scope | No code changes in this closeout commit; only OpenSpec archive movement and main spec sync. |
+
+**Verification**:
+- [OK] `openspec validate harden-codex-disk-session-start-readiness --strict --no-interactive`
+- [OK] `openspec archive harden-codex-disk-session-start-readiness -y`
+- [OK] `openspec validate --specs --strict --no-interactive`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `3e485b63` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
