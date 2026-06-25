@@ -733,3 +733,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 939: 删除用户气泡吸顶条
+
+**Date**: 2026-06-26
+**Task**: 删除用户气泡吸顶条
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+删除用户气泡吸顶条设置项、消息时间线 sticky header 渲染与样式，保留普通用户消息行；同步并归档 OpenSpec 变更 remove-sticky-user-bubble-curtain-bar。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `897b954e` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

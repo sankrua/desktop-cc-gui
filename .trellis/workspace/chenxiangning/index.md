@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-24.md`
-- **Total Sessions**: 938
+- **Total Sessions**: 939
 - **Last Active**: 2026-06-26
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-24.md` | ~735 | Active |
+| `journal-24.md` | ~768 | Active |
 | `journal-23.md` | ~1965 | Archived |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
@@ -52,6 +52,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 939 | 2026-06-26 | 删除用户气泡吸顶条 | `897b954e` | `feature/v0.5.13` |
 | 938 | 2026-06-26 | 补充设置页性能诊断说明 | `52ca79cc` | `feature/v0.5.13` |
 | 937 | 2026-06-26 | Fix history canvas lightweight spacing & expanded-history layout | `40398107` | `feature/v0.5.13` |
 | 936 | 2026-06-25 | feat(messages): 去除对话幕布重复复制入口 | `34cf3ac6` | `feature/v0.5.13` |
