@@ -1117,12 +1117,23 @@ impl DaemonState {
 
                 let session_clone = session.clone();
                 let turn_id_clone = turn_id.clone();
+                let settings_for_send = settings.clone();
                 tokio::spawn(async move {
                     let send_result = if has_images {
-                        session_clone.send_message(params, &turn_id_clone).await
+                        session_clone
+                            .send_message_with_app_settings(
+                                params,
+                                &turn_id_clone,
+                                Some(&settings_for_send),
+                            )
+                            .await
                     } else {
                         session_clone
-                            .send_message_with_auto_compact_retry(params, &turn_id_clone)
+                            .send_message_with_auto_compact_retry_with_app_settings(
+                                params,
+                                &turn_id_clone,
+                                Some(&settings_for_send),
+                            )
                             .await
                     };
                     if let Err(error) = send_result {
@@ -1532,6 +1543,12 @@ impl DaemonState {
         let active_engine = self.get_active_engine().await;
         let effective_engine = engine.unwrap_or(active_engine);
         let normalized_custom_spec_root = normalize_custom_spec_root(custom_spec_root);
+        // Snapshot AppSettings so the sync Claude path can build the
+        // --append-system-prompt body for the always-on curated skills
+        // (see `build_curated_skill_append_args`). Without this snapshot
+        // the sync path would silently drop the body even when the user
+        // has enabled a curated skill in Settings.
+        let settings = self.app_settings.lock().await.clone();
 
         match effective_engine {
             engine::EngineType::Codex => Err(
@@ -1594,10 +1611,16 @@ impl DaemonState {
                 let turn_id = format!("claude-sync-{}", uuid::Uuid::new_v4());
                 let response = tokio::time::timeout(std::time::Duration::from_secs(900), async {
                     if has_images {
-                        session.send_message(params, &turn_id).await
+                        session
+                            .send_message_with_app_settings(params, &turn_id, Some(&settings))
+                            .await
                     } else {
                         session
-                            .send_message_with_auto_compact_retry(params, &turn_id)
+                            .send_message_with_auto_compact_retry_with_app_settings(
+                                params,
+                                &turn_id,
+                                Some(&settings),
+                            )
                             .await
                     }
                 })
@@ -2621,11 +2644,13 @@ impl DaemonState {
         custom_skill_roots: Vec<String>,
     ) -> Result<Value, String> {
         let workspaces = self.workspaces.lock().await;
-        match skills::skills_list_local_core(
+        let app_settings_snapshot = self.app_settings.lock().await.clone();
+        match skills::skills_list_local_core_with_settings(
             &self.settings_path,
             &workspaces,
             &workspace_id,
             custom_skill_roots.clone(),
+            Some(&app_settings_snapshot),
         )
         .await
         {

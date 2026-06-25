@@ -26,6 +26,7 @@ import { ChatInputBoxFooter } from './ChatInputBoxFooter.js';
 import { ContextBar } from './ContextBar.js';
 import { ResizeHandles } from './ResizeHandles.js';
 import { TokenIndicator } from './TokenIndicator.js';
+import { CuratedSkillIndicator } from '../../../curated-skills';
 import {
   useCompletionDropdown,
   useCompletionTriggerDetection,
@@ -263,6 +264,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
       sendReadiness,
       onJumpToRequest,
       onToggleContextSources,
+      onOpenSkillsSettings,
       contextSourcesExpanded,
       onRemoveFromQueue,
       onFuseFromQueue,
@@ -1442,6 +1444,9 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
     );
     const shouldShowMainLegacyTokenIndicator = !(currentProvider === 'codex' && contextDualViewEnabled);
     const shouldShowContextToolbarSurface = Boolean(showHeader);
+    const curatedSkillIndicator = (
+      <CuratedSkillIndicator onOpenSkillsSettings={onOpenSkillsSettings} />
+    );
     const mainToolbarSurface = (
       <>
         {shouldShowMainLegacyTokenIndicator ? (
@@ -1553,6 +1558,7 @@ export const ChatInputBox = memo(forwardRef<ChatInputBoxHandle, ChatInputBoxProp
                   : undefined
               }
               isModelConfigRefreshing={isModelConfigRefreshing}
+              rightAccessory={curatedSkillIndicator}
               onRemoveFromQueue={onRemoveFromQueue}
               onFuseFromQueue={onFuseFromQueue}
               canFuseFromQueue={canFuseFromQueue}

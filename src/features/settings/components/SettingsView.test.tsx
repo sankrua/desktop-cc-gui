@@ -66,6 +66,19 @@ vi.mock("./McpSection", () => ({
   ),
 }));
 
+vi.mock("../../curated-skills/components/CuratedSection", () => ({
+  CuratedSection: () => <div data-testid="curated-section-stub">Mock Curated Section</div>,
+}));
+
+vi.mock("../../curated-skills/hooks/useCuratedSkills", () => ({
+  useCuratedSkills: () => ({
+    skills: [],
+    loading: false,
+    error: null,
+    refresh: () => Promise.resolve(),
+  }),
+}));
+
 vi.mock("./SkillsSection", () => ({
   SkillsSection: (props: {
     embedded?: boolean;

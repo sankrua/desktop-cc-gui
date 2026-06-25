@@ -43,6 +43,31 @@ const zhPart1 = {
     markdownMermaidFullscreenHint: "放大查看图表",
     markdownImageFullscreen: "全屏",
     markdownImageFullscreenHint: "放大查看图片",
+    // Curated skill UI (V0.5.14+). Bundled = shipped with the desktop
+    // client, version-pinned, no network. Distinct from user-installed
+    // global/project skills rendered by `SkillsSection`.
+    curatedLoading: "正在加载 curated skills…",
+    curatedError: "无法加载 curated skills。",
+    curatedSubtitle: "客户端内置、版本固定,随桌面端一起发布。无需联网。",
+    curatedBundledBadge: "内置",
+    curatedCategoryCodeStyle: "代码风格",
+    curatedCategoryUiDesign: "界面设计",
+    curatedCategoryReview: "代码审查",
+    curatedCategoryDebug: "调试",
+    curatedTokenEstimate: "{{count}} tokens",
+    curatedAddSkill: "添加 curated skill",
+    // Composer-side indicator that surfaces which curated skills are
+    // currently always-on. See CuratedSkillIndicator.tsx.
+    curatedActiveLabel: "已生效",
+    curatedActiveTotal: "{{count}} 个 · {{tokens}}",
+    // Section title for the curated-skills block in Settings > Skills.
+    curatedSectionTitle: "内置精选",
+    // Per-row controls. `viewOnGithub` is the inline GitHub link in
+    // each row that opens the upstream source repository in the
+    // system browser.
+    curatedToggleAria: "开关 {{name}}",
+    curatedViewOnGithub: "在 GitHub 查看",
+    curatedViewOnGithubAria: "在浏览器打开 {{name}} 的上游源码",
   },
 
   // 应用

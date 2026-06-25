@@ -1269,6 +1269,11 @@ pub(crate) struct AppSettings {
     /// Default engine type: "claude", "codex", or "opencode". If not set, auto-detect.
     #[serde(default, rename = "defaultEngine")]
     pub(crate) default_engine: Option<String>,
+    /// Curated skill ids the user has enabled. Shared across workspaces and
+    /// sessions. Toggling these participates in Codex restart detection because
+    /// app-server developer instructions are captured at launch time.
+    #[serde(default, rename = "enabledCuratedSkillIds")]
+    pub(crate) enabled_curated_skill_ids: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -1804,6 +1809,7 @@ impl Default for AppSettings {
             browser_agent_prefer_built_in: default_browser_agent_prefer_built_in(),
             browser_agent_allow_external_provider_fallback:
                 default_browser_agent_allow_external_provider_fallback(),
+            enabled_curated_skill_ids: Vec::new(),
         }
     }
 }

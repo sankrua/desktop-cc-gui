@@ -271,6 +271,7 @@ type ComposerProps = {
   dictationLevel?: number;
   onToggleDictation?: () => void;
   onOpenDictationSettings?: () => void;
+  onOpenSkillsSettings?: () => void;
   onOpenExperimentalSettings?: () => void;
   dictationTranscript?: DictationTranscript | null;
   onDictationTranscriptHandled?: (id: string) => void;
@@ -527,6 +528,7 @@ export const Composer = memo(function Composer({
   dictationLevel: _dictationLevel = 0,
   onToggleDictation: _onToggleDictation,
   onOpenDictationSettings: _onOpenDictationSettings,
+  onOpenSkillsSettings: _onOpenSkillsSettings,
   onOpenExperimentalSettings: _onOpenExperimentalSettings,
   dictationTranscript = null,
   onDictationTranscriptHandled,
@@ -2427,6 +2429,7 @@ export const Composer = memo(function Composer({
               sendReadiness={composerSendReadiness}
               onJumpToRequest={activeUserInputRequest ? handleJumpToUserInputRequest : undefined}
               onToggleContextSources={contextLedgerProjection.visible ? handleToggleContextSources : undefined}
+              onOpenSkillsSettings={_onOpenSkillsSettings}
               contextSourcesExpanded={contextLedgerExpanded}
               selectedCollaborationModeId={_selectedCollaborationModeId}
               onSelectCollaborationMode={_onSelectCollaborationMode}

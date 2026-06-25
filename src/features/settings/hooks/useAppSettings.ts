@@ -132,6 +132,32 @@ function normalizeCustomSkillDirectories(value: unknown): string[] {
   return directories;
 }
 
+function normalizeEnabledCuratedSkillIds(value: unknown): string[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+  const seen = new Set<string>();
+  const ids: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string") {
+      continue;
+    }
+    const normalized = item.trim();
+    if (
+      !normalized ||
+      normalized.startsWith("-") ||
+      normalized.endsWith("-") ||
+      !/^[a-z0-9-]+$/.test(normalized) ||
+      seen.has(normalized)
+    ) {
+      continue;
+    }
+    seen.add(normalized);
+    ids.push(normalized);
+  }
+  return ids;
+}
+
 const defaultSettings: AppSettings = {
   claudeBin: null,
   codexBin: null,
@@ -191,6 +217,7 @@ const defaultSettings: AppSettings = {
   darkThemePresetId: "vscode-dark-modern",
   customThemePresetId: "vscode-dark-modern",
   customSkillDirectories: [],
+  enabledCuratedSkillIds: [],
   canvasWidthMode: "narrow",
   layoutMode: "default",
   userMsgColor: "",
@@ -337,6 +364,9 @@ function normalizeAppSettings(
     customThemePresetId: sanitizeThemePresetId(settings.customThemePresetId),
     customSkillDirectories: normalizeCustomSkillDirectories(
       settings.customSkillDirectories,
+    ),
+    enabledCuratedSkillIds: normalizeEnabledCuratedSkillIds(
+      settings.enabledCuratedSkillIds,
     ),
     canvasWidthMode: allowedCanvasWidthModes.has(settings.canvasWidthMode)
       ? settings.canvasWidthMode

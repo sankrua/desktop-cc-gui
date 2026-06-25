@@ -152,11 +152,11 @@ impl<E: EventSink> EventSink for DeferredStartupEventSink<E> {
 
 #[allow(unused_imports)]
 pub(crate) use crate::backend::app_server_cli::{
-    apply_codex_app_server_args, build_codex_app_server_args,
-    build_codex_command_from_launch_context, build_codex_command_with_bin, build_codex_path_env,
-    build_engine_environment_diagnosis, can_retry_wrapper_compatibility_launch,
-    can_retry_wrapper_launch, check_cli_binary, check_codex_installation,
-    classify_endpoint_failure, codex_args_override_instructions,
+    apply_codex_app_server_args, apply_codex_app_server_args_with_settings,
+    build_codex_app_server_args, build_codex_command_from_launch_context,
+    build_codex_command_with_bin, build_codex_path_env, build_engine_environment_diagnosis,
+    can_retry_wrapper_compatibility_launch, can_retry_wrapper_launch, check_cli_binary,
+    check_codex_installation, classify_endpoint_failure, codex_args_override_instructions,
     codex_external_spec_priority_config_arg, probe_codex_app_server, resolve_codex_launch_context,
     visible_console_fallback_enabled_from_env, wrapper_kind_for_binary, CodexAppServerLaunchMode,
     CodexAppServerLaunchOptions, CodexAppServerProbeStatus, CodexLaunchContext,
@@ -956,6 +956,40 @@ pub(crate) async fn spawn_workspace_session_with_launch_options<E: EventSink>(
     event_sink: E,
     launch_options: CodexAppServerLaunchOptions,
 ) -> Result<Arc<WorkspaceSession>, String> {
+    spawn_workspace_session_inner_with_settings(
+        entry,
+        default_codex_bin,
+        codex_args,
+        codex_home,
+        client_version,
+        auto_compaction_threshold_percent,
+        auto_compaction_enabled,
+        event_sink,
+        launch_options,
+        crate::types::AppSettings::default(),
+    )
+    .await
+}
+
+/// Same as `spawn_workspace_session_with_launch_options` but accepts a
+/// pre-snapshotted `AppSettings` so the curated-skill injection step
+/// (see `build_codex_app_server_args_with_settings`) can read the latest
+/// `enabled_curated_skill_ids` from the user's actual settings, not the
+/// defaults. This is the variant called by real spawn paths via
+/// `codex::spawn_workspace_session_with_launch_options`; the wrapper
+/// above is kept for legacy callers.
+pub(crate) async fn spawn_workspace_session_inner_with_settings<E: EventSink>(
+    entry: WorkspaceEntry,
+    default_codex_bin: Option<String>,
+    codex_args: Option<String>,
+    codex_home: Option<PathBuf>,
+    client_version: String,
+    auto_compaction_threshold_percent: f64,
+    auto_compaction_enabled: bool,
+    event_sink: E,
+    launch_options: CodexAppServerLaunchOptions,
+    app_settings: crate::types::AppSettings,
+) -> Result<Arc<WorkspaceSession>, String> {
     let codex_bin = entry
         .codex_bin
         .clone()
@@ -985,6 +1019,7 @@ pub(crate) async fn spawn_workspace_session_with_launch_options<E: EventSink>(
             event_sink,
             &launch_context,
             launch_options,
+            app_settings,
         )
         .await;
     }
@@ -999,6 +1034,7 @@ pub(crate) async fn spawn_workspace_session_with_launch_options<E: EventSink>(
         event_sink,
         &launch_context,
         launch_options,
+        app_settings,
     )
     .await
 }
@@ -1013,6 +1049,7 @@ async fn spawn_workspace_session_with_wrapper_fallback<E: EventSink>(
     event_sink: E,
     launch_context: &CodexLaunchContext,
     launch_options: CodexAppServerLaunchOptions,
+    app_settings: crate::types::AppSettings,
 ) -> Result<Arc<WorkspaceSession>, String> {
     let primary_sink = DeferredStartupEventSink::new(event_sink.clone());
     let primary_result = spawn_workspace_session_once(
@@ -1025,6 +1062,7 @@ async fn spawn_workspace_session_with_wrapper_fallback<E: EventSink>(
         primary_sink.clone(),
         launch_context,
         launch_options,
+        app_settings.clone(),
     )
     .await;
     match primary_result {
@@ -1053,6 +1091,7 @@ async fn spawn_workspace_session_with_wrapper_fallback<E: EventSink>(
                 CodexAppServerLaunchOptions::wrapper_compatibility_retry_for_mode(
                     launch_options.launch_mode,
                 ),
+                app_settings,
             )
             .await
             .map_err(|retry_error| {
@@ -1074,12 +1113,18 @@ async fn spawn_workspace_session_once<E: EventSink>(
     event_sink: E,
     launch_context: &CodexLaunchContext,
     launch_options: CodexAppServerLaunchOptions,
+    app_settings: crate::types::AppSettings,
 ) -> Result<Arc<WorkspaceSession>, String> {
     let mut command =
         build_codex_command_from_launch_context(launch_context, launch_options.hide_console);
     apply_codex_tui_compatible_terminal_env(&mut command);
     WorkspaceSession::configure_spawn_command(&mut command);
-    apply_codex_app_server_args(&mut command, codex_args.as_deref(), launch_options)?;
+    apply_codex_app_server_args_with_settings(
+        &mut command,
+        codex_args.as_deref(),
+        launch_options,
+        &app_settings,
+    )?;
     command.current_dir(&entry.path);
     if let Some(codex_home) = codex_home {
         command.env("CODEX_HOME", codex_home);

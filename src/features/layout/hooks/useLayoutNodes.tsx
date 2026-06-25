@@ -1185,6 +1185,7 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
           dictationLevel={options.dictationLevel}
           onToggleDictation={options.onToggleDictation}
           onOpenDictationSettings={options.onOpenDictationSettings}
+          onOpenSkillsSettings={options.onOpenSkillsSettings}
           onOpenExperimentalSettings={options.onOpenExperimentalSettings}
           dictationTranscript={options.dictationTranscript}
           onDictationTranscriptHandled={options.onDictationTranscriptHandled}

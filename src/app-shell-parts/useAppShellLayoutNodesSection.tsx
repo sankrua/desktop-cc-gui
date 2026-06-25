@@ -1166,6 +1166,7 @@ export function useAppShellLayoutNodesSection(
       onRefreshModelConfig: handleRefreshModelConfig,
       isModelConfigRefreshing,
       onOpenDictationSettings: () => openSettings("dictation"),
+      onOpenSkillsSettings: () => openSettings("mcp", "mcp-skills"),
       onOpenDebug: handleDebugClick,
       showDebugButton,
       onAddWorkspace: handleAddWorkspace,

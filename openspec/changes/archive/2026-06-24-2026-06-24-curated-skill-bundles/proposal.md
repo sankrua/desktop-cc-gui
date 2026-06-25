@@ -1,5 +1,23 @@
 # Proposal: 内嵌精选 skill 库 + 对话框 quick-load (curated-skill-bundles)
 
+## Archive Reconciliation — 2026-06-25
+
+本 archived change 是 curated skill 能力的**第一版底座提案**。它的底座目标已经落地：
+客户端内置 `lazy-senior-dev` 资源、`skills-lock.json kind: curated`、编译期校验、Settings
+Curated section、`enabledCuratedSkillIds` 持久化、Codex / Claude prompt 注入、onboarding 文档。
+
+但原提案中的 composer **chip row / picker / per-message quick-load** 方向已经被后续 change 明确废弃：
+
+- `2026-06-24-curated-skill-always-on-simplification`：把模型改成 Settings-only always-on，移除 per-message picker / chip row。
+- `2026-06-25-composer-readiness-bar-indicator-layout`：把 composer 里的用户可见反馈收敛为 read-only `CuratedSkillIndicator`，通过 `ComposerReadinessBar.rightAccessory` 挂在 readiness bar 右侧。
+
+因此本 archive 的任务状态以 `tasks.md` 的 reconciliation 表为准：底座已完成；chip row / picker 相关任务标记为 superseded；最终行为以主 spec
+`openspec/specs/curated-skill-bundles/spec.md` 和上述两个后续 change 为准。
+
+## Historical Proposal Below
+
+以下内容保留第一版提案原文用于审计。凡涉及 composer chip row / picker、`--append-system-prompt-file`、或“toggle 不触发 Codex restart”的描述，均已被本节上方的 archive reconciliation 与后续 change supersede。
+
 ## Why
 
 mossx 客户端当前的 skill 来源链路有 3 类(`src-tauri/src/skills.rs` 现状):

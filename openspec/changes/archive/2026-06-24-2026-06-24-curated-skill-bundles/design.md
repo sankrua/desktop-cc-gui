@@ -1,5 +1,18 @@
 # Design: 内嵌精选 skill 库 + 对话框 quick-load
 
+## Archive Reconciliation — 2026-06-25
+
+本 design 记录的是第一版方案。最终实现保留了 curated skill asset / lock / Settings / engine injection 底座，但不再采用
+composer chip row / picker。最终用户模型是：Settings > Skills 中开启 curated skill，之后所有新 engine launch 默认注入；composer
+只显示 read-only `CuratedSkillIndicator`，并通过 `ComposerReadinessBar.rightAccessory` 挂在 readiness bar 右侧。
+
+另外，当前代码为了避免 Codex app-server 长生命周期持有旧 `developer_instructions` 快照，已经把
+`enabled_curated_skill_ids` 纳入 restart 判定；这 supersedes 本 design 早期“不触发 restart”的假设。
+
+## Historical Design Below
+
+以下内容保留第一版 design 原文用于审计。凡涉及 composer chip row / picker、`--append-system-prompt-file`、或“toggle 不触发 Codex restart”的描述，均已被本节上方的 archive reconciliation 与后续 change supersede。
+
 ## Context
 
 `desktop-cc-gui` (mossx) 是 Tauri 2.9.6 + React 19 + Vite 7 的桌面客户端,承载 Codex CLI 与 Claude Code CLI 双引擎。**关键架构事实**(基于真实代码证据):
