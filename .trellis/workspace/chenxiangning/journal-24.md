@@ -700,3 +700,36 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 938: 补充设置页性能诊断说明
+
+**Date**: 2026-06-26
+**Task**: 补充设置页性能诊断说明
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+设置页性能诊断补充中英文说明文案：实时流调度档位中文/英文区分展示，页面解释三档用途与性能覆盖项重置范围，并更新 OtherSection 单测覆盖下拉 i18n 与说明切换。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `52ca79cc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
