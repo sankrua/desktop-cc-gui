@@ -77,6 +77,9 @@ export function OtherSection({
             {t("settings.streamingScheduleTierDescription")}
           </div>
           <div className="settings-help">
+            {t(`settings.streamingScheduleTierDetail.${streamingScheduleTier}`)}
+          </div>
+          <div className="settings-help">
             {t("settings.streamingScheduleTierRestartHint")}
           </div>
         </div>

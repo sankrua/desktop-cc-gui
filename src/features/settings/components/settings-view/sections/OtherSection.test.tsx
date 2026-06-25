@@ -3,13 +3,25 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { OtherSection } from "./OtherSection";
 
+const TRANSLATIONS: Record<string, string> = {
+  "settings.streamingScheduleTierTitle": "Streaming schedule tier",
+  "settings.streamingScheduleTier.baseline": "Baseline",
+  "settings.streamingScheduleTier.guarded": "Guarded",
+  "settings.streamingScheduleTier.aggressive": "Aggressive",
+  "settings.streamingScheduleTierDetail.baseline": "Baseline detail",
+  "settings.streamingScheduleTierDetail.guarded": "Guarded detail",
+  "settings.streamingScheduleTierDetail.aggressive": "Aggressive detail",
+  "settings.performanceFlagsResetButton": "Reset",
+  "settings.performanceFlagsResetAlreadyDefault": "Already default",
+};
+
 vi.mock("react-i18next", () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
       if (typeof params?.count === "number") {
         return `${key}:${params.count}`;
       }
-      return key;
+      return TRANSLATIONS[key] ?? key;
     },
   }),
 }));
@@ -54,7 +66,7 @@ describe("OtherSection performance diagnostics", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "settings.performanceFlagsResetButton",
+        name: "Reset",
       }),
     );
 
@@ -71,13 +83,18 @@ describe("OtherSection performance diagnostics", () => {
     renderOtherSection();
 
     const select = screen.getByRole("combobox", {
-      name: "settings.streamingScheduleTierTitle",
+      name: "Streaming schedule tier",
     }) as HTMLSelectElement;
     expect(select.value).toBe("guarded");
+    expect(screen.getByText("Baseline")).toBeTruthy();
+    expect(screen.getByText("Guarded")).toBeTruthy();
+    expect(screen.getByText("Aggressive")).toBeTruthy();
+    expect(screen.getByText("Guarded detail")).toBeTruthy();
 
     fireEvent.change(select, { target: { value: "baseline" } });
 
     expect(select.value).toBe("baseline");
+    expect(screen.getByText("Baseline detail")).toBeTruthy();
     expect(window.localStorage.getItem("ccgui.perf.streamingScheduleTier")).toBe(
       "baseline",
     );
@@ -88,12 +105,10 @@ describe("OtherSection performance diagnostics", () => {
 
     fireEvent.click(
       screen.getByRole("button", {
-        name: "settings.performanceFlagsResetButton",
+        name: "Reset",
       }),
     );
 
-    expect(
-      screen.getByText("settings.performanceFlagsResetAlreadyDefault"),
-    ).toBeTruthy();
+    expect(screen.getByText("Already default")).toBeTruthy();
   });
 });
