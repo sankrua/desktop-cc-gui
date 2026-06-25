@@ -287,3 +287,43 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 927: 归档实时交互卡顿补强
+
+**Date**: 2026-06-25
+**Task**: 归档实时交互卡顿补强
+**Branch**: `feature/v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 项目 | 内容 |
+|------|------|
+| OpenSpec | Archived `2026-06-24-harden-realtime-interaction-jank-during-tool-call` into `openspec/changes/archive/2026-06-25-2026-06-24-harden-realtime-interaction-jank-during-tool-call/` and synced main specs. |
+| Code | Hardened residual realtime jank paths: raw app-server fallback now drains through scheduler, app-server backpressure budgets were tightened, SnapshotThrottle state is bounded by TTL/cap/terminal cleanup, and ToolOutputTailGate releases idle/capped entries and side metadata. |
+| Validation | `openspec validate --specs --strict --no-interactive`; `npm run typecheck`; `npm run lint`; focused Vitest for app-server/tail-gate/thread item events; `cargo test --manifest-path src-tauri/Cargo.toml snapshot_throttle`; `git diff --check`. |
+| Trellis | Archived task `06-24-harden-realtime-interaction-jank` after code commit. |
+| Follow-up | New uncommitted OpenSpec proposal `harden-conversation-rendering-for-large-history` is prepared for review before implementation. |
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6e2c663d` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
