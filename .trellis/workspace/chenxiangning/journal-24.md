@@ -857,3 +857,56 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 942: Codex 首轮线程启动恢复边界
+
+**Date**: 2026-06-26
+**Task**: Codex 首轮线程启动恢复边界
+**Branch**: `v0.5.13`
+
+### Summary
+
+回写 OpenSpec 并提交 Codex thread/start readiness、runtime foreground continuity 与 frontend recovery 边界修复
+
+### Main Changes
+
+Task goal: 用户确认工作区代码已测试通过，要求回写提案并整体提交。
+
+Main changes:
+- 新建 OpenSpec change `fix-codex-thread-start-continuity-and-recovery`，补齐 proposal/design/tasks/spec delta。
+- 固化 Codex native `thread-start` empty draft 不再 silent fresh replay/fork 的恢复边界。
+- 记录 backend bounded `thread/resume` readiness retry、runtime foreground continuity protection、static history auto-follow gate。
+- 同步修正 `.trellis/spec/frontend/hook-guidelines.md` 中过时的 empty-draft recovery 规则。
+
+Affected modules:
+- Rust Codex app-server/runtime: `src-tauri/src/shared/codex_core.rs`, `src-tauri/src/backend/app_server.rs`, `src-tauri/src/runtime/mod.rs`。
+- Frontend Codex recovery and messaging hooks: `src/features/threads/hooks/**`, `src/features/threads/utils/codexConversationLiveness.ts`。
+- Message rendering auto-follow: `src/features/messages/components/Messages.tsx`。
+
+Validation:
+- User reported the working tree code had already passed tests before the writeback request.
+- Ran `openspec validate fix-codex-thread-start-continuity-and-recovery --strict --no-interactive` successfully.
+- Ran `git diff --check` successfully.
+
+Follow-ups:
+- Archive/sync the OpenSpec change after any additional human acceptance gate desired for this release line.
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a1f2ad06` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
