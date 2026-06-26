@@ -766,3 +766,55 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 940: 复刻 Codex daemon 启动确认与 transient 诊断清理
+
+**Date**: 2026-06-26
+**Task**: 复刻 Codex daemon 启动确认与 transient 诊断清理
+**Branch**: `v0.5.13`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| Codex daemon | 为 daemon disk Codex `thread/start` 增加 bounded `thread/resume` readiness confirmation，确认成功后才记录 auto-session metadata，避免后续 `turn/start` 暴露 `thread not found`。 |
+| Runtime reconnect UI | 为 `stale_reuse_cleanup` / `internal_replacement` transient cleanup notice 增加 2.5s auto-dismiss，继续压制 raw diagnostic text，并保持 blocking runtime-ended card 持久显示。 |
+| Tests | 增加 daemon readiness helper tests、runtime reconnect TTL tests 与 blocking card regression tests。 |
+
+**Updated Files**:
+- `src-tauri/src/bin/cc_gui_daemon/daemon_state.rs`
+- `src/features/messages/components/runtimeReconnect.ts`
+- `src/features/messages/components/runtimeReconnect.test.ts`
+- `src/features/messages/components/Messages.tsx`
+- `src/features/messages/components/Messages.runtime-reconnect.test.tsx`
+
+**Validation**:
+- `cargo fmt --manifest-path src-tauri/Cargo.toml`
+- `cargo test --manifest-path src-tauri/Cargo.toml daemon_disk_start`
+- `npx vitest run src/features/messages/components/runtimeReconnect.test.ts src/features/messages/components/Messages.runtime-reconnect.test.tsx`
+- `npm run check:runtime-contracts`
+- `npm run typecheck`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `931ae769` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
