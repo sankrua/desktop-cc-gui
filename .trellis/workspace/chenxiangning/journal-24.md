@@ -962,3 +962,51 @@ Follow-ups:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 944: 修复打包内置技能加载
+
+**Date**: 2026-06-27
+**Task**: 修复打包内置技能加载
+**Branch**: `bump-version-0.5.15`
+
+### Summary
+
+修复 Tauri 打包后 curated skills 目录被 glob 映射拍平导致 Settings 无法加载的问题；更新 lazy-senior-dev 到 ponytail 4.8.3；让 GUI/daemon skills_list 正确透传 enabled 状态；回写 curated skill bundle spec 与 onboarding 打包规则。
+
+### Main Changes
+
+- 将 `tauri.conf.json` curated skills 资源映射改为目录映射，保留 `curated-skills/<skill-id>/` 打包布局。
+- `curated_skills` loader 支持 packaged resource dir、current_exe fallback 和 source tree fallback，覆盖 GUI、daemon、Codex/Claude 注入路径。
+- 新增 build-time guard 和 `tauri_config` 测试，阻止 `resources/curated-skills/**/*` glob map 回归。
+- 更新 bundled `lazy-senior-dev` skill 到 ponytail 4.8.3，并补回 onboarding 要求的 `When NOT to enable` 段与 lock hash。
+- 修复 `skills_list` GUI/daemon JSON serializer，确保 curated skill 的 disabled 状态不会被硬编码成 enabled。
+- 回写 `openspec/specs/curated-skill-bundles/spec.md` 与 `docs/curated-skill-onboarding.md`，沉淀打包资源目录契约。
+
+Validation:
+- cargo fmt --manifest-path src-tauri/Cargo.toml
+- cargo test --manifest-path src-tauri/Cargo.toml skill_entry_to_json_preserves_disabled_state
+- cargo test --manifest-path src-tauri/Cargo.toml curated_skills
+- cargo test --manifest-path src-tauri/Cargo.toml --test tauri_config
+- cargo check --manifest-path src-tauri/Cargo.toml
+- git diff --check
+- openspec validate --all --strict --no-interactive
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `ace8f62a` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
