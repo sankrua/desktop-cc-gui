@@ -199,6 +199,7 @@ export type LayoutNodesFlatOptions = {
   onOpenSettings: () => void;
   onOpenExperimentalSettings: () => void;
   onOpenDictationSettings?: () => void;
+  onOpenSkillsSettings?: () => void;
   onOpenDebug: () => void;
   showDebugButton: boolean;
   onAddWorkspace: () => void;
@@ -784,6 +785,7 @@ export type ChromeLayoutNodesOptions = Pick<
   | "onRefreshModelConfig"
   | "isModelConfigRefreshing"
   | "onOpenDictationSettings"
+  | "onOpenSkillsSettings"
   | "onOpenDebug"
   | "showDebugButton"
   | "onAddWorkspace"

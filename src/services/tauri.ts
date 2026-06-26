@@ -23,6 +23,7 @@ import type {
   WorkspaceInfo,
   EngineType,
   CustomPromptOption,
+  CuratedSkillOption,
   ReviewTarget,
 } from "../types";
 import { engineSendMessageSync } from "./tauri/appServer";
@@ -747,6 +748,28 @@ export async function getSkillsList(
       customSkillRoots: customSkillRoots ?? [],
     }),
   );
+}
+
+export async function getCuratedSkills() {
+  return invoke<CuratedSkillOption[]>("get_curated_skills");
+}
+
+export async function setCuratedSkillEnabled(
+  skillId: string,
+  enabled: boolean,
+) {
+  return invoke<AppSettings>("set_curated_skill_enabled", {
+    skillId,
+    enabled,
+  });
+}
+
+export async function getEnabledCuratedSkillIds() {
+  return invoke<string[]>("get_enabled_curated_skill_ids");
+}
+
+export async function getCuratedSkillBodies() {
+  return invoke<Array<[string, string]>>("get_curated_skill_bodies");
 }
 
 export async function getClaudeCommandsList(workspaceId?: string | null) {

@@ -341,6 +341,51 @@ describe("rendererDiagnostics", () => {
     expect(entry.payload).not.toHaveProperty("assistantText");
   });
 
+  it("samples repeated message row render diagnostics to avoid store churn", async () => {
+    const dateNowSpy = vi.spyOn(Date, "now").mockReturnValue(1_000);
+    clientStorageMocks.isPreloaded.mockReturnValue(true);
+    clientStorageMocks.getClientStoreSync.mockReturnValue([]);
+    const diagnostics = await import("./rendererDiagnostics");
+
+    diagnostics.appendMessageRowRenderBudgetDiagnostic({
+      threadId: "thread-1",
+      itemId: "assistant-1",
+      role: "assistant",
+      subtype: "assistant",
+      evidenceKind: "proxy",
+      renderCount: 1,
+      isStreaming: true,
+      textLength: 120,
+    });
+    diagnostics.appendMessageRowRenderBudgetDiagnostic({
+      threadId: "thread-1",
+      itemId: "assistant-1",
+      role: "assistant",
+      subtype: "assistant",
+      evidenceKind: "proxy",
+      renderCount: 2,
+      isStreaming: true,
+      textLength: 121,
+    });
+
+    expect(clientStorageMocks.writeClientStoreValue).toHaveBeenCalledTimes(1);
+
+    dateNowSpy.mockReturnValue(7_000);
+    diagnostics.appendMessageRowRenderBudgetDiagnostic({
+      threadId: "thread-1",
+      itemId: "assistant-1",
+      role: "assistant",
+      subtype: "assistant",
+      evidenceKind: "proxy",
+      renderCount: 3,
+      isStreaming: true,
+      textLength: 122,
+    });
+
+    expect(clientStorageMocks.writeClientStoreValue).toHaveBeenCalledTimes(2);
+    dateNowSpy.mockRestore();
+  });
+
   it("records content-safe resource backpressure diagnostics", async () => {
     clientStorageMocks.isPreloaded.mockReturnValue(true);
     clientStorageMocks.getClientStoreSync.mockReturnValue([]);
@@ -383,6 +428,52 @@ describe("rendererDiagnostics", () => {
       evidenceClass: "proxy",
     });
     expect(entry.payload).not.toHaveProperty("terminalOutput");
+  });
+
+  it("records content-safe render scheduler resource diagnostics", async () => {
+    clientStorageMocks.isPreloaded.mockReturnValue(true);
+    clientStorageMocks.getClientStoreSync.mockReturnValue([]);
+    const diagnostics = await import("./rendererDiagnostics");
+
+    diagnostics.appendRenderSchedulerResourceDiagnostic({
+      surfaceId: "app-server-event-dispatch",
+      chunkCount: 8,
+      yieldCount: 4,
+      inputPendingYieldCount: 2,
+      budgetMissCount: 1,
+      idleCallbackCount: 3,
+      timeoutFallbackCount: 5,
+      pendingCallback: false,
+      idleCallbackPending: false,
+      timeoutFallbackPending: false,
+      cancelled: true,
+      evidenceClass: "proxy",
+      // @ts-expect-error queue payloads are intentionally rejected.
+      assistantText: "secret assistant body",
+    });
+
+    const [, , persistedValue] =
+      clientStorageMocks.writeClientStoreValue.mock.calls[0] ?? [];
+    const [entry] = persistedValue as Array<{
+      label: string;
+      payload: Record<string, unknown>;
+    }>;
+    expect(entry.label).toBe("render-scheduler.resource");
+    expect(entry.payload).toMatchObject({
+      surfaceId: "app-server-event-dispatch",
+      chunkCount: 8,
+      yieldCount: 4,
+      inputPendingYieldCount: 2,
+      budgetMissCount: 1,
+      idleCallbackCount: 3,
+      timeoutFallbackCount: 5,
+      pendingCallback: false,
+      idleCallbackPending: false,
+      timeoutFallbackPending: false,
+      cancelled: true,
+      evidenceClass: "proxy",
+    });
+    expect(entry.payload).not.toHaveProperty("assistantText");
   });
 
   it("records content-safe listener and media owner diagnostics", async () => {
@@ -442,6 +533,10 @@ describe("rendererDiagnostics", () => {
       cacheState: "miss",
       fallbackReason: "none",
       evidenceClass: "measured",
+      heavyCategoryCounts: {
+        table: 1,
+        "tool-call-xml": 2,
+      },
       totalHeadings: 4,
       totalHeavyBlocks: 2,
       totalSourceLines: 300,
@@ -465,6 +560,10 @@ describe("rendererDiagnostics", () => {
       cacheState: "miss",
       fallbackReason: "none",
       evidenceClass: "measured",
+      heavyCategoryCounts: {
+        table: 1,
+        "tool-call-xml": 2,
+      },
       totalHeadings: 4,
       totalHeavyBlocks: 2,
       totalSourceLines: 300,

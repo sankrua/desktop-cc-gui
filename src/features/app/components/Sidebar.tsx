@@ -7,7 +7,7 @@ import type {
   ThreadSummary,
   WorkspaceInfo,
 } from "../../../types";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { MouseEvent as ReactMouseEvent, ReactNode, RefObject } from "react";
 import { useTranslation } from "react-i18next";
 
@@ -205,7 +205,7 @@ type SidebarProps = {
   runtimeNoticeDockNode?: ReactNode;
 };
 
-export function Sidebar({
+function SidebarImpl({
   workspaces,
   groupedWorkspaces,
   hasWorkspaceGroups: _hasWorkspaceGroups,
@@ -2060,3 +2060,6 @@ export function Sidebar({
     </aside>
   );
 }
+
+export const Sidebar = memo(SidebarImpl);
+Sidebar.displayName = "Sidebar";
