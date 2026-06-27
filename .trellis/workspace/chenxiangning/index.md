@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-24.md`
-- **Total Sessions**: 946
+- **Total Sessions**: 947
 - **Last Active**: 2026-06-27
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-24.md` | ~1096 | Active |
+| `journal-24.md` | ~1129 | Active |
 | `journal-23.md` | ~1965 | Archived |
 | `journal-22.md` | ~1969 | Archived |
 | `journal-21.md` | ~1970 | Archived |
@@ -52,6 +52,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 947 | 2026-06-27 | 修复非 Git 工作区 diff 扫描噪声 | `27831c31` | `feature/v0.6` |
 | 946 | 2026-06-27 | 移除 Gemini CLI 供应商配置入口 | `b822b810` | `feature/v0.6` |
 | 945 | 2026-06-27 | 优化用户气泡复制入口 | `177f403a` | `feature/v0.6` |
 | 944 | 2026-06-27 | 修复打包内置技能加载 | `ace8f62a` | `bump-version-0.5.15` |

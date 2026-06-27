@@ -1094,3 +1094,36 @@ Validation:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 947: 修复非 Git 工作区 diff 扫描噪声
+
+**Date**: 2026-06-27
+**Task**: 修复非 Git 工作区 diff 扫描噪声
+**Branch**: `feature/v0.6`
+
+### Summary
+
+非 Git workspace 不再触发 get_git_diffs 错误提示；local Tauri/daemon diff 读取返回空列表；Git status active/background polling cadence 统一为 15s。
+
+### Main Changes
+
+(Add details)
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `27831c31` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
