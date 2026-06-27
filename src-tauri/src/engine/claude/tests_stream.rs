@@ -115,6 +115,21 @@ fn drain_turn_events(
     events
 }
 
+fn assert_no_empty_prompt_after_print_flag(args: &[String]) {
+    let print_flag_index = args
+        .iter()
+        .position(|arg| arg == "-p")
+        .expect("missing Claude print flag");
+    let next_arg = args
+        .get(print_flag_index + 1)
+        .expect("missing arg after Claude print flag");
+
+    assert_ne!(
+        next_arg, "",
+        "stream-json stdin mode must not add an empty positional prompt after -p"
+    );
+}
+
 fn turn_error_event(events: &[ClaudeTurnEvent]) -> Option<(&String, &Option<String>)> {
     events.iter().find_map(|event| match &event.event {
         EngineEvent::TurnError { error, code, .. } => Some((error, code)),
@@ -347,6 +362,7 @@ fn build_command_uses_stream_json_for_single_line_text() {
         .windows(2)
         .any(|window| { window[0] == "--input-format" && window[1] == "stream-json" }));
     assert!(args.iter().all(|arg| arg != "single line"));
+    assert_no_empty_prompt_after_print_flag(&args);
 }
 
 #[test]
@@ -367,6 +383,7 @@ fn build_command_keeps_special_character_prompt_out_of_argv() {
         .windows(2)
         .any(|window| { window[0] == "--input-format" && window[1] == "stream-json" }));
     assert!(args.iter().all(|arg| arg != &params.text));
+    assert_no_empty_prompt_after_print_flag(&args);
 }
 
 #[test]
@@ -387,6 +404,7 @@ fn build_command_uses_stream_json_for_multiline_text() {
         .windows(2)
         .any(|window| { window[0] == "--input-format" && window[1] == "stream-json" }));
     assert!(args.iter().all(|arg| arg != "line1\nline2"));
+    assert_no_empty_prompt_after_print_flag(&args);
 }
 
 #[test]
@@ -413,6 +431,7 @@ fn build_resume_command_uses_stream_json_for_multiline_answer() {
         .windows(2)
         .any(|window| { window[0] == "--input-format" && window[1] == "stream-json" }));
     assert!(args.iter().all(|arg| arg != "line1\r\nline2"));
+    assert_no_empty_prompt_after_print_flag(&args);
 }
 
 #[test]

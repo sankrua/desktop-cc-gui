@@ -848,9 +848,9 @@ impl ClaudeSession {
         }
 
         if use_stream_json_input {
-            // Use stream-json input format for image payloads and multiline text.
-            // The actual content will be sent via stdin.
-            cmd.arg(""); // Empty string as placeholder, real content via stdin
+            // Use stream-json input format for prompt content and images. The
+            // actual user message is sent via stdin; adding an empty prompt
+            // placeholder after `-p` breaks Windows .cmd wrapper parsing.
             cmd.arg("--input-format");
             cmd.arg("stream-json");
         } else {
