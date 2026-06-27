@@ -1396,3 +1396,47 @@ Windows Codex app-server wrapper fallback 改为通过 provider/default CODEX_HO
 ### Next Steps
 
 - None - task complete
+
+
+## Session 955: 隔离幕布渲染场景作用域
+
+**Date**: 2026-06-27
+**Task**: 隔离幕布渲染场景作用域
+**Branch**: `feature/v0.6.1`
+
+### Summary
+
+修复幕布在完整历史、实时尾窗、加载更早历史和默认折叠尾窗之间复用旧 deferred snapshot / virtualizer measurement 的问题；回写 OpenSpec 并补 focused tests。
+
+### Main Changes
+
+- 新增 `MessagesPresentationMode` 与 `buildMessagesPresentationScopeKey`，把 runtime/static、collapsed/expanded、manual/jump 展开和 visible window identity 纳入幕布 presentation scope。
+- `Messages` 的 deferred presentation snapshot 改用 presentation scope，避免同一 `workspaceId + threadId` 下跨场景复用旧快照。
+- `MessagesTimeline` 的 virtualizer scope / hydration retention scope 改用 presentation scope，避免加载更早历史或实时尾窗时复用旧 row measurement。
+- 新增 focused tests 覆盖 static collapsed history、static manual expanded history、realtime collapsed tail 三类 scope 分离。
+- 回写 `harden-conversation-rendering-for-large-history` OpenSpec proposal/design/spec/tasks。
+
+验证：
+- `npx vitest run src/features/messages/components/messagesLiveWindow.test.ts src/features/messages/components/Messages.virtualized-jump.test.tsx`：22 tests passed。
+- `npm run typecheck`：passed。
+- `npm run lint`：passed。
+- `openspec validate harden-conversation-rendering-for-large-history --strict --no-interactive`：passed。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `5017632f` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
