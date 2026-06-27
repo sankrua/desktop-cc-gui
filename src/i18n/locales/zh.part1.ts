@@ -1671,7 +1671,7 @@ const zhPart1 = {
 
     // 供应商管理
     vendorsTitle: "供应商管理",
-    vendorsDescription: "管理 Claude、Codex 和 Gemini CLI 的供应商配置。",
+    vendorsDescription: "管理 Claude 和 Codex 的供应商配置。",
     vendor: {
       allProviders: "所有供应商",
       allCodexProviders: "所有 Codex 供应商",

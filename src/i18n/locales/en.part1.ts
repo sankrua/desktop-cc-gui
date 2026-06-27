@@ -1630,7 +1630,7 @@ const enPart1 = {
     // Vendor management
     vendorsTitle: "Vendor Management",
     vendorsDescription:
-      "Manage vendor configurations for Claude, Codex, and Gemini CLI.",
+      "Manage vendor configurations for Claude and Codex.",
     vendor: {
       allProviders: "All Providers",
       allCodexProviders: "All Codex Providers",
