@@ -127,3 +127,46 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 4: 工具块尺寸对齐 shadcn 官方 Marker 默认规格
+
+**Date**: 2026-06-27
+**Task**: 工具块尺寸对齐 shadcn 官方 Marker 默认规格
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 模块 | 说明 |
+|------|------|
+| ToolMarkerShell | 行距改为 text-sm + px-3 py-1.5 + gap-2，图标由 MarkerIcon 统一 size-4 |
+| 状态图标 | CircleAlert/Loader2 放大到 size-4 |
+| 各工具块 | 清理 icon 上手写的 size-3.5 覆盖 |
+
+**Updated Files**:
+- `src/features/messages/components/toolBlocks/ToolMarkerShell.tsx`
+- `BashToolBlock/BashToolGroupBlock/EditToolBlock/EditToolGroupBlock`
+- `GenericToolBlock/McpToolBlock/ReadToolBlock/ReadToolGroupBlock/SearchToolBlock/SearchToolGroupBlock`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `144563c2` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
