@@ -312,18 +312,20 @@
   overflow-wrap: break-word;
   word-break: break-word;
   min-width: 0;
+  font-family: "Geist", var(--font-sans);
   font-size: var(--message-content-font-size);
   line-height: 1.7;
-  color: var(--text-stronger);
+  /* 文档化观感：正文用接近纯黑的强字色（仅 .markdown 内覆盖，不动全局令牌） */
+  color: var(--text-strong);
 }
 
 .markdown > * {
   margin: 0;
 }
 
-/* shadcn typography 块间距：相邻块上间距（≈ mt-6 按聊天尺度相对化） */
+/* shadcn typography 块间距：相邻块上间距（≈ mt-6，文档化留白） */
 .markdown > * + * {
-  margin-top: 1.25em;
+  margin-top: 1.5em;
 }
 
 .markdown pre {
@@ -728,7 +730,7 @@
 /* shadcn typography lists: my-6 ml-6 list-disc/decimal [&>li]:mt-2 */
 .markdown ul,
 .markdown ol {
-  margin: 1.25em 0;
+  margin: 1.5em 0;
   padding-left: 1.5em;
   max-width: 100%;
   list-style-position: outside;
@@ -794,7 +796,7 @@
 }
 
 .markdown :where(h1) {
-  font-size: 1.75em;
+  font-size: 1.85em;
   font-weight: 800;
   letter-spacing: -0.025em;
   line-height: 1.15;
@@ -830,11 +832,11 @@
 }
 
 .markdown > :where(p, ul, ol, pre, blockquote, table, .markdown-codeblock) + :where(h1, h2) {
-  margin-top: 1.7em;
+  margin-top: 2em;
 }
 
 .markdown > :where(p, ul, ol, pre, blockquote, table, .markdown-codeblock) + :where(h3, h4, h5, h6) {
-  margin-top: 1.4em;
+  margin-top: 1.6em;
 }
 
 /* shadcn typography blockquote: border-l-2 pl-6 italic（保持正文色，不变灰） */
@@ -985,7 +987,7 @@
    避免相邻边框在 display:table 的 separate 模式下叠加变厚。 */
 .markdown table {
   width: 100%;
-  margin: 1.25em 0;
+  margin: 1.5em 0;
   display: block;
   max-width: 100%;
   overflow-x: auto;
