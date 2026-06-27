@@ -333,98 +333,47 @@
   text-decoration: underline;
 }
 
+/**
+ * Turn boundary 分隔条 —— shadcn Marker 的 separator 形态。
+ * 两侧线条由 Marker variant="separator" 的 before/after 提供（纯色 flex-1，
+ * 中间也清晰）；此处只补间距、字号与 muted 文字，无图标、无彩色。
+ */
 .messages-turn-boundary {
-  position: relative;
-  width: 100%;
   margin: 14px 0 10px;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  justify-content: center;
   gap: 8px;
-  text-align: center;
-  color: var(--text-strong);
-  color: color-mix(in srgb, var(--text-strong) 84%, var(--text-muted));
   font-size: var(--message-meta-font-size);
   letter-spacing: 0.03em;
-  flex-wrap: nowrap;
+  color: color-mix(in srgb, var(--text-strong) 84%, var(--text-muted));
 }
 
+/* 两侧线条加深：默认 Marker 用 --border，这里换成更明显的 --border-strong */
 .messages-turn-boundary::before,
 .messages-turn-boundary::after {
-  content: "";
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  height: 1.5px;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.messages-turn-boundary::before {
-  left: 0;
-  right: 50%;
-  background: linear-gradient(90deg, transparent 0%, var(--border-strong) 100%);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--border-strong) 26%, transparent) 0%,
-    color-mix(in srgb, var(--border-strong) 86%, transparent) 100%
-  );
-  clip-path: polygon(0 50%, 100% 0, 100% 100%);
-}
-
-.messages-turn-boundary::after {
-  left: 50%;
-  right: 0;
-  background: linear-gradient(90deg, var(--border-strong) 0%, transparent 100%);
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--border-strong) 86%, transparent) 0%,
-    color-mix(in srgb, var(--border-strong) 26%, transparent) 100%
-  );
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
+  background-color: var(--border-strong);
 }
 
 .messages-turn-boundary-label {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0 10px;
-  background: var(--surface-messages);
-  color: var(--text-stronger);
-  color: color-mix(in srgb, var(--text-stronger) 92%, var(--text-strong));
   font-weight: 600;
   line-height: 1.2;
-  z-index: 1;
+  color: color-mix(in srgb, var(--text-strong) 88%, var(--text-muted));
 }
 
 .messages-turn-boundary-label-content {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-}
-
-.messages-turn-boundary-icon {
-  color: var(--text-stronger);
-  color: color-mix(in srgb, var(--text-stronger) 88%, var(--text-muted));
-  opacity: 0.9;
 }
 
 .messages-turn-boundary-meta {
-  position: relative;
   display: inline-flex;
   align-items: center;
-  padding: 0 8px;
-  background: var(--surface-messages);
   letter-spacing: 0.01em;
-  text-transform: none;
   font-size: var(--message-meta-font-size);
   line-height: 1.2;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  color: var(--text-strong);
   color: color-mix(in srgb, var(--text-strong) 82%, var(--text-muted));
-  z-index: 1;
 }
 
 .messages-turn-boundary-meta-placeholder {
@@ -434,11 +383,6 @@
 
 .messages-reasoning-boundary {
   margin-bottom: 8px;
-}
-
-.messages-reasoning-boundary .messages-turn-boundary-label {
-  color: var(--text-strong);
-  color: color-mix(in srgb, var(--status-info, #3b82f6) 68%, var(--text-strong));
 }
 
 .message-provenance-row {
@@ -473,11 +417,6 @@
 
 .messages-final-boundary {
   margin-top: 10px;
-}
-
-.messages-final-boundary .messages-turn-boundary-label {
-  color: var(--text-strong);
-  color: color-mix(in srgb, var(--status-success, #22c55e) 64%, var(--text-strong));
 }
 
 .main .messages {

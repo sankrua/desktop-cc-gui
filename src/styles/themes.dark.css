@@ -3,7 +3,8 @@
   color: var(--text-primary);
   background-color: oklch(0.141 0.005 285.823);
   font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* 回到浏览器默认渲染：optimizeLegibility 会强制 kerning/连字，CJK + 小字号下观感发怪/不均 */
+  text-rendering: auto;
   /* 抗锯齿：Mac 上让系统字体更清爽细腻（不换字体的核心观感优化，全主题继承） */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

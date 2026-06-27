@@ -12,10 +12,8 @@ import {
 } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useTranslation } from "react-i18next";
-import Bell from "lucide-react/dist/esm/icons/bell";
 import Check from "lucide-react/dist/esm/icons/check";
 import Copy from "lucide-react/dist/esm/icons/copy";
-import Flag from "lucide-react/dist/esm/icons/flag";
 import type {
   AccessMode,
   ConversationItem,
@@ -25,6 +23,7 @@ import type { StreamMitigationProfile } from "../../threads/utils/streamLatencyD
 import type { GroupedEntry } from "../utils/groupToolItems";
 import { parseAgentTaskNotification } from "../utils/agentTaskNotification";
 import type { PresentationProfile } from "../presentation/presentationProfile";
+import { Marker } from "../../../components/ui/marker";
 import {
   ToolBlockRenderer,
   ReadToolGroupBlock,
@@ -1302,11 +1301,14 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       return (
         <Fragment key={itemRenderKey}>
           {shouldRenderReasoningBoundary && (
-            <div className="messages-turn-boundary messages-reasoning-boundary" role="separator">
+            <Marker
+              variant="separator"
+              role="separator"
+              className="messages-turn-boundary messages-reasoning-boundary"
+            >
               <span className="messages-turn-boundary-label">
                 <span className="messages-turn-boundary-label-content">
-                  <Bell className="messages-turn-boundary-icon" size={13} aria-hidden />
-                  <span>{t("messages.reasoningProcessBoundary")}</span>
+                  {t("messages.reasoningProcessBoundary")}
                 </span>
               </span>
               {finalMetaText && (
@@ -1317,7 +1319,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   {finalMetaText}
                 </span>
               )}
-            </div>
+            </Marker>
           )}
           <div
             ref={bindMessageNode}
@@ -1366,17 +1368,20 @@ export const MessagesTimeline = memo(function MessagesTimeline({
             />
           </div>
           {shouldRenderFinalBoundary && (
-            <div className="messages-turn-boundary messages-final-boundary" role="separator">
+            <Marker
+              variant="separator"
+              role="separator"
+              className="messages-turn-boundary messages-final-boundary"
+            >
               <span className="messages-turn-boundary-label">
                 <span className="messages-turn-boundary-label-content">
-                  <Flag className="messages-turn-boundary-icon" size={13} aria-hidden />
-                  <span>{t("messages.finalMessageBoundary")}</span>
+                  {t("messages.finalMessageBoundary")}
                 </span>
               </span>
               {finalMetaText && (
                 <span className="messages-turn-boundary-meta">{finalMetaText}</span>
               )}
-            </div>
+            </Marker>
           )}
           {shouldRenderAssistantActions ? (
             <div className="message-tail-action-row">
