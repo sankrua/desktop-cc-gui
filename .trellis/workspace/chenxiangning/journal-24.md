@@ -1226,3 +1226,48 @@ Validation:
 ### Next Steps
 
 - None - task complete
+
+
+## Session 951: 修复 Messages 流式渲染更新深度崩溃
+
+**Date**: 2026-06-27
+**Task**: 修复 Messages 流式渲染更新深度崩溃
+**Branch**: `feature/v0.6.1`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Item | Detail |
+|------|--------|
+| Bug | React production error #185 / Maximum update depth exceeded during client usage |
+| Root Cause | Messages streaming render path had several semantically idempotent state writes that still submitted new state during repeated equivalent renders |
+| Fix | Added guards for equivalent Set expansion state, unchanged scroll key updates, and null anchor reset |
+| Tests | Added regression coverage for repeated equivalent streaming reasoning renders |
+| Verification | npx vitest run Messages.test.tsx Messages.live-behavior.test.tsx messagesRenderLoopGuards.test.ts; npm run typecheck; openspec validate fix-messages-react-update-depth-loop --strict --no-interactive |
+
+**Updated Files**:
+- `src/features/messages/components/Messages.tsx`
+- `src/features/messages/components/Messages.test.tsx`
+- `openspec/changes/fix-messages-react-update-depth-loop/`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `11f920a4` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
