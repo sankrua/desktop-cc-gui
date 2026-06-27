@@ -131,6 +131,18 @@ import type {
 
 const EMPTY_TASK_RUNS: NonNullable<MessagesProps["taskRuns"]> = [];
 
+function areStringSetsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>) {
+  if (left.size !== right.size) {
+    return false;
+  }
+  for (const value of left) {
+    if (!right.has(value)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 export const Messages = memo(function Messages({
   items: legacyItems,
   threadId: legacyThreadId,
@@ -514,7 +526,7 @@ export const Messages = memo(function Messages({
         return;
       }
       startScrollKeyTransition(() => {
-        setScrollKey(rawScrollKey);
+        setScrollKey((current) => (current === rawScrollKey ? current : rawScrollKey));
       });
     }, isThinking ? 120 : 0);
     return () => {
@@ -808,7 +820,7 @@ export const Messages = memo(function Messages({
             next.add(id);
           }
         }
-        return next;
+        return areStringSetsEqual(prev, next) ? prev : next;
       });
       lastAutoExpandedIdRef.current = lastReasoningId;
     }
@@ -1872,7 +1884,7 @@ export const Messages = memo(function Messages({
       }
       activeAnchorIdRef.current = null;
       anchorLoopGuardRef.current = DEFAULT_RENDER_LOOP_GUARD_BUDGET;
-      setActiveAnchorId(null);
+      setActiveAnchorId((current) => (current === null ? current : null));
       return;
     }
     scheduleAnchorUpdate("sync");
