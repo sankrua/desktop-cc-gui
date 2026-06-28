@@ -105,10 +105,11 @@
   transform: translateY(0);
 }
 
-.message-tail-action-row {
-  display: flex;
-  justify-content: flex-end;
-  padding: 0 10px 4px;
+/* 操作按钮(复制/分支/历史)挪入「最终消息」分隔线那一行，排到右侧线条之后、贴最右端 */
+.messages-final-boundary .message-action-bar-row {
+  order: 1;
+  flex-shrink: 0;
+  margin-left: 8px;
 }
 
 .message-action-button {
@@ -191,10 +192,12 @@
   min-width: 88px;
 }
 
+/* 复制按钮用 lucide SVG，分支/历史用 codicon 字体：lucide 默认描边偏粗、12px 方框墨迹偏大，
+   收到 11px 并减细描边，使其视觉重量与同排 codicon(font-size:12px) 对齐 */
 .message-copy-icon {
   position: relative;
-  width: 12px;
-  height: 12px;
+  width: 11px;
+  height: 11px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -203,6 +206,9 @@
 .message-copy-icon svg {
   position: absolute;
   inset: 0;
+  width: 100%;
+  height: 100%;
+  stroke-width: 1.75;
   transition: opacity 160ms ease, transform 160ms ease, filter 160ms ease;
 }
 
@@ -2294,13 +2300,18 @@
   pointer-events: auto;
 }
 
+/* 归组块以「卡片」呈现：细边框 + 圆角 + 背景，标题行整行可点、内容手风琴展开 */
 .explore-inline {
-  border-left: none;
-  padding-left: 0;
-  margin: 4px 0;
+  margin: 8px 0;
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
+  border: 1px solid var(--border-subtle);
+  border-radius: 8px;
+  /* 复用代码块同款 --muted(shadcn bg-muted)：亮色浅灰、暗色深灰，
+     都与正文背景拉开对比;--surface-card 在亮色下半透明叠白几乎不可见 */
+  background: var(--muted);
+  overflow: hidden;
 }
 
 .explore-inline .tool-inline-content {
@@ -2312,14 +2323,23 @@
 .explore-inline-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 2px 8px;
-  border-radius: 4px;
-  background: color-mix(in srgb, var(--surface-hover) 58%, transparent);
-  font-size: 12px;
-  color: var(--text-stronger);
+  gap: 0.5rem;
+  padding: 8px 12px;
+  background: transparent;
+  font-size: 13px;
+  color: var(--text-muted);
   width: 100%;
   box-sizing: border-box;
+  transition: background-color 0.16s ease;
+}
+
+.explore-inline.is-collapsible .explore-inline-header:hover {
+  background: var(--surface-hover);
+}
+
+/* 展开时标题与内容用分隔线区隔 */
+.explore-inline:has(.explore-inline-list:not(.is-collapsed)) .explore-inline-header {
+  border-bottom: 1px solid var(--border-subtle);
 }
 
 .explore-inline-header-toggle {
@@ -2351,34 +2371,30 @@
   transform: rotate(90deg);
 }
 
+/* 图标对齐 Marker：统一 muted 灰 + size-4（16px），覆盖全局 .tool-inline-icon 的状态色/14px */
+.explore-inline-header .tool-inline-icon,
+.explore-inline-header .tool-inline-icon.completed,
+.explore-inline-header .tool-inline-icon.processing,
+.explore-inline-header .tool-inline-icon.failed {
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+}
+
 .explore-inline-title {
   font-weight: 600;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--text-stronger);
 }
 
 .explore-inline-list {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  margin-left: 12px;
-  padding-left: 14px;
-}
-
-.explore-inline-list:not(.is-collapsed) {
-  position: relative;
-}
-
-.explore-inline-list:not(.is-collapsed)::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 2px;
-  bottom: 2px;
-  width: 1px;
-  background: var(--border-subtle);
+  padding: 8px 12px;
 }
 
 .explore-inline.is-inline-summary .explore-inline-list {

@@ -80,6 +80,7 @@ import {
   estimateTimelineProjectionRowSize,
   getActiveLiveTimelineRowKeys,
   getTimelineVirtualizationThresholdReason,
+  isEmptyVirtualProjectionRow,
   observeTimelineElementOffset,
   resolveTimelineCanvasOverscan,
   resolveTimelineVirtualizerStabilityRecovery,
@@ -1311,14 +1312,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
                   {t("messages.reasoningProcessBoundary")}
                 </span>
               </span>
-              {finalMetaText && (
-                <span
-                  className="messages-turn-boundary-meta messages-turn-boundary-meta-placeholder"
-                  aria-hidden="true"
-                >
-                  {finalMetaText}
-                </span>
-              )}
             </Marker>
           )}
           <div
@@ -1381,13 +1374,9 @@ export const MessagesTimeline = memo(function MessagesTimeline({
               {finalMetaText && (
                 <span className="messages-turn-boundary-meta">{finalMetaText}</span>
               )}
+              {renderAssistantActions()}
             </Marker>
           )}
-          {shouldRenderAssistantActions ? (
-            <div className="message-tail-action-row">
-              {renderAssistantActions()}
-            </div>
-          ) : null}
         </Fragment>
       );
     }
@@ -1784,11 +1773,24 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           kind: "bottomAnchor",
           key: "bottom-anchor",
         });
-        const placeholderHeight = resolveVirtualizedTimelineRowVisualHeight({
-          measuredSize: virtualRow.size,
-          estimatedSize: estimatedRowSize,
-          lightweight: isLightweightTimelineRow,
-        });
+        const isEmptyTimelineRow = row
+          ? isEmptyVirtualProjectionRow(row, {
+              activeEngine,
+              claudeHistoryTranscriptFallbackActive,
+              hasTailUserInputNode: Boolean(userInputNode),
+              isWorking,
+              lastDurationMs,
+              effectiveItemsCount,
+            })
+          : false;
+        // 渲染为空/null 的行不应占据估高占位，否则虚拟行的 minHeight 会撑出大段空白。
+        const placeholderHeight = isEmptyTimelineRow
+          ? 0
+          : resolveVirtualizedTimelineRowVisualHeight({
+              measuredSize: virtualRow.size,
+              estimatedSize: estimatedRowSize,
+              lightweight: isLightweightTimelineRow,
+            });
         return (
           <div
             key={virtualRow.key}

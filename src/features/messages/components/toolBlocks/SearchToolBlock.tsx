@@ -16,7 +16,7 @@ import {
   extractToolName,
   resolveToolStatus,
 } from './toolConstants';
-import { ToolMarkerShell, ToolStatusIcon } from './ToolMarkerShell';
+import { TOOL_MARKER_BODY_CLASS, ToolMarkerShell, ToolStatusIcon } from './ToolMarkerShell';
 
 interface SearchToolBlockProps {
   item: Extract<ConversationItem, { kind: 'tool' }>;
@@ -170,7 +170,7 @@ export const SearchToolBlock = memo(function SearchToolBlock({
       onToggle={() => onToggle(item.id)}
       trailing={<ToolStatusIcon status={status} />}
       body={
-        <div className="mt-1 overflow-hidden rounded-md bg-muted/30">
+        <div className={TOOL_MARKER_BODY_CLASS}>
           {pattern && (
             <div className="task-field">
               <div className="task-field-label">query</div>

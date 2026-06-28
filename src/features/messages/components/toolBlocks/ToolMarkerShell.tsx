@@ -11,8 +11,9 @@ import { cn } from '@/lib/utils';
 import { Marker, MarkerContent, MarkerIcon } from '../../../../components/ui/marker';
 import type { ToolStatusTone } from './toolConstants';
 
-/** 单块统一折叠体容器类：无边框、muted 底、与头部小间距 */
-export const TOOL_MARKER_BODY_CLASS = 'mt-1 overflow-hidden rounded-md bg-muted/30';
+/** 单块统一折叠体容器类：淡边框 + rounded-md(6px) + muted/30 底、与头部小间距 */
+export const TOOL_MARKER_BODY_CLASS =
+  'mt-1 overflow-hidden rounded-md border border-border bg-muted/30';
 
 /**
  * 靠右状态图标：失败=警示、完成=不显示、处理中=转圈。
@@ -39,12 +40,16 @@ interface ToolMarkerShellProps {
   labelHidden?: boolean;
   /** 给 Marker 的 aria-label（如 Search 需要 getByLabelText 锚点） */
   ariaLabel?: string;
+  /** 给 Marker 的 ARIA role（如工具卡片需 role="group" 保留语义/测试锚点） */
+  role?: string;
   expanded?: boolean;
   onToggle?: () => void;
   /** 是否可点击（默认 true）；false 时不绑定点击、不显示指针 */
   interactive?: boolean;
   /** Marker 容器附加类 */
   className?: string;
+  /** 最外层 wrapper（含折叠体）附加类，用于承载块级间距等 */
+  wrapperClassName?: string;
   /** MarkerContent 附加类 */
   contentClassName?: string;
   /** 靠右节点（状态图标 / 进度文本），自带 ml-auto */
@@ -64,10 +69,12 @@ export function ToolMarkerShell({
   label,
   labelHidden = false,
   ariaLabel,
+  role,
   expanded = false,
   onToggle,
   interactive = true,
   className,
+  wrapperClassName,
   contentClassName,
   trailing,
   children,
@@ -76,13 +83,14 @@ export function ToolMarkerShell({
   const clickable = interactive && Boolean(onToggle);
 
   return (
-    <div>
+    <div className={wrapperClassName}>
       <Marker
         {...(ariaLabel ? { 'aria-label': ariaLabel } : {})}
+        {...(role ? { role } : {})}
         {...(clickable ? { onClick: onToggle } : {})}
         className={cn(
-          'gap-2 rounded-md px-3 py-1.5 text-sm transition-colors',
-          clickable && 'cursor-pointer select-none hover:bg-accent/50',
+          'gap-2 rounded-md pr-3 py-1.5 text-sm transition-colors',
+          clickable && 'cursor-pointer select-none',
           className,
         )}
       >

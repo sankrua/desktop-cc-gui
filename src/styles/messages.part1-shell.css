@@ -376,11 +376,6 @@
   color: color-mix(in srgb, var(--text-strong) 82%, var(--text-muted));
 }
 
-.messages-turn-boundary-meta-placeholder {
-  visibility: hidden;
-  pointer-events: none;
-}
-
 .messages-reasoning-boundary {
   margin-bottom: 8px;
 }
@@ -413,6 +408,8 @@
 .message-tool-block-shell {
   display: flex;
   flex-direction: column;
+  /* 工具块与下方文字/相邻块之间留白，对齐正文段落间距，避免混排时下间距偏挤 */
+  margin-bottom: 12px;
 }
 
 .messages-final-boundary {

@@ -16,7 +16,7 @@ import {
   truncateText,
   resolveToolStatus,
 } from './toolConstants';
-import { ToolMarkerShell, ToolStatusIcon } from './ToolMarkerShell';
+import { TOOL_MARKER_BODY_CLASS, ToolMarkerShell, ToolStatusIcon } from './ToolMarkerShell';
 
 interface McpToolBlockProps {
   item: Extract<ConversationItem, { kind: 'tool' }>;
@@ -103,7 +103,7 @@ export const McpToolBlock = memo(function McpToolBlock({
       onToggle={() => setExpanded(prev => !prev)}
       trailing={<ToolStatusIcon status={status} />}
       body={
-        <div className="mt-1 overflow-hidden rounded-md bg-muted/30">
+        <div className={TOOL_MARKER_BODY_CLASS}>
           {otherParams.length > 0 && (
             <div className="task-content-wrapper">
               {otherParams.map(([key, value]) => (

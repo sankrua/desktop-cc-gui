@@ -1504,9 +1504,6 @@ export const GenericToolBlock = memo(function GenericToolBlock({
                   <span className="shrink-0">{displayName}</span>
                   <MarkerContent className="flex min-w-0 items-center gap-2">
                     <span className="tool-change-summary tool-change-summary-single">
-                      <span className="tool-change-summary-count">{formatFileCountLabel(1)}</span>
-                      <span className="diff-stat-add">+{change.diffStats.additions}</span>
-                      <span className="diff-stat-del">-{change.diffStats.deletions}</span>
                       <span className="tool-change-collapsed-preview" title={change.path}>
                         <span className={`tool-change-kind-badge ${change.normalizedKind}`}>
                           {change.kindCode}
@@ -1515,6 +1512,10 @@ export const GenericToolBlock = memo(function GenericToolBlock({
                         <span className="tool-change-collapsed-file-name">
                           {getFileName(change.path)}
                         </span>
+                      </span>
+                      <span className="tool-change-summary-meta">
+                        <span className="diff-stat-add">+{change.diffStats.additions}</span>
+                        <span className="diff-stat-del">-{change.diffStats.deletions}</span>
                       </span>
                     </span>
                   </MarkerContent>
@@ -1645,11 +1646,6 @@ export const GenericToolBlock = memo(function GenericToolBlock({
           )}
           {hasChanges && (
             <span className="tool-change-summary">
-              <span className="tool-change-summary-count">
-                {formatFileCountLabel(item.changes?.length ?? 0)}
-              </span>
-              <span className="diff-stat-add">+{changeStats.additions}</span>
-              <span className="diff-stat-del">-{changeStats.deletions}</span>
               {collapsedPreviewChange && (
                 <span className="tool-change-collapsed-preview" title={collapsedPreviewChange.path}>
                   <FileIcon fileName={getFileName(collapsedPreviewChange.path)} size={14} />
@@ -1663,6 +1659,13 @@ export const GenericToolBlock = memo(function GenericToolBlock({
                   )}
                 </span>
               )}
+              <span className="tool-change-summary-meta">
+                <span className="tool-change-summary-count">
+                  {formatFileCountLabel(item.changes?.length ?? 0)}
+                </span>
+                <span className="diff-stat-add">+{changeStats.additions}</span>
+                <span className="diff-stat-del">-{changeStats.deletions}</span>
+              </span>
             </span>
           )}
         </MarkerContent>

@@ -543,6 +543,10 @@ export const Messages = memo(function Messages({
     if (!liveAutoFollowEnabled || !isWorking) {
       return;
     }
+    // Respect a manual scroll-up: never yank the user back to the bottom.
+    if (!autoScrollRef.current) {
+      return;
+    }
     if (!bottomRef.current) {
       return;
     }
@@ -1673,12 +1677,13 @@ export const Messages = memo(function Messages({
     if (!container) {
       return;
     }
-    const nearBottom = isNearBottom(container);
-    autoScrollRef.current = liveAutoFollowEnabled ? true : nearBottom;
+    // Auto-follow tracks the user's real scroll position: stick to the bottom
+    // only while the viewport is actually near the bottom. Scrolling up cancels
+    // the follow; scrolling back to the bottom re-enables it.
+    autoScrollRef.current = isNearBottom(container);
     scheduleAnchorUpdate("scroll");
   }, [
     isNearBottom,
-    liveAutoFollowEnabled,
     scheduleAnchorUpdate,
   ]);
   const clearTransientUiState = useCallback(() => {
@@ -1907,10 +1912,11 @@ export const Messages = memo(function Messages({
       return undefined;
     }
     const container = containerRef.current;
+    // Follow new content only when the user is parked at the bottom. A manual
+    // scroll up flips autoScrollRef off (see updateAutoScroll) and stops the
+    // pull-to-bottom; scrolling back down re-arms it.
     const shouldScroll =
-      (liveAutoFollowEnabled && (isWorking || isAssistantFinalizing)) ||
-      autoScrollRef.current ||
-      (container ? isNearBottom(container) : true);
+      autoScrollRef.current || (container ? isNearBottom(container) : true);
     if (!shouldScroll) {
       return undefined;
     }

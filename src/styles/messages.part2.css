@@ -404,9 +404,11 @@
   --md-link-color: #107c10;
 }
 
-/* shadcn 化代码块：扁平边框卡（border + var(--radius)，去重阴影） */
+/* shadcn 化代码块：扁平边框卡（border + var(--radius)，去重阴影）。
+   边框用 --border-strong 而非 --border：亮色下 --border 与 --muted 底色几近同色、
+   四边几乎隐形，--border-strong 让淡边框清晰可见又不喧宾夺主。 */
 .message .markdown-codeblock {
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--message-codeblock-bg);
   overflow: hidden;
@@ -680,7 +682,7 @@
 .message .markdown-codeblock-single {
   margin: 1.25em 0;
   padding: 14px 16px 16px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-lg);
   background: var(--message-codeblock-bg);
   white-space: pre;

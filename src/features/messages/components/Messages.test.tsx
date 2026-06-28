@@ -241,16 +241,18 @@ describe("Messages", () => {
       />,
     );
 
-    expect(container.querySelector(".messages-final-boundary .message-action-bar")).toBeNull();
+    expect(container.querySelector(".message-tail-action-row")).toBeNull();
     expect(
-      container.querySelectorAll(".message-tail-action-row .message-action-bar-row"),
+      container.querySelectorAll(".messages-final-boundary .message-action-bar-row"),
     ).toHaveLength(2);
     expect(
       container.querySelectorAll(".message.user .bubble .message-copy-button"),
     ).toHaveLength(2);
-    const tailActionRows = container.querySelectorAll(".message-tail-action-row");
-    expect(tailActionRows[0].querySelectorAll("button")).toHaveLength(1);
-    expect(tailActionRows[1].querySelectorAll("button")).toHaveLength(3);
+    const boundaryActionRows = container.querySelectorAll(
+      ".messages-final-boundary .message-action-bar-row",
+    );
+    expect(boundaryActionRows[0].querySelectorAll("button")).toHaveLength(1);
+    expect(boundaryActionRows[1].querySelectorAll("button")).toHaveLength(3);
     expect(screen.getAllByRole("button", { name: "messages.copyMessage" })).toHaveLength(2);
     const userCopyButtons = screen.getAllByRole("button", {
       name: "messages.copyUserMessage",
@@ -261,7 +263,7 @@ describe("Messages", () => {
     });
     expect(writeTextMock).toHaveBeenCalledWith("first request");
     const assistantCopyButtons = container.querySelectorAll(
-      ".message-tail-action-row .message-copy-button",
+      ".messages-final-boundary .message-copy-button",
     );
     expect(assistantCopyButtons).toHaveLength(2);
     await act(async () => {
