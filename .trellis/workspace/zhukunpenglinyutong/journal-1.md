@@ -170,3 +170,50 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 5: 抽取代码块语言徽标与复制按钮为共享组件
+
+**Date**: 2026-06-28
+**Task**: 代码块渲染层重构 — 共享语言徽标/复制按钮
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+将 Markdown 代码块中重复的复制状态逻辑与语言标签抽取为共享组件，并加入语言图标与行号样式。
+
+### Main Changes
+
+| 模块 | 说明 |
+|------|------|
+| codeBlockLanguageIcon.tsx | 新增，封装 CodeBlockLanguageBadge 与 CodeBlockCopyButton（含语言图标） |
+| Markdown.tsx | 移除 CodeBlock/DeferredCodeBlock/MarkdownBlock 三处重复复制逻辑，统一复用共享组件 |
+| pre 元素 | 增加 data-line-numbers，配套行号样式 |
+| 样式 | 同步调整 messages/file-view-panel/spec-hub/buttons/globals |
+
+**Updated Files**:
+- `src/features/messages/components/codeBlockLanguageIcon.tsx`（新增）
+- `src/features/messages/components/codeBlockLanguageIcon.test.ts`（新增）
+- `src/features/messages/components/Markdown.tsx`
+- `src/features/messages/components/MermaidBlock.tsx`
+- `src/features/files/components/FileMarkdownPreview.tsx`
+- `src/features/messages/components/Markdown.codeblock-rendering.test.tsx`
+- `src/styles/{messages.part1,messages.part2,file-view-panel,spec-hub,buttons,globals}.css`
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `f80683bd` | refactor(messages): 抽取代码块语言徽标与复制按钮为共享组件 |
+
+### Testing
+
+- [ ] 未运行测试
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
