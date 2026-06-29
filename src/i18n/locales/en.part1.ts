@@ -811,6 +811,11 @@ const enPart1 = {
       "Reset {{count}} performance flag override(s). Reload the window to refresh module-level caches.",
     performanceFlagsResetAlreadyDefault:
       "Performance flags already use defaults. Reload the window if you are verifying runtime behavior.",
+    reactScanTitle: "Render performance panel (react-scan)",
+    reactScanDescription:
+      "Overlays highlights on the UI to flag components that are re-rendering, with render counts, to help pinpoint conversation jank. Takes effect immediately.",
+    reactScanDetail:
+      "Developer-grade tool for local diagnostics. Note: packaged (production) builds only show re-render highlights and counts, not per-render timings — use a dev build (npm run dev:scan) for timings.",
     costBudgetTitle: "Cost budget",
     costBudgetDescription:
       "Set a local monthly budget for the StatusPanel BudgetBar and cost guidance.",

@@ -2,6 +2,11 @@ import { useState, type ChangeEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import {
+  isReactScanFlagEnabled,
+  setReactScanEnabled,
+} from "@/services/reactScanController";
 import { HistoryCompletionSettings } from "../../HistoryCompletionSettings";
 import { SessionRadarHistoryManagementSection } from "../../SessionRadarHistoryManagementSection";
 import type { SessionRadarEntry } from "../../../../session-activity/hooks/useSessionRadarFeed";
@@ -37,6 +42,14 @@ export function OtherSection({
     useState<string | null>(null);
   const [streamingScheduleTier, setStreamingScheduleTier] =
     useState<RenderScheduleTier>(() => readStreamingScheduleTier());
+  const [reactScanEnabled, setReactScanEnabledState] = useState<boolean>(() =>
+    isReactScanFlagEnabled(),
+  );
+
+  const handleReactScanToggle = (checked: boolean) => {
+    setReactScanEnabledState(checked);
+    void setReactScanEnabled(checked);
+  };
 
   const handleResetPerformanceFlags = () => {
     const removedKeys = resetRealtimePerfFlags();
@@ -111,6 +124,22 @@ export function OtherSection({
         <Button type="button" variant="outline" onClick={handleResetPerformanceFlags}>
           {t("settings.performanceFlagsResetButton")}
         </Button>
+      </div>
+      <div className="settings-toggle-row">
+        <div>
+          <div className="settings-toggle-title">
+            {t("settings.reactScanTitle")}
+          </div>
+          <div className="settings-toggle-subtitle">
+            {t("settings.reactScanDescription")}
+          </div>
+          <div className="settings-help">{t("settings.reactScanDetail")}</div>
+        </div>
+        <Switch
+          aria-label={t("settings.reactScanTitle")}
+          checked={reactScanEnabled}
+          onCheckedChange={handleReactScanToggle}
+        />
       </div>
       <Separator className="my-4" />
       <CostBudgetSettingsSection />

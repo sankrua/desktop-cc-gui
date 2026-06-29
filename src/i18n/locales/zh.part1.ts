@@ -920,6 +920,11 @@ const zhPart1 = {
       "已重置 {{count}} 个性能开关覆盖项。请重载窗口以刷新模块级缓存。",
     performanceFlagsResetAlreadyDefault:
       "性能开关已经使用默认值。如需验证运行时行为，请重载窗口。",
+    reactScanTitle: "渲染性能面板（react-scan）",
+    reactScanDescription:
+      "在界面上叠加高亮，实时标出正在重渲染的组件及其渲染次数，用于定位对话卡顿。开关即时生效。",
+    reactScanDetail:
+      "开发级工具，仅本机诊断用。注意：打包（生产）版只能看重渲染高亮与次数，看不到每次渲染耗时；要看耗时请用开发版（npm run dev:scan）。",
     costBudgetTitle: "成本预算",
     costBudgetDescription:
       "设置本机月度预算，用于 StatusPanel 的 BudgetBar 和成本提示。",

@@ -6,6 +6,9 @@
   "scripts": {
     "preinstall": "node scripts/enforce-package-manager.mjs npm",
     "dev": "npm run ensure:dev-port && vite",
+    "dev:scan": "VITE_ENABLE_REACT_SCAN=1 npm run dev",
+    "dev:perf": "VITE_ENABLE_REACT_SCAN=1 VITE_ENABLE_PERF_BASELINE=1 npm run dev",
+    "tauri:dev:scan": "VITE_ENABLE_REACT_SCAN=1 VITE_ENABLE_PERF_BASELINE=1 npm run tauri:dev:hot",
     "build": "tsc && vite build",
     "build:appimage": "NO_STRIP=1 tauri build --bundles appimage",
     "build:mac-arm64": "node scripts/build-platform.mjs mac-arm64",
@@ -146,6 +149,7 @@
     "eslint-plugin-react": "^7.36.1",
     "eslint-plugin-react-hooks": "^4.6.2",
     "jsdom": "^27.0.1",
+    "react-scan": "^0.5.7",
     "shadcn": "^4.11.1",
     "typescript": "~5.8.3",
     "vite": "^7.0.4",

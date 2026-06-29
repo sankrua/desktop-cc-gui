@@ -2,8 +2,13 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
+import type { PluginOption } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
+// Preserves readable React component names in production bundles so the bundled
+// react-scan overlay can attribute renders to real names (e.g. MessagesTimeline)
+// instead of minified identifiers. Build-only: dev already keeps names, tests skip it.
+import reactComponentName from "react-scan/react-component-name/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
@@ -16,8 +21,12 @@ const packageJson = JSON.parse(
 };
 
 // https://vite.dev/config/
-export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss()],
+export default defineConfig(({ command }) => ({
+  plugins: [
+    react(),
+    ...(command === "build" ? [reactComponentName({}) as PluginOption] : []),
+    tailwindcss(),
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
