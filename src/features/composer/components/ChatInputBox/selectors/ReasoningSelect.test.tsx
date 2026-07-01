@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { ReasoningSelect } from './ReasoningSelect';
 
@@ -47,7 +48,8 @@ describe('ReasoningSelect', () => {
     expect(container.querySelector('.selector-reasoning-button.is-icon-only')).toBeNull();
   });
 
-  it('does not fall back to all levels when explicit options are empty', () => {
+  it('does not fall back to all levels when explicit options are empty', async () => {
+    const user = userEvent.setup({ pointerEventsCheck: 0 });
     render(
       <ReasoningSelect
         value={null}
@@ -58,7 +60,10 @@ describe('ReasoningSelect', () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Claude 默认/i }));
+    await user.click(screen.getByRole('button', { name: /Claude 默认/i }));
+    await waitFor(() => {
+      expect(document.body.querySelector('[data-reasoning-id]')).toBeTruthy();
+    });
 
     expect(screen.getAllByText('Claude 默认')).toHaveLength(2);
     expect(screen.queryByText('Low')).toBeNull();

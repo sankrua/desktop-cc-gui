@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import { HomeChat } from "./HomeChat";
@@ -168,58 +168,6 @@ describe("HomeChat", () => {
 });
 
 
-describe("HomeChat workspace picker virtualization", () => {
-  it("renders a bounded DOM row count when 200 workspaces are present", () => {
-    const longWorkspaces = Array.from({ length: 200 }, (_, index) => ({
-      id: `ws-virt-${index}`,
-      name: `workspace-${index}`,
-      path: `/tmp/workspace-${index}`,
-      kind: "main" as const,
-    }));
-    render(
-      <HomeChat
-        {...baseProps}
-        workspaces={longWorkspaces}
-        selectedWorkspaceId={longWorkspaces[0]?.id ?? null}
-      />,
-    );
-    fireEvent.click(screen.getByRole("button", { name: "Workspace" }));
-    const list = screen
-      .getByRole("list", { name: "Workspace" })
-      ?.parentElement?.querySelector(".home-chat-workspace-picker-list");
-    expect(list).toBeTruthy();
-    expect(list?.getAttribute("data-virtualized")).toBe("true");
-    const spacer = document.querySelector(".home-chat-workspace-picker-virtual-spacer");
-    expect(spacer).toBeTruthy();
-    // The whole point of virtualization: with 200 workspaces, the DOM
-    // MUST NOT mount all 200 .home-chat-workspace-picker-item elements.
-    const mountedItems = document.querySelectorAll(
-      ".home-chat-workspace-picker-item",
-    ).length;
-    expect(mountedItems).toBeLessThan(200);
-  });
-
-  it("exposes a 100-row virtualization threshold and bounded item-key derivation", async () => {
-    const helpers = await import("./HomeChatVirtualization");
-    expect(helpers.HOME_CHAT_WORKSPACE_VIRTUALIZATION_MIN_ROWS).toBe(100);
-    expect(helpers.shouldVirtualizeWorkspaceList(99)).toBe(false);
-    expect(helpers.shouldVirtualizeWorkspaceList(100)).toBe(true);
-    expect(helpers.shouldVirtualizeWorkspaceList(200)).toBe(true);
-    // Item key derivation MUST be stable per workspace id, never index.
-    expect(
-      helpers.resolveWorkspaceVirtualItemKey(
-        [{ id: "ws-1", name: "alpha" }, { id: "ws-2", name: "beta" }],
-        0,
-      ),
-    ).toBe("ws-1");
-    expect(
-      helpers.resolveWorkspaceVirtualItemKey(
-        [{ id: "ws-1", name: "alpha" }, { id: "ws-2", name: "beta" }],
-        1,
-      ),
-    ).toBe("ws-2");
-    expect(
-      helpers.resolveWorkspaceVirtualItemKey([], 0),
-    ).toMatch(/^workspace-fallback-/);
-  });
-});
+// Workspace picker virtualization was removed when the picker migrated to the
+// shadcn Popover + Command combobox; cmdk renders the (rarely large) project
+// list directly, so there is no virtualization threshold left to assert.
