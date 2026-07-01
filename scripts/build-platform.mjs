@@ -273,7 +273,7 @@ async function buildMacOS(arch, options = {}) {
   // Create DMG with drag-to-install panel
   ensureReleaseDir();
   const createDmgScript = join(ROOT_DIR, "scripts", "create-dmg.sh");
-  exec(`bash "${createDmgScript}" "${bundlePath}" "${RELEASE_DIR}/${dmgName}" "ccgui Installer"`);
+  exec(`bash "${createDmgScript}" "${bundlePath}" "${RELEASE_DIR}/${dmgName}" "ccgui"`);
 
   // Notarize
   if (!skipNotarize && !skipSign) {
