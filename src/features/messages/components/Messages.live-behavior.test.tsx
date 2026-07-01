@@ -11,6 +11,18 @@ vi.mock("./Markdown", () => ({
   ),
 }));
 
+// History collapsing ships effectively disabled in production (window = 10000).
+// These behavior tests exercise the collapse/expand logic at its original
+// threshold; only the three >30-item cases below are affected.
+vi.mock("./messagesRenderUtils", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("./messagesRenderUtils")>();
+  return {
+    ...actual,
+    VISIBLE_MESSAGE_WINDOW: 30,
+  };
+});
+
 describe("Messages live behavior", () => {
   afterEach(() => {
     cleanup();
@@ -801,12 +813,12 @@ describe("Messages live behavior", () => {
     scrollSpy.mockRestore();
   });
 
-  it("keeps auto-follow working after manual scroll when enabled", async () => {
+  it("stops auto-follow after the user scrolls up, then resumes at the bottom", async () => {
     window.localStorage.setItem("ccgui.messages.live.autoFollow", "1");
     const scrollSpy = vi
       .spyOn(HTMLElement.prototype, "scrollIntoView")
       .mockImplementation(() => {});
-    const { container, rerender } = render(
+    const renderWith = (extraChunk: boolean) => (
       <Messages
         items={[
           {
@@ -815,6 +827,16 @@ describe("Messages live behavior", () => {
             role: "assistant",
             text: "first chunk",
           },
+          ...(extraChunk
+            ? [
+                {
+                  id: "assistant-live-follow-2",
+                  kind: "message" as const,
+                  role: "assistant" as const,
+                  text: "second chunk",
+                },
+              ]
+            : []),
         ]}
         threadId="thread-1"
         workspaceId="ws-1"
@@ -822,46 +844,27 @@ describe("Messages live behavior", () => {
         processingStartedAt={Date.now() - 1_000}
         openTargets={[]}
         selectedOpenAppId=""
-      />,
+      />
     );
+    const { container, rerender } = render(renderWith(false));
 
-    const scroller = container.querySelector(".messages") as HTMLDivElement | null;
-    expect(scroller).toBeTruthy();
-    if (!scroller) {
-      throw new Error("expected messages scroller");
-    }
-    Object.defineProperty(scroller, "scrollHeight", { value: 2000, configurable: true });
-    Object.defineProperty(scroller, "clientHeight", { value: 500, configurable: true });
-    Object.defineProperty(scroller, "scrollTop", { value: 400, writable: true, configurable: true });
+    const scroller = getMessagesScroller(container);
+    // User scrolls up, far from the bottom — auto-follow must release.
+    setScrollerMetrics(scroller, 400, 2000);
     fireEvent.scroll(scroller);
 
-    const baselineCalls = scrollSpy.mock.calls.length;
+    let baselineCalls = scrollSpy.mock.calls.length;
+    rerender(renderWith(true));
+    await Promise.resolve();
+    expect(scrollSpy.mock.calls.length).toBe(baselineCalls);
 
-    rerender(
-      <Messages
-        items={[
-          {
-            id: "assistant-live-follow-1",
-            kind: "message",
-            role: "assistant",
-            text: "first chunk",
-          },
-          {
-            id: "assistant-live-follow-2",
-            kind: "message",
-            role: "assistant",
-            text: "second chunk",
-          },
-        ]}
-        threadId="thread-1"
-        workspaceId="ws-1"
-        isThinking
-        processingStartedAt={Date.now() - 1_000}
-        openTargets={[]}
-        selectedOpenAppId=""
-      />,
-    );
+    // User scrolls back to the bottom — auto-follow re-arms.
+    rerender(renderWith(false));
+    setScrollerMetrics(scroller, 1280, 2000); // 2000 - 1280 - 720 = 0, at bottom
+    fireEvent.scroll(scroller);
 
+    baselineCalls = scrollSpy.mock.calls.length;
+    rerender(renderWith(true));
     await waitFor(() => {
       expect(scrollSpy.mock.calls.length).toBeGreaterThan(baselineCalls);
     });

@@ -6,6 +6,7 @@ import {
   estimateTimelineProjectionRowSize,
   estimateTimelineProjectionRenderWeight,
   getActiveLiveTimelineRowKeys,
+  isEmptyVirtualProjectionRow,
   isTimelineRenderWeightGateEnabled,
   DEFAULT_TIMELINE_VIRTUALIZER_STABILITY_RECOVERY_BUDGET,
   summarizeTimelineProjectionRenderWeight,
@@ -28,6 +29,7 @@ import {
 } from "./messagesTimelineVirtualization";
 import { createHeavyHistoryFixture } from "./messagesHeavyHistoryFixture.test-support";
 import type { TimelineProjectionRow } from "./messagesTimelineProjection";
+import type { ConversationItem } from "../../../types";
 
 describe("messagesTimelineVirtualization", () => {
   afterEach(() => {
@@ -500,5 +502,107 @@ describe("messagesTimelineVirtualization", () => {
     expect(callback).toHaveBeenCalledWith(240, true);
     expect(setTimeoutSpy).toHaveBeenCalled();
     expect(clearTimeoutSpy).toHaveBeenCalledWith(7);
+  });
+
+  describe("isEmptyVirtualProjectionRow", () => {
+    const baseInput = {
+      activeEngine: "claude" as const,
+      claudeHistoryTranscriptFallbackActive: false,
+      hasTailUserInputNode: false,
+      isWorking: false,
+      lastDurationMs: null,
+      effectiveItemsCount: 3,
+    };
+    const bashTool: Extract<ConversationItem, { kind: "tool" }> = {
+      id: "tool-bash-1",
+      kind: "tool",
+      toolType: "commandExecution",
+      title: "Bash",
+      detail: "ls -la",
+      status: "completed",
+      output: "file.ts",
+    };
+    const messageRow: TimelineProjectionRow = {
+      kind: "entry",
+      key: "entry:message:m1",
+      entry: {
+        kind: "item",
+        item: { id: "m1", kind: "message", role: "assistant", isFinal: true, text: "hi" },
+      },
+      itemIds: ["m1"],
+      hasActiveUserInputAnchor: false,
+    };
+
+    it("treats the bottom anchor as empty so it never reserves placeholder height", () => {
+      expect(
+        isEmptyVirtualProjectionRow({ kind: "bottomAnchor", key: "bottom-anchor" }, baseInput),
+      ).toBe(true);
+    });
+
+    it("collapses the idle working indicator but keeps it when it renders content", () => {
+      const workingIndicatorRow: TimelineProjectionRow = {
+        kind: "workingIndicator",
+        key: "working-indicator",
+      };
+      // 非工作态、无完成提示 → WorkingIndicator 渲染为空。
+      expect(isEmptyVirtualProjectionRow(workingIndicatorRow, baseInput)).toBe(true);
+      // 工作态 → 显示 spinner。
+      expect(
+        isEmptyVirtualProjectionRow(workingIndicatorRow, { ...baseInput, isWorking: true }),
+      ).toBe(false);
+      // 非工作态但有上一轮耗时与内容 → 显示 turn-complete 提示。
+      expect(
+        isEmptyVirtualProjectionRow(workingIndicatorRow, {
+          ...baseInput,
+          lastDurationMs: 1200,
+        }),
+      ).toBe(false);
+    });
+
+    it("collapses the tail user-input row only when there is no node to render", () => {
+      const tailRow: TimelineProjectionRow = { kind: "tailUserInput", key: "user-input-tail" };
+      expect(isEmptyVirtualProjectionRow(tailRow, baseInput)).toBe(true);
+      expect(
+        isEmptyVirtualProjectionRow(tailRow, { ...baseInput, hasTailUserInputNode: true }),
+      ).toBe(false);
+    });
+
+    it("collapses bash groups that Claude history hides but keeps them under transcript fallback", () => {
+      const bashGroupRow: TimelineProjectionRow = {
+        kind: "entry",
+        key: "entry:bashGroup",
+        entry: { kind: "bashGroup", items: [bashTool, { ...bashTool, id: "tool-bash-2" }] },
+        itemIds: ["tool-bash-1", "tool-bash-2"],
+        hasActiveUserInputAnchor: false,
+      };
+      expect(isEmptyVirtualProjectionRow(bashGroupRow, baseInput)).toBe(true);
+      expect(
+        isEmptyVirtualProjectionRow(bashGroupRow, {
+          ...baseInput,
+          claudeHistoryTranscriptFallbackActive: true,
+        }),
+      ).toBe(false);
+      // gemini 引擎不隐藏 bashGroup。
+      expect(
+        isEmptyVirtualProjectionRow(bashGroupRow, { ...baseInput, activeEngine: "gemini" }),
+      ).toBe(false);
+    });
+
+    it("collapses hidden codex canvas command cards", () => {
+      const toolRow: TimelineProjectionRow = {
+        kind: "entry",
+        key: "entry:tool:bash-1",
+        entry: { kind: "item", item: bashTool },
+        itemIds: ["tool-bash-1"],
+        hasActiveUserInputAnchor: false,
+      };
+      expect(
+        isEmptyVirtualProjectionRow(toolRow, { ...baseInput, activeEngine: "codex" }),
+      ).toBe(true);
+    });
+
+    it("never collapses real message rows", () => {
+      expect(isEmptyVirtualProjectionRow(messageRow, baseInput)).toBe(false);
+    });
   });
 });

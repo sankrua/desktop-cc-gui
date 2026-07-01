@@ -31,6 +31,7 @@ import {
 } from "../../../services/tauri";
 import { writeClientStoreValue } from "../../../services/clientStorage";
 import { pushErrorToast } from "../../../services/toasts";
+import { DEFAULT_UI_FONT_FAMILY } from "../../../utils/fonts";
 import { SettingsView } from "./SettingsView";
 
 const skillsSectionMock = vi.fn();
@@ -285,8 +286,7 @@ const baseSettings: AppSettings = {
   showMessageAnchors: true,
   showSidebarProviderLabels: false,
   performanceCompatibilityModeEnabled: false,
-  uiFontFamily:
-    'Monaco, "SF Pro Text", "SF Pro Display", -apple-system, "Helvetica Neue", sans-serif',
+  uiFontFamily: DEFAULT_UI_FONT_FAMILY,
   codeFontFamily: 'Monaco, "SF Mono", "SFMono-Regular", Menlo, monospace',
   codeFontSize: 11,
   notificationSoundsEnabled: true,
@@ -914,6 +914,9 @@ describe("SettingsView Display", () => {
       />,
     );
 
+    // Radix Tabs uses focus-based automatic activation; jsdom fireEvent.click
+    // does not focus the trigger, so focus it to actually switch panels.
+    fireEvent.focus(screen.getByRole("tab", { name: "Claude Code" }));
     fireEvent.click(screen.getByRole("tab", { name: "Claude Code" }));
     fireEvent.click(screen.getByRole("button", { name: "Run Claude Doctor" }));
 
@@ -1722,7 +1725,7 @@ describe("SettingsView Display", () => {
     await waitFor(() => {
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
         expect.objectContaining({
-          uiFontFamily: expect.stringMatching(/^Monaco,/),
+          uiFontFamily: DEFAULT_UI_FONT_FAMILY,
         }),
       );
       expect(onUpdateAppSettings).toHaveBeenCalledWith(
