@@ -7,7 +7,6 @@ import { memo, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { convertFileSrc } from '@tauri-apps/api/core';
 import type { ConversationItem } from '../../../../types';
-import { parseDiff, type ParsedDiffLine } from '../../../../utils/diff';
 import { computeDiff } from '../../utils/diffUtils';
 import { LocalImage } from '../LocalImage';
 import { Markdown } from '../Markdown';
@@ -31,6 +30,7 @@ import { FileIcon } from './FileIcon';
 import { cn } from '@/lib/utils';
 import { Marker, MarkerContent, MarkerIcon } from '../../../../components/ui/marker';
 import { ToolStatusIcon } from './ToolMarkerShell';
+import { FileChangeRow, unifiedDiffToPreview } from './FileChangeRow';
 import FileText from 'lucide-react/dist/esm/icons/file-text';
 import FilePen from 'lucide-react/dist/esm/icons/file-pen';
 import FilePlus from 'lucide-react/dist/esm/icons/file-plus';
@@ -74,10 +74,7 @@ const FILE_CHANGE_DIFF_KEYS = [
   'unifiedDiff',
 ];
 
-const FILE_CHANGE_DIFF_PREVIEW_MAX_LINES = 48;
 const HEAVY_TOOL_OUTPUT_MIN_CHARS = 8_000;
-const HEAVY_TOOL_CHANGE_MIN_FILES = 8;
-const HEAVY_TOOL_CHANGE_DIFF_MIN_CHARS = 12_000;
 const IMAGE_FILE_EXTENSION_REGEX =
   /\.(png|jpe?g|gif|webp|bmp|tiff?|svg|ico|avif)(?:[?#].*)?$/i;
 
@@ -87,8 +84,6 @@ type DisplayChange = {
   kindCode: 'A' | 'M' | 'D' | 'R';
   diffStats: DiffStats;
   diffText?: string;
-  diffPreviewLines: ParsedDiffLine[];
-  diffPreviewTruncated: boolean;
 };
 
 type ExitPlanCardContent = {
@@ -916,29 +911,11 @@ function resolveChangeDiffStats(
   return direct;
 }
 
-function buildDiffPreview(diffText?: string): {
-  lines: ParsedDiffLine[];
-  truncated: boolean;
-} {
-  if (!diffText) {
-    return { lines: [], truncated: false };
-  }
-  const parsed = parseDiff(diffText);
-  if (parsed.length <= FILE_CHANGE_DIFF_PREVIEW_MAX_LINES) {
-    return { lines: parsed, truncated: false };
-  }
-  return {
-    lines: parsed.slice(0, FILE_CHANGE_DIFF_PREVIEW_MAX_LINES),
-    truncated: true,
-  };
-}
-
 function toDisplayChanges(
   changes: Array<{ path: string; kind?: string; diff?: string }>,
   candidateArgs: Record<string, unknown>[],
   outputStats: DiffStats,
   outputDiffText: string,
-  includePreview: boolean,
 ): DisplayChange[] {
   return changes.map((change) => {
     const normalizedKind = normalizeChangeKind(change.kind);
@@ -948,9 +925,6 @@ function toDisplayChanges(
       candidateArgs,
       outputDiffText,
     );
-    const preview = includePreview
-      ? buildDiffPreview(diffText)
-      : { lines: [], truncated: false };
     return {
       path: change.path,
       normalizedKind,
@@ -963,8 +937,6 @@ function toDisplayChanges(
         diffText,
       ),
       diffText,
-      diffPreviewLines: preview.lines,
-      diffPreviewTruncated: preview.truncated,
     };
   });
 }
@@ -1090,9 +1062,6 @@ export const GenericToolBlock = memo(function GenericToolBlock({
 
   const isCollapsible = isCollapsibleTool(toolName, item.title);
   const [internalExpanded, setInternalExpanded] = useState(false);
-  const [expandedCollapsedChangeRows, setExpandedCollapsedChangeRows] = useState<
-    Record<string, boolean>
-  >({});
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [copiedPlanMarkdown, setCopiedPlanMarkdown] = useState(false);
   const [toolDetailHydrated, setToolDetailHydrated] = useState(false);
@@ -1128,43 +1097,21 @@ export const GenericToolBlock = memo(function GenericToolBlock({
     () => item.output ?? '',
     [item.output],
   );
-  const totalChangeDiffLength = useMemo(
-    () => (item.changes ?? []).reduce((total, change) => total + (change.diff?.length ?? 0), 0),
-    [item.changes],
-  );
-  const shouldDeferToolChangeDetails =
-    hasChanges &&
-    isExpanded &&
-    !toolDetailHydrated &&
-    ((item.changes?.length ?? 0) >= HEAVY_TOOL_CHANGE_MIN_FILES ||
-      totalChangeDiffLength >= HEAVY_TOOL_CHANGE_DIFF_MIN_CHARS);
   const shouldDeferToolOutput =
     isExpanded &&
     Boolean(item.output) &&
     !hasChanges &&
     !toolDetailHydrated &&
     (item.output?.length ?? 0) >= HEAVY_TOOL_OUTPUT_MIN_CHARS;
-  const hasExpandedCollapsedChangeRow = useMemo(
-    () => Object.values(expandedCollapsedChangeRows).some(Boolean),
-    [expandedCollapsedChangeRows],
-  );
+  // diff 预览由每行 FileChangeRow 展开时懒解析，这里只解析路径与统计（轻量字符串扫描）。
   const displayChanges = useMemo(
     () => toDisplayChanges(
       item.changes ?? [],
       fileChangeCandidateArgs,
       outputStats,
       outputDiffText,
-      (isExpanded && !shouldDeferToolChangeDetails) || hasExpandedCollapsedChangeRow,
     ),
-    [
-      item.changes,
-      fileChangeCandidateArgs,
-      outputStats,
-      outputDiffText,
-      isExpanded,
-      hasExpandedCollapsedChangeRow,
-      shouldDeferToolChangeDetails,
-    ],
+    [item.changes, fileChangeCandidateArgs, outputStats, outputDiffText],
   );
   const filePath = useMemo(() => {
     if (!parsedArgs) return null;
@@ -1442,127 +1389,27 @@ export const GenericToolBlock = memo(function GenericToolBlock({
     );
   }
 
-  // 文件变更统一渲染为「每文件一行」的紧凑 marker 行（对齐 EditToolBlock 风格）：
-  // 描边图标 + 文件名 + 绿/红统计 + 靠右状态，点击行内展开看 diff。
-  // 单文件 / 多文件、实时 / 历史一致，不再显示「File changes」标签与文件计数。
+  // 文件变更统一渲染为「每文件一行」的共享 FileChangeRow：
+  // 与 EditToolBlock / 分组编辑同源同款，单文件 / 多文件、实时 / 历史处处一致。
+  // diff 由 FileChangeRow 展开时懒解析（折叠态不触发 parseDiff）。
   if (isFileChangeTool && hasChanges) {
     return (
       <div className="tool-change-stack" role="group" aria-label="File changes">
         {displayChanges.map((change, index) => {
-          const changeEntryKey = getChangeEntryKey(change.path, index);
-          const isChangeExpanded = expandedCollapsedChangeRows[changeEntryKey] ?? false;
-          const changeFileName = getFileName(change.path);
-          const hasRowStats =
-            change.diffStats.additions > 0 || change.diffStats.deletions > 0;
-          const hasRowDiff = change.diffPreviewLines.length > 0;
+          const diffText = change.diffText;
           return (
-            <div key={changeEntryKey} className="tool-change-stack-entry">
-              <Marker
-                onClick={() => {
-                  setExpandedCollapsedChangeRows((prev) => ({
-                    ...prev,
-                    [changeEntryKey]: !prev[changeEntryKey],
-                  }));
-                }}
-                className="tool-change-stack-header cursor-pointer select-none gap-2 rounded-md pr-3 py-1.5 text-sm transition-colors hover:bg-accent/50"
-              >
-                <MarkerIcon>
-                  <FilePen />
-                </MarkerIcon>
-                {onOpenDiffPath ? (
-                  <button
-                    type="button"
-                    className="tool-change-file-name tool-change-file-link min-w-0 truncate"
-                    title={change.path}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      try {
-                        onOpenDiffPath(change.path);
-                      } catch {
-                        // Keep conversation interactive even if diff entry routing fails.
-                      }
-                    }}
-                  >
-                    {changeFileName}
-                  </button>
-                ) : (
-                  <span className="min-w-0 truncate" title={change.path}>
-                    {changeFileName}
-                  </span>
-                )}
-                <MarkerContent className="flex min-w-0 items-center gap-2">
-                  {hasRowStats && (
-                    <span className="flex shrink-0 items-center gap-1 tabular-nums">
-                      {change.diffStats.additions > 0 && (
-                        <span className="diff-stat-add">+{change.diffStats.additions}</span>
-                      )}
-                      {change.diffStats.deletions > 0 && (
-                        <span className="diff-stat-del">-{change.diffStats.deletions}</span>
-                      )}
-                    </span>
-                  )}
-                </MarkerContent>
-                <ToolStatusIcon status={markerStatus} />
-              </Marker>
-              {isChangeExpanded && hasRowDiff && (
-                <div className="task-details tool-change-details" style={{ border: 'none' }}>
-                  <div className="task-content-wrapper">
-                    <div className="tool-change-entry">
-                      <div className="tool-change-inline-diff edit-diff-viewer">
-                        {change.diffPreviewLines.map((line, lineIndex) => {
-                          const lineClass =
-                            line.type === 'del'
-                              ? 'is-deleted'
-                              : line.type === 'add'
-                                ? 'is-added'
-                                : line.type === 'hunk' || line.type === 'meta'
-                                  ? 'is-hunk'
-                                  : '';
-                          const sign =
-                            line.type === 'del'
-                              ? '-'
-                              : line.type === 'add'
-                                ? '+'
-                                : line.type === 'hunk'
-                                  ? ''
-                                  : ' ';
-                          const signNode =
-                            line.type === 'hunk' ? (
-                              <span
-                                className="codicon codicon-diff tool-change-hunk-icon"
-                                aria-hidden
-                              />
-                            ) : (
-                              sign
-                            );
-                          const content =
-                            line.type === 'hunk'
-                              ? line.text
-                                  .replace(/^@@\s*/, '')
-                                  .replace(/\s*@@$/, '')
-                              : line.text;
-                          return (
-                            <div
-                              key={`${change.path}-${line.type}-${lineIndex}`}
-                              className={`edit-diff-line ${lineClass}`}
-                            >
-                              <div className="edit-diff-gutter" />
-                              <div className={`edit-diff-sign ${lineClass}`}>{signNode}</div>
-                              <pre className="edit-diff-content">{content}</pre>
-                            </div>
-                          );
-                        })}
-                        {change.diffPreviewTruncated && (
-                          <div className="tool-change-inline-diff-truncated">
-                            Diff truncated…
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
+            <FileChangeRow
+              key={getChangeEntryKey(change.path, index)}
+              filePath={change.path}
+              additions={change.diffStats.additions}
+              deletions={change.diffStats.deletions}
+              status={markerStatus}
+              canExpand={Boolean(diffText)}
+              loadDiff={
+                diffText ? () => unifiedDiffToPreview(diffText) : undefined
+              }
+              onOpenDiffPath={onOpenDiffPath}
+            />
           );
         })}
       </div>

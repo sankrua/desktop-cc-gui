@@ -2310,11 +2310,14 @@
 }
 
 /* 归组块：无边框极简（参考 AI SDK Task），标题行整行可点、内容沿左侧 rail 缩进展开 */
+/* 根层级不画竖线：覆盖 .tool-inline 的 border-left / padding-left，rail 只在展开列表上 */
 .explore-inline {
   margin: 4px 0;
   box-sizing: border-box;
   max-width: 100%;
   min-width: 0;
+  border-left: none;
+  padding-left: 0;
 }
 
 .explore-inline .tool-inline-content {
@@ -2361,18 +2364,6 @@
   color: var(--muted-foreground);
 }
 
-/* chevron 收在最右，展开旋转 180°（指向上） */
-.explore-inline-chevron {
-  flex: 0 0 auto;
-  color: var(--muted-foreground);
-  transition: transform 0.18s ease;
-  transform: rotate(0deg);
-}
-
-.explore-inline-chevron.is-expanded {
-  transform: rotate(180deg);
-}
-
 .explore-inline-title {
   flex: 1 1 auto;
   font-weight: 500;
@@ -2383,13 +2374,14 @@
   color: var(--text-muted);
 }
 
-/* 内容：无竖线，仅缩进，让条目对齐到标题文字起始处（放大镜 14 + gap 8） */
+/* 内容：仅在展开的列表上画左侧竖线 rail，条目缩进对齐到标题文字起始处（放大镜 14 + gap 8） */
 .explore-inline-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
   margin: 2px 0 4px 0;
-  padding: 2px 0 2px 22px;
+  padding: 2px 0 2px 20px;
+  border-left: 2px solid var(--border-subtle);
 }
 
 .explore-inline.is-inline-summary .explore-inline-list,

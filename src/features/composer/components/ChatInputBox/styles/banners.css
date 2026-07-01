@@ -52,6 +52,14 @@
   color: var(--text-primary);
 }
 
+/* Radix returns focus to the trigger after the model menu closes; suppress the
+   focus ring so the model pill never flashes a blue outline. */
+.composer-readiness-target-button:focus,
+.composer-readiness-target-button:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
 .composer-readiness-activity {
   justify-content: flex-end;
 }

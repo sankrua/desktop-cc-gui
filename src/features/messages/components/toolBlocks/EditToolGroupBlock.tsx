@@ -7,7 +7,6 @@ import { useTranslation } from 'react-i18next';
 import FilePen from 'lucide-react/dist/esm/icons/file-pen';
 import type { ConversationItem } from '../../../../types';
 import {
-  getFileName,
   parseToolArgs,
   resolveToolStatus,
   type ToolStatusTone,
@@ -18,8 +17,14 @@ import {
   EDIT_NEW_KEYS,
   EDIT_CONTENT_KEYS,
 } from './toolConstants';
-import { computeDiffStats, computeDiffFromUnifiedPatch, type DiffStats } from '../../utils/diffUtils';
+import { computeDiff, computeDiffFromUnifiedPatch, type DiffStats } from '../../utils/diffUtils';
 import { ToolMarkerShell } from './ToolMarkerShell';
+import {
+  FileChangeRow,
+  structuredDiffToLines,
+  unifiedDiffToPreview,
+  type FileChangeDiffLine,
+} from './FileChangeRow';
 
 type ToolItem = Extract<ConversationItem, { kind: 'tool' }>;
 
@@ -30,9 +35,9 @@ interface EditToolGroupBlockProps {
 
 interface ParsedEditItem {
   id: string;
-  fileName: string;
   filePath: string;
   diff: DiffStats;
+  diffLines: FileChangeDiffLine[];
   status: ToolStatusTone;
 }
 
@@ -45,6 +50,7 @@ function parseEditItem(item: ToolItem): ParsedEditItem | null {
   const nestedArgs = asRecord(args?.arguments);
   let filePath = '';
   let diff: DiffStats;
+  let diffLines: FileChangeDiffLine[] = [];
   if (item.toolType === 'fileChange' && item.changes?.length) {
     filePath = item.changes[0]?.path ?? '';
     diff = item.changes.reduce(
@@ -54,16 +60,25 @@ function parseEditItem(item: ToolItem): ParsedEditItem | null {
       },
       { additions: 0, deletions: 0 },
     );
+    const unified = item.changes
+      .map((change) => change.diff ?? '')
+      .filter(Boolean)
+      .join('\n');
+    diffLines = unified ? unifiedDiffToPreview(unified).lines : [];
   } else {
     filePath = pickStringField(args, nestedInput, nestedArgs, EDIT_PATH_KEYS);
     const oldString = pickStringField(args, nestedInput, nestedArgs, EDIT_OLD_KEYS);
     const newString = pickStringField(args, nestedInput, nestedArgs, EDIT_NEW_KEYS);
     if (oldString || newString) {
-      diff = computeDiffStats(oldString, newString);
+      const result = computeDiff(oldString, newString);
+      diff = { additions: result.additions, deletions: result.deletions };
+      diffLines = structuredDiffToLines(result.lines);
     } else {
       const content = pickStringField(args, nestedInput, nestedArgs, EDIT_CONTENT_KEYS);
       if (content) {
-        diff = { additions: content.split('\n').length, deletions: 0 };
+        const result = computeDiff('', content);
+        diff = { additions: result.additions, deletions: result.deletions };
+        diffLines = structuredDiffToLines(result.lines);
       } else {
         diff = { additions: 0, deletions: 0 };
       }
@@ -80,8 +95,8 @@ function parseEditItem(item: ToolItem): ParsedEditItem | null {
   return {
     id: item.id,
     filePath,
-    fileName: getFileName(filePath) || filePath,
     diff,
+    diffLines,
     status,
   };
 }
@@ -138,29 +153,21 @@ export const EditToolGroupBlock = memo(function EditToolGroupBlock({
             overflowX: 'hidden',
           }}
         >
-          {parsedItems.map((item) => (
-            <div key={item.id} className="file-list-item edit-group-file-item">
-              <FilePen className="size-4 shrink-0 text-muted-foreground" />
-              <button
-                type="button"
-                className={`edit-group-file-link${onOpenDiffPath ? ' is-clickable' : ''}`}
-                disabled={!onOpenDiffPath}
-                onClick={(event) => {
-                  event.stopPropagation();
-                  if (onOpenDiffPath) {
-                    onOpenDiffPath(item.filePath);
-                  }
-                }}
-                title={item.filePath}
-              >
-                {item.fileName}
-              </button>
-              <span className="edit-item-diff-stats">
-                {item.diff.additions > 0 && <span className="diff-stat-add">+{item.diff.additions}</span>}
-                {item.diff.deletions > 0 && <span className="diff-stat-del">-{item.diff.deletions}</span>}
-              </span>
-              <div className={`tool-status-indicator ${item.status === 'failed' ? 'error' : item.status}`} />
-            </div>
+          {parsedItems.map((entry) => (
+            <FileChangeRow
+              key={entry.id}
+              filePath={entry.filePath}
+              additions={entry.diff.additions}
+              deletions={entry.diff.deletions}
+              status={entry.status}
+              canExpand={entry.diffLines.length > 0}
+              loadDiff={
+                entry.diffLines.length > 0
+                  ? () => ({ lines: entry.diffLines })
+                  : undefined
+              }
+              onOpenDiffPath={onOpenDiffPath}
+            />
           ))}
         </div>
       }

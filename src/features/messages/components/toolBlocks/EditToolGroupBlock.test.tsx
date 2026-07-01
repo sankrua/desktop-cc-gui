@@ -96,6 +96,31 @@ describe("EditToolGroupBlock", () => {
     expect(screen.getAllByText("-1").length).toBeGreaterThan(0);
   });
 
+  it("expands an individual grouped row to reveal its diff", () => {
+    const view = render(
+      <EditToolGroupBlock
+        items={[
+          createEditToolItem("tool-expand", {
+            file_path: "src/App.tsx",
+            old_string: "line-a\nline-b",
+            new_string: "line-a\nline-c",
+          }),
+        ]}
+      />,
+    );
+
+    // 折叠态：分组内的行还没展开 diff
+    expect(view.container.querySelector(".tool-change-inline-diff")).toBeNull();
+
+    // markers[0] = 分组头，最后一个 marker = 文件行；点击文件行展开
+    const markers = view.container.querySelectorAll('[data-slot="marker"]');
+    fireEvent.click(markers[markers.length - 1]!);
+
+    expect(view.container.querySelector(".tool-change-inline-diff")).toBeTruthy();
+    expect(screen.getByText("line-b")).toBeTruthy();
+    expect(screen.getByText("line-c")).toBeTruthy();
+  });
+
   it("returns null when all entries miss file path", () => {
     const { container } = render(
       <EditToolGroupBlock

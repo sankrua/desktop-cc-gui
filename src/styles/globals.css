@@ -87,6 +87,22 @@
   );
 }
 
+/*
+ * Tailwind v4 defaults the bare `border` utility to `currentColor`, so shadcn
+ * components that rely on a plain `border` (dropdown-menu / popover / command /
+ * dialog …) would otherwise paint a near-black border from the popover text
+ * color. shadcn expects this base rule to be present: every default border is
+ * painted with the light, theme-aware `--border` token instead. Kept in the
+ * `base` layer so any element that sets its own border-color still wins.
+ */
+@layer base {
+  *,
+  ::after,
+  ::before {
+    border-color: var(--border);
+  }
+}
+
 .proxy-status-badge {
   --proxy-badge-accent: color-mix(in srgb, #8b5cf6 78%, var(--text-strong) 22%);
   --proxy-badge-halo: color-mix(in srgb, #8b5cf6 26%, transparent);

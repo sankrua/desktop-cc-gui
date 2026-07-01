@@ -339,8 +339,8 @@ describe("GenericToolBlock", () => {
       />,
     );
 
-    // 每文件一行，无聚合「N files」计数、无 A/M/D 徽标
-    expect(view.container.querySelectorAll(".tool-change-stack-entry").length).toBe(2);
+    // 每文件一行（共享 FileChangeRow），无聚合「N files」计数、无 A/M/D 徽标
+    expect(view.container.querySelectorAll('[data-slot="marker"]').length).toBe(2);
     expect(screen.queryByText("2 files")).toBeNull();
     expect(view.container.querySelector(".tool-change-kind-badge")).toBeNull();
     expect(screen.getByText("App.tsx")).toBeTruthy();
@@ -383,7 +383,7 @@ describe("GenericToolBlock", () => {
     expect(screen.getByText("app.css")).toBeTruthy();
     expect(screen.getByText("package.json")).toBeTruthy();
     expect(screen.queryByText(/\+\d+\s+more files/i)).toBeNull();
-    expect(view.container.querySelectorAll(".tool-change-stack-entry").length).toBe(8);
+    expect(view.container.querySelectorAll('[data-slot="marker"]').length).toBe(8);
     expect(parseDiffSpy).not.toHaveBeenCalled();
     parseDiffSpy.mockRestore();
   });
@@ -398,20 +398,19 @@ describe("GenericToolBlock", () => {
     );
 
     const headers = Array.from(
-      view.container.querySelectorAll(".tool-change-stack-entry .tool-change-stack-header"),
+      view.container.querySelectorAll('[data-slot="marker"]'),
     );
     expect(headers.length).toBe(8);
-    expect(view.container.querySelectorAll(".tool-change-stack-entry .task-details").length).toBe(0);
+    expect(view.container.querySelectorAll(".tool-change-inline-diff").length).toBe(0);
 
     fireEvent.click(headers[0]!);
-    expect(view.container.querySelectorAll(".tool-change-stack-entry .task-details").length).toBe(1);
+    expect(view.container.querySelectorAll(".tool-change-inline-diff").length).toBe(1);
 
     fireEvent.click(headers[1]!);
-    expect(view.container.querySelectorAll(".tool-change-stack-entry .task-details").length).toBe(2);
+    expect(view.container.querySelectorAll(".tool-change-inline-diff").length).toBe(2);
 
     fireEvent.click(headers[0]!);
-    expect(view.container.querySelectorAll(".tool-change-stack-entry .task-details").length).toBe(1);
-    expect(view.container.querySelectorAll(".tool-change-stack-entry .tool-change-inline-diff").length).toBe(1);
+    expect(view.container.querySelectorAll(".tool-change-inline-diff").length).toBe(1);
   });
 
   it("renders each expanded file change inside its own visual card", () => {
@@ -424,15 +423,14 @@ describe("GenericToolBlock", () => {
     );
 
     const headers = Array.from(
-      view.container.querySelectorAll(".tool-change-stack-entry .tool-change-stack-header"),
+      view.container.querySelectorAll('[data-slot="marker"]'),
     );
     expect(headers.length).toBe(2);
     // 折叠态不渲染 diff，逐行展开后每行各自一个 inline diff 卡片
     expect(view.container.querySelector(".tool-change-inline-diff")).toBeNull();
     fireEvent.click(headers[0]!);
     fireEvent.click(headers[1]!);
-    expect(view.container.querySelectorAll(".tool-change-entry").length).toBe(2);
-    expect(view.container.querySelectorAll(".tool-change-entry .tool-change-inline-diff").length).toBe(2);
+    expect(view.container.querySelectorAll(".tool-change-inline-diff").length).toBe(2);
   });
 
   it("shows inline diff preview for file changes and hides raw diff output pane", () => {
@@ -448,7 +446,7 @@ describe("GenericToolBlock", () => {
     expect(document.querySelector(".tool-output-raw-pre")).toBeNull();
     // diff 仅在展开该行后出现，且不回退到原始输出面板
     expect(document.querySelector(".tool-change-inline-diff")).toBeNull();
-    fireEvent.click(view.container.querySelector(".tool-change-stack-header")!);
+    fireEvent.click(view.container.querySelector('[data-slot="marker"]')!);
     expect(screen.getByText("-1 +1")).toBeTruthy();
     expect(document.querySelector(".tool-change-inline-diff")).toBeTruthy();
     expect(document.querySelector(".tool-output-raw-pre")).toBeNull();
@@ -466,7 +464,7 @@ describe("GenericToolBlock", () => {
     );
 
     // 8 行折叠紧凑行，折叠态不渲染任何 diff（天然延迟）
-    expect(view.container.querySelectorAll(".tool-change-stack-entry").length).toBe(8);
+    expect(view.container.querySelectorAll('[data-slot="marker"]').length).toBe(8);
     expect(view.container.querySelector(".tool-change-inline-diff")).toBeNull();
 
     // 点击文件名仅触发跳转，不展开本行
@@ -475,7 +473,7 @@ describe("GenericToolBlock", () => {
     expect(view.container.querySelector(".tool-change-inline-diff")).toBeNull();
 
     // 点击行头展开后才渲染该行 diff
-    fireEvent.click(view.container.querySelector(".tool-change-stack-header")!);
+    fireEvent.click(view.container.querySelector('[data-slot="marker"]')!);
     expect(view.container.querySelector(".tool-change-inline-diff")).toBeTruthy();
   });
 
@@ -492,7 +490,7 @@ describe("GenericToolBlock", () => {
     expect(screen.getAllByText("+1").length).toBeGreaterThan(0);
     expect(screen.getAllByText("-1").length).toBeGreaterThan(0);
     expect(document.querySelector(".tool-output-raw-pre")).toBeNull();
-    fireEvent.click(view.container.querySelector(".tool-change-stack-header")!);
+    fireEvent.click(view.container.querySelector('[data-slot="marker"]')!);
     expect(screen.getByText("-1 +1")).toBeTruthy();
   });
 

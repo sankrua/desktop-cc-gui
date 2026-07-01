@@ -291,9 +291,14 @@
 }
 
 /* Radix returns focus to the trigger after the menu closes; suppress the
-   focus ring so the "+" never flashes a blue outline. */
+   focus ring so the "+", mode and reasoning pills never flash a blue
+   outline. (The model pill is handled in banners.css.) */
 .selector-button.selector-tool-dock-toggle:focus,
-.selector-button.selector-tool-dock-toggle:focus-visible {
+.selector-button.selector-tool-dock-toggle:focus-visible,
+.selector-button.selector-button-mode-trigger:focus,
+.selector-button.selector-button-mode-trigger:focus-visible,
+.selector-button.selector-reasoning-button:focus,
+.selector-button.selector-reasoning-button:focus-visible {
   outline: none;
   box-shadow: none;
 }

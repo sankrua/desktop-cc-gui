@@ -1,15 +1,12 @@
 /**
  * 单个编辑文件工具块组件
  * Edit Tool Block Component
- * 统一 Marker 风格折叠行：灰色描边图标 + 文件名 + 绿/红统计 + 靠右状态图标
+ * 复用共享的 FileChangeRow —— 与 fileChange / 分组编辑同源同款。
  */
-import { memo, useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import FilePen from 'lucide-react/dist/esm/icons/file-pen';
+import { memo, useCallback, useMemo } from 'react';
 import type { ConversationItem } from '../../../../types';
 import {
   parseToolArgs,
-  getFileName,
   resolveToolStatus,
   asRecord,
   pickStringField,
@@ -20,10 +17,10 @@ import {
 } from './toolConstants';
 import { computeDiff } from '../../utils/diffUtils';
 import {
-  ToolMarkerShell,
-  ToolStatusIcon,
-  TOOL_MARKER_BODY_CLASS,
-} from './ToolMarkerShell';
+  FileChangeRow,
+  structuredDiffToLines,
+  type FileChangeDiffPreview,
+} from './FileChangeRow';
 
 interface EditToolBlockProps {
   item: Extract<ConversationItem, { kind: 'tool' }>;
@@ -32,15 +29,11 @@ interface EditToolBlockProps {
 export const EditToolBlock = memo(function EditToolBlock({
   item,
 }: EditToolBlockProps) {
-  const { t } = useTranslation();
-  const [expanded, setExpanded] = useState(false);
   const args = useMemo(() => parseToolArgs(item.detail), [item.detail]);
   const nestedInput = useMemo(() => asRecord(args?.input), [args]);
   const nestedArgs = useMemo(() => asRecord(args?.arguments), [args]);
 
   const filePath = pickStringField(args, nestedInput, nestedArgs, EDIT_PATH_KEYS);
-  const fileName = getFileName(filePath);
-  const displayPath = fileName || filePath;
 
   const { diff, hasStructuredDiff } = useMemo(() => {
     if (!args && !nestedInput && !nestedArgs) {
@@ -62,71 +55,30 @@ export const EditToolBlock = memo(function EditToolBlock({
   }, [args, nestedArgs, nestedInput]);
 
   const status = resolveToolStatus(item.status, Boolean(item.output));
-
   const hasInlineDiff = hasStructuredDiff && diff.lines.length > 0;
-  const hasBody = hasInlineDiff || Boolean(item.output);
+  const canExpand = hasInlineDiff || Boolean(item.output);
 
-  const renderDiffLines = () =>
-    diff.lines.map((line, index) => {
-      const lineClass =
-        line.type === 'deleted'
-          ? 'is-deleted'
-          : line.type === 'added'
-            ? 'is-added'
-            : '';
-
-      return (
-        <div
-          key={`${line.type}-${index}`}
-          className={`edit-diff-line ${lineClass}`}
-        >
-          <div className="edit-diff-gutter" />
-          <div className={`edit-diff-sign ${lineClass}`}>
-            {line.type === 'deleted' ? '-' : line.type === 'added' ? '+' : ' '}
-          </div>
-          <pre className="edit-diff-content">
-            {line.content}
-          </pre>
-        </div>
-      );
-    });
+  const loadDiff = useCallback(
+    (): FileChangeDiffPreview => ({ lines: structuredDiffToLines(diff.lines) }),
+    [diff.lines],
+  );
 
   return (
-    <ToolMarkerShell
-      icon={<FilePen />}
-      label={t('tools.editFile')}
-      labelHidden
-      expanded={expanded && hasBody}
-      onToggle={() => setExpanded((prev) => !prev)}
-      trailing={<ToolStatusIcon status={status} />}
-      body={
-        <div className={TOOL_MARKER_BODY_CLASS}>
-          {hasInlineDiff ? (
-            <div className="edit-diff-viewer">{renderDiffLines()}</div>
-          ) : (
-            <pre className="m-0 max-h-[300px] overflow-auto whitespace-pre-wrap break-words p-2.5 font-mono text-xs text-muted-foreground">
-              {item.output}
-            </pre>
-          )}
-        </div>
+    <FileChangeRow
+      filePath={filePath}
+      additions={diff.additions}
+      deletions={diff.deletions}
+      status={status}
+      canExpand={canExpand}
+      loadDiff={hasInlineDiff ? loadDiff : undefined}
+      fallbackBody={
+        !hasInlineDiff && item.output ? (
+          <pre className="m-0 max-h-[300px] overflow-auto whitespace-pre-wrap break-words p-2.5 font-mono text-xs text-muted-foreground">
+            {item.output}
+          </pre>
+        ) : undefined
       }
-    >
-      {displayPath && (
-        <span className="truncate" title={filePath || fileName}>
-          {displayPath}
-        </span>
-      )}
-      {(diff.additions > 0 || diff.deletions > 0) && (
-        <span className="flex shrink-0 items-center gap-1 tabular-nums">
-          {diff.additions > 0 && (
-            <span className="text-emerald-600 dark:text-emerald-400">+{diff.additions}</span>
-          )}
-          {diff.deletions > 0 && (
-            <span className="text-red-500 dark:text-red-400">-{diff.deletions}</span>
-          )}
-        </span>
-      )}
-    </ToolMarkerShell>
+    />
   );
 });
 

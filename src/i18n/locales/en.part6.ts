@@ -182,7 +182,7 @@ const enPart6 = {
   reasoning: {
     title: "Select reasoning depth",
     default: "Default",
-    claudeDefault: "Claude default",
+    claudeDefault: "Default",
     defaultDescription: "Use the engine default reasoning behavior",
     low: {
       label: "Low",

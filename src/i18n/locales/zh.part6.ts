@@ -7,7 +7,7 @@ const zhPart6 = {
   reasoning: {
     title: "选择思考深度",
     default: "默认",
-    claudeDefault: "Claude 默认",
+    claudeDefault: "默认",
     defaultDescription: "使用引擎默认思考行为",
     low: {
       label: "较少",

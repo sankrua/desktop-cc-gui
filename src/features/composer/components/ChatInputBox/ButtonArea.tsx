@@ -328,7 +328,7 @@ export const ButtonArea = ({
               showDefaultOption={currentProvider === 'claude'}
               defaultLabel={
                 currentProvider === 'claude'
-                  ? t('reasoning.claudeDefault', { defaultValue: 'Claude 默认' })
+                  ? t('reasoning.claudeDefault', { defaultValue: '默认' })
                   : undefined
               }
             />

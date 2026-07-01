@@ -1907,11 +1907,6 @@ export const ExploreRow = memo(function ExploreRow({
               <span className="explore-inline-title" title={displayTitle}>
                 {displayTitle}
               </span>
-              <ChevronDown
-                className={`explore-inline-chevron${isExpanded ? " is-expanded" : ""}`}
-                size={14}
-                aria-hidden
-              />
             </button>
           ) : (
             <>
