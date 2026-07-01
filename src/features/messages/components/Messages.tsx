@@ -17,6 +17,7 @@ import type {
 import { isMacPlatform, isWindowsPlatform } from "../../../utils/platform";
 import type { ConversationState } from "../../threads/contracts/conversationCurtainContracts";
 import { useStreamActivityPhase } from "../../threads/hooks/useStreamActivityPhase";
+import { setPerfStreamingState } from "../../../services/perfBaseline/perfContextBridge";
 import {
   noteThreadVisibleTextRendered,
   noteThreadVisibleRender,
@@ -39,7 +40,6 @@ import {
   groupToolItems,
 } from "../utils/groupToolItems";
 import { MessagesTimeline } from "./MessagesTimeline";
-import { MessagesAnchorRail } from "./MessagesAnchorRail";
 import {
   MessagesInlineApproval,
   MessagesInlineUserInput,
@@ -83,7 +83,6 @@ import {
   isSelectionInsideNode,
   logClaudeRender,
   logMessagesPerf,
-  MESSAGES_SLOW_ANCHOR_WARN_MS,
   MESSAGES_SLOW_RENDER_WARN_MS,
   resolveRenderableItems,
   resolveWorkingActivityLabel,
@@ -102,7 +101,6 @@ import {
   isMessagesScrollNearBottom,
   mergeReadableRecoveryItems,
   resolveActiveUserInputRequest,
-  resolveActiveMessageAnchor,
   resolveCollapsedTimelineItems,
   resolveVisibleMessageItems,
   type PreservedReadableWindow,
@@ -115,11 +113,6 @@ import {
   VISIBLE_TEXT_REPORT_MIN_GROWTH_CHARS,
   VISIBLE_TEXT_REPORT_MIN_INTERVAL_MS,
 } from "./messagesConstants";
-import {
-  DEFAULT_RENDER_LOOP_GUARD_BUDGET,
-  resolveIdempotentRenderLoopGuard,
-  type RenderLoopGuardBudget,
-} from "./messagesRenderLoopGuards";
 import { addBoundedConversationRenderModeKey } from "./messagesConversationLightweightMode";
 import {
   TRANSIENT_RUNTIME_RECONNECT_AUTO_DISMISS_MS,
@@ -133,6 +126,7 @@ import type {
 } from "./messagesTypes";
 
 const EMPTY_TASK_RUNS: NonNullable<MessagesProps["taskRuns"]> = [];
+
 
 function areStringSetsEqual(left: ReadonlySet<string>, right: ReadonlySet<string>) {
   if (left.size !== right.size) {
@@ -162,7 +156,6 @@ export const Messages = memo(function Messages({
   workspacePath = null,
   openTargets,
   selectedOpenAppId,
-  showMessageAnchors = true,
   codeBlockCopyUseModifier = false,
   userInputRequests: legacyUserInputRequests = [],
   approvals = [],
@@ -365,7 +358,6 @@ export const Messages = memo(function Messages({
   const agentTaskNodeByTaskIdRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const agentTaskNodeByToolUseIdRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const autoScrollRef = useRef(true);
-  const anchorUpdateRafRef = useRef<number | null>(null);
   const lastRenderSnapshotRef = useRef<LastRenderSnapshot | null>(null);
   const preservedReadableWindowRef = useRef<PreservedReadableWindow>({
     threadId: null,
@@ -422,11 +414,6 @@ export const Messages = memo(function Messages({
       return next;
     });
   }, [conversationRenderModeKey]);
-  const [activeAnchorId, setActiveAnchorId] = useState<string | null>(null);
-  const activeAnchorIdRef = useRef<string | null>(null);
-  const anchorLoopGuardRef = useRef<RenderLoopGuardBudget>(
-    DEFAULT_RENDER_LOOP_GUARD_BUDGET,
-  );
   const [showAllHistoryItems, setShowAllHistoryItems] = useState(false);
   const [historyExpansionMode, setHistoryExpansionMode] =
     useState<MessagesHistoryExpansionMode>(null);
@@ -488,6 +475,12 @@ export const Messages = memo(function Messages({
     [effectiveItems, enableCollaborationBadge, isThinking, showAllHistoryItems],
   );
   const renderSourceItems = liveTailWorkingSet.items;
+  // 跨 token 稳定引用:供 handleAssistantVisibleTextRender 在回调体内读取最新条目,
+  // 而不必把每 token 换新引用的 renderSourceItems 放进 useCallback 依赖。render 期
+  // 同步赋值,读取不滞后一帧。不复用 latestItemsRef(=未 windowing 的原始 items),
+  // 以免 codex finalizing 分支的 targetTextLength 语义漂移。
+  const renderSourceItemsRef = useRef(renderSourceItems);
+  renderSourceItemsRef.current = renderSourceItems;
   const renderSourceSnapshot = useMemo(
     () => ({
       scopeKey: renderScopeKey,
@@ -552,12 +545,12 @@ export const Messages = memo(function Messages({
     [],
   );
 
-  const computeActiveAnchor = useCallback(() => {
-    return resolveActiveMessageAnchor(containerRef.current, messageNodeByIdRef.current);
-  }, []);
-
   const requestAutoScroll = useCallback(() => {
     if (!liveAutoFollowEnabled || !isWorking) {
+      return;
+    }
+    // Respect a manual scroll-up: never yank the user back to the bottom.
+    if (!autoScrollRef.current) {
       return;
     }
     if (!bottomRef.current) {
@@ -597,7 +590,6 @@ export const Messages = memo(function Messages({
     const previousThreadId = resourceCleanupThreadIdRef.current;
     const threadChanged = previousThreadId !== threadId;
     const pendingResourceCounts = {
-      anchorRaf: anchorUpdateRafRef.current !== null ? 1 : 0,
       planFocusRaf: planPanelFocusRafRef.current !== null ? 1 : 0,
       planFocusTimer: planPanelFocusTimeoutRef.current !== null ? 1 : 0,
       assistantFinalizingTimer: assistantFinalizingTimerRef.current !== null ? 1 : 0,
@@ -613,13 +605,7 @@ export const Messages = memo(function Messages({
     frozenItemsRef.current = null;
     pendingHistoryExpansionModeRef.current = null;
     setHistoryExpansionMode(null);
-    activeAnchorIdRef.current = null;
-    anchorLoopGuardRef.current = DEFAULT_RENDER_LOOP_GUARD_BUDGET;
     if (typeof window !== "undefined") {
-      if (anchorUpdateRafRef.current !== null) {
-        window.cancelAnimationFrame(anchorUpdateRafRef.current);
-        anchorUpdateRafRef.current = null;
-      }
       if (planPanelFocusRafRef.current !== null) {
         window.cancelAnimationFrame(planPanelFocusRafRef.current);
         planPanelFocusRafRef.current = null;
@@ -653,7 +639,6 @@ export const Messages = memo(function Messages({
     }
     resourceCleanupThreadIdRef.current = threadId;
     setFinalizingAssistantMessageId(null);
-    setActiveAnchorId(null);
     previousAssistantThinkingRef.current = false;
     previousAssistantThreadIdRef.current = threadId;
   }, [threadId, workspaceId]);
@@ -1167,6 +1152,15 @@ export const Messages = memo(function Messages({
       (activeEngine === "codex" || activeEngine === "claude" || activeEngine === "gemini"),
     items: deferredRenderSourceItems,
   });
+  // 把对话页当前的流式状态 / 可见行数写入性能上下文桥,供掉帧 / 长任务采集器在
+  // 掉帧瞬间附带"当时在干什么"。廉价 effect,仅在派生值变化时触发。
+  useEffect(() => {
+    setPerfStreamingState({
+      isStreaming: isThinking,
+      streamActivityPhase: streamActivityPhase ? String(streamActivityPhase) : null,
+      visibleRowCount: renderSourceItems.length,
+    });
+  }, [isThinking, streamActivityPhase, renderSourceItems.length]);
   const codexSilentSuspectedLabel =
     activeEngine === "codex" && codexSilentSuspectedAt !== null
       ? t("messages.codexSilentSuspected")
@@ -1579,24 +1573,6 @@ export const Messages = memo(function Messages({
     timelinePresentationItems.length,
     visibleStallRecoveryActive,
   ]);
-  const messageAnchors = useMemo(() => {
-    const messageItems = timelinePresentationItems.filter(
-      (item): item is Extract<ConversationItem, { kind: "message" }> =>
-        item.kind === "message" && item.role === "user",
-    );
-    if (!messageItems.length) {
-      return [];
-    }
-    return messageItems.map((item, index) => {
-      const position =
-        messageItems.length === 1 ? 0.5 : 0.04 + (index / (messageItems.length - 1)) * 0.92;
-      return {
-        id: item.id,
-        role: item.role,
-        position,
-      };
-    });
-  }, [timelinePresentationItems]);
   const suppressedUserNoteCardContextMessageIds = useMemo(
     () => buildSuppressedUserNoteCardContextMessageIdSet(timelinePresentationItems),
     [timelinePresentationItems],
@@ -1604,74 +1580,6 @@ export const Messages = memo(function Messages({
   const suppressedUserMemoryContextMessageIds = useMemo(
     () => buildSuppressedUserMemoryContextMessageIdSet(timelinePresentationItems),
     [timelinePresentationItems],
-  );
-  const hasAnchorRail = showMessageAnchors && messageAnchors.length > 1;
-  const commitActiveAnchorId = useCallback(
-    (nextActiveAnchor: string | null, reason: "scroll" | "sync") => {
-      const signature = [
-        "anchor",
-        reason,
-        nextActiveAnchor ?? "none",
-        messageAnchors.length,
-      ].join(":");
-      const guard = resolveIdempotentRenderLoopGuard({
-        previous: anchorLoopGuardRef.current,
-        signature,
-        changed: activeAnchorIdRef.current !== nextActiveAnchor,
-        now: Date.now(),
-      });
-      anchorLoopGuardRef.current = guard.nextBudget;
-      if (!guard.shouldCommit) {
-        if (guard.shouldDiagnose) {
-          appendRendererDiagnostic("messages/overlay-loop-guard", {
-            surface: "anchor-rail",
-            component: "Messages",
-            reason,
-            threadId,
-            workspaceId: workspaceId ?? null,
-            rowKind: "message-anchor",
-            counter: guard.suppressedCount,
-            threshold: "idempotent-state-write",
-            anchorCount: messageAnchors.length,
-          });
-        }
-        return;
-      }
-      activeAnchorIdRef.current = nextActiveAnchor;
-      setActiveAnchorId(nextActiveAnchor);
-    },
-    [messageAnchors.length, threadId, workspaceId],
-  );
-  const scheduleAnchorUpdate = useCallback(
-    (reason: "scroll" | "sync") => {
-      if (!hasAnchorRail) {
-        return;
-      }
-      if (anchorUpdateRafRef.current !== null) {
-        return;
-      }
-      anchorUpdateRafRef.current = window.requestAnimationFrame(() => {
-        anchorUpdateRafRef.current = null;
-        const anchorStartedAt =
-          typeof performance === "undefined" ? 0 : performance.now();
-        const nextActiveAnchor =
-          computeActiveAnchor() ?? messageAnchors[messageAnchors.length - 1]?.id ?? null;
-        const elapsedMs =
-          typeof performance === "undefined"
-            ? 0
-            : performance.now() - anchorStartedAt;
-        if (elapsedMs >= MESSAGES_SLOW_ANCHOR_WARN_MS) {
-          logMessagesPerf("anchor.compute", {
-            ms: Number(elapsedMs.toFixed(2)),
-            reason,
-            anchorCount: messageAnchors.length,
-            threadId,
-          });
-        }
-        commitActiveAnchorId(nextActiveAnchor, reason);
-      });
-    },
-    [commitActiveAnchorId, computeActiveAnchor, hasAnchorRail, messageAnchors, threadId],
   );
   const revealAllHistoryItems = useCallback((mode: "manual" | "jump") => {
     pendingHistoryExpansionModeRef.current = mode;
@@ -1696,10 +1604,8 @@ export const Messages = memo(function Messages({
       autoScrollRef.current = false;
       container.scrollTop = 0;
     }
-    scheduleAnchorUpdate("sync");
   }, [
     timelinePresentationItems,
-    scheduleAnchorUpdate,
     showAllHistoryItems,
   ]);
   const updateAutoScroll = useCallback(() => {
@@ -1707,22 +1613,17 @@ export const Messages = memo(function Messages({
     if (!container) {
       return;
     }
-    const nearBottom = isNearBottom(container);
-    autoScrollRef.current = liveAutoFollowEnabled ? true : nearBottom;
-    scheduleAnchorUpdate("scroll");
+    // Auto-follow tracks the user's real scroll position: stick to the bottom
+    // only while the viewport is actually near the bottom. Scrolling up cancels
+    // the follow; scrolling back to the bottom re-enables it.
+    autoScrollRef.current = isNearBottom(container);
   }, [
     isNearBottom,
-    liveAutoFollowEnabled,
-    scheduleAnchorUpdate,
   ]);
   const clearTransientUiState = useCallback(() => {
     if (copyTimeoutRef.current) {
       window.clearTimeout(copyTimeoutRef.current);
       copyTimeoutRef.current = null;
-    }
-    if (anchorUpdateRafRef.current !== null) {
-      window.cancelAnimationFrame(anchorUpdateRafRef.current);
-      anchorUpdateRafRef.current = null;
     }
     if (planPanelFocusRafRef.current !== null) {
       window.cancelAnimationFrame(planPanelFocusRafRef.current);
@@ -1783,7 +1684,6 @@ export const Messages = memo(function Messages({
         ms: Number(renderCostMs.toFixed(2)),
         items: effectiveItems.length,
         visibleItems: renderedItems.length,
-        anchors: messageAnchors.length,
         threadId,
         changed: changedKeys,
       });
@@ -1828,7 +1728,7 @@ export const Messages = memo(function Messages({
         isAssistantFinalizing &&
         payload.itemId === finalizingAssistantMessageId
       ) {
-        const targetItem = renderSourceItems.find(
+        const targetItem = renderSourceItemsRef.current.find(
           (item) =>
             isAssistantMessageConversationItem(item) &&
             item.id === payload.itemId,
@@ -1891,26 +1791,11 @@ export const Messages = memo(function Messages({
       finalizingAssistantMessageId,
       isAssistantFinalizing,
       isThinking,
-      renderSourceItems,
       threadId,
     ],
   );
 
   useEffect(() => clearTransientUiState, [clearTransientUiState]);
-
-  useEffect(() => {
-    if (!hasAnchorRail) {
-      if (anchorUpdateRafRef.current !== null) {
-        window.cancelAnimationFrame(anchorUpdateRafRef.current);
-        anchorUpdateRafRef.current = null;
-      }
-      activeAnchorIdRef.current = null;
-      anchorLoopGuardRef.current = DEFAULT_RENDER_LOOP_GUARD_BUDGET;
-      setActiveAnchorId((current) => (current === null ? current : null));
-      return;
-    }
-    scheduleAnchorUpdate("sync");
-  }, [hasAnchorRail, messageAnchors, scheduleAnchorUpdate, scrollKey, threadId]);
 
   const handleCopyMessage = useCallback(
     async (
@@ -1941,10 +1826,11 @@ export const Messages = memo(function Messages({
       return undefined;
     }
     const container = containerRef.current;
+    // Follow new content only when the user is parked at the bottom. A manual
+    // scroll up flips autoScrollRef off (see updateAutoScroll) and stops the
+    // pull-to-bottom; scrolling back down re-arms it.
     const shouldScroll =
-      (liveAutoFollowEnabled && (isWorking || isAssistantFinalizing)) ||
-      autoScrollRef.current ||
-      (container ? isNearBottom(container) : true);
+      autoScrollRef.current || (container ? isNearBottom(container) : true);
     if (!shouldScroll) {
       return undefined;
     }
@@ -2088,9 +1974,8 @@ export const Messages = memo(function Messages({
       top: Math.max(0, targetTop),
       behavior: "smooth",
     });
-    commitActiveAnchorId(messageId, "sync");
     return true;
-  }, [commitActiveAnchorId]);
+  }, []);
 
   const requestScrollToAnchor = useCallback((messageId: string) => {
     if (scrollToAnchor(messageId)) {
@@ -2141,16 +2026,8 @@ export const Messages = memo(function Messages({
 
   return (
     <div
-      className={`messages-shell${hasAnchorRail ? " has-anchor-rail" : ""}${enableClaudeRenderSafeMode ? " claude-render-safe" : ""}`}
+      className={`messages-shell${enableClaudeRenderSafeMode ? " claude-render-safe" : ""}`}
     >
-      <MessagesAnchorRail
-        activeAnchorId={activeAnchorId}
-        anchors={messageAnchors}
-        anchorNavigationLabel={t("messages.anchorNavigation")}
-        getJumpLabel={(index) => t("messages.anchorJumpToUser", { index: index + 1 })}
-        getTitle={(index) => t("messages.anchorUserTitle", { index: index + 1 })}
-        onScrollToAnchor={requestScrollToAnchor}
-      />
       <div
         className="messages"
         ref={containerRef}
