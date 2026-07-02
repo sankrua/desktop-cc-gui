@@ -28,6 +28,7 @@ import { areEquivalentAssistantMessageTexts } from "../assembly/conversationNorm
 import {
   addSummaryBoundary,
   findDuplicateReasoningSnapshotIndex,
+  isLowRiskStreamingAppendFragmentWithoutBoundary,
   mergeAgentMessageText,
   mergeCompletedAgentText,
   mergeReasoningSnapshotTextForThread,
@@ -154,37 +155,6 @@ type ThreadProviderBindingFields = Pick<
   | "providerProfileName"
   | "providerAvailability"
 >;
-
-type FastPathReplaceResult = {
-  items: ConversationItem[];
-  changed: boolean;
-};
-
-/**
- * Build the next item list when a streaming case (`appendAgentDelta` /
- * `completeAgentMessage` / `upsertItem`) has computed a merged item that
- * replaces `items[index]`.
- *
- * Returns the prior `items` reference unchanged when the merged item is
- * reference-equal to the existing slot, so callers can short-circuit their
- * `INCREMENTAL_DERIVATION_ENABLED` fast path without paying for
- * `prepareThreadItems`. Otherwise returns a new array with the merged item
- * spliced in. The helper never invokes `prepareThreadItems` itself.
- */
-export function fastPathForAppendAgentDelta(params: {
-  items: ConversationItem[];
-  index: number;
-  merged: ConversationItem;
-}): FastPathReplaceResult {
-  const { items, index, merged } = params;
-  const existing = items[index];
-  if (!existing || existing === merged) {
-    return { items, changed: false };
-  }
-  const next = items.slice();
-  next[index] = merged;
-  return { items: next, changed: true };
-}
 
 function normalizeProviderBindingValue(value: string | null | undefined) {
   return typeof value === "string" && value.trim().length > 0
@@ -1235,8 +1205,8 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         action.itemId,
       );
 
-      const list = [...(state.itemsByThread[action.threadId] ?? [])];
-      let index = findAssistantMessageIndexById(list, segmentedItemId);
+      const sourceItems = state.itemsByThread[action.threadId] ?? [];
+      let index = findAssistantMessageIndexById(sourceItems, segmentedItemId);
       let shouldCanonicalizeLegacyId = false;
       if (index < 0 && !isLegacyTextDeltaItemId(action.threadId, segmentedItemId)) {
         const legacySegmentedItemId = resolveLiveAssistantMessageId(
@@ -1244,9 +1214,9 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           action.threadId,
           buildLegacyTextDeltaItemId(action.threadId),
         );
-        index = findAssistantMessageIndexById(list, legacySegmentedItemId);
+        index = findAssistantMessageIndexById(sourceItems, legacySegmentedItemId);
         if (index < 0) {
-          index = findAssistantMessageIndexByLegacyTextDelta(list, action.threadId);
+          index = findAssistantMessageIndexByLegacyTextDelta(sourceItems, action.threadId);
         }
         shouldCanonicalizeLegacyId = index >= 0;
       }
@@ -1256,10 +1226,11 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         threadId: action.threadId,
       });
       if (index < 0 && shouldDeduplicateCodexAssistant) {
-        index = findEquivalentCodexAssistantMessageIndex(list, action.delta);
+        index = findEquivalentCodexAssistantMessageIndex(sourceItems, action.delta);
       }
+      let list: ConversationItem[];
       if (index >= 0) {
-        const existing = list[index];
+        const existing = sourceItems[index];
         if (!existing || !isAssistantMessageItem(existing)) {
           return state;
         }
@@ -1280,6 +1251,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
         const nextBase = keepFinalMetadata
           ? existing
           : clearAssistantFinalMetadata(existing);
+        list = sourceItems.slice();
         list[index] = {
           ...nextBase,
           id: nextId,
@@ -1295,9 +1267,18 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
             keepFinalMetadata,
           })
         ) {
-          list[index] = normalizeItem(list[index], {
-            preserveMessageTextLength: true,
-          });
+          // 低风险追加片段跳过每 delta 的整段归一化扫描（shouldNormalizeAssistantText
+          // 对全文做多趟重复检测）；归一化推迟到下一个边界 delta 或收尾快照。
+          if (
+            !isLowRiskStreamingAppendFragmentWithoutBoundary(
+              existing.text,
+              action.delta,
+            )
+          ) {
+            list[index] = normalizeItem(list[index], {
+              preserveMessageTextLength: true,
+            });
+          }
           const nextThreadsByWorkspace = maybeRenameThreadFromAgent({
             workspaceId: action.workspaceId,
             threadId: action.threadId,
@@ -1316,13 +1297,16 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           };
         }
       } else {
-        list.push({
-          id: segmentedItemId,
-          kind: "message",
-          role: "assistant",
-          text: action.delta,
-          isFinal: false,
-        });
+        list = [
+          ...sourceItems,
+          {
+            id: segmentedItemId,
+            kind: "message",
+            role: "assistant",
+            text: action.delta,
+            isFinal: false,
+          },
+        ];
       }
       const updatedItems = prepareThreadItems(list, {
         preserveMessageTextIds: new Set([segmentedItemId]),
@@ -2195,7 +2179,14 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     }
     case "appendToolOutput": {
       const list = state.itemsByThread[action.threadId] ?? [];
-      const index = list.findIndex((entry) => entry.id === action.itemId);
+      // 流式中的工具输出项几乎总在尾部，从尾扫描与 findAssistantMessageIndexById 一致。
+      let index = -1;
+      for (let cursor = list.length - 1; cursor >= 0; cursor -= 1) {
+        if (list[cursor]?.id === action.itemId) {
+          index = cursor;
+          break;
+        }
+      }
       if (index < 0) {
         const placeholder: ConversationItem = {
           id: action.itemId,
