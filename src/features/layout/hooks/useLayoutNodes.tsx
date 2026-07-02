@@ -375,9 +375,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     checkpoint: clientUiVisibility.isControlVisible(
       "bottomActivity.checkpoint",
     ),
-    latestUserMessage: clientUiVisibility.isControlVisible(
-      "bottomActivity.latestConversation",
-    ),
   };
   const shellRuntimeSummary = useMemo(
     () =>
@@ -1062,9 +1059,7 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     commandTotal > 0 ||
     options.isPlanMode ||
     Boolean(options.plan);
-  const hasVisibleBaselineStatusTab =
-    bottomActivityVisibleTabs.latestUserMessage ||
-    bottomActivityVisibleTabs.checkpoint;
+  const hasVisibleBaselineStatusTab = bottomActivityVisibleTabs.checkpoint;
   const shouldMountBottomStatusPanel =
     showBottomActivityPanel &&
     isStatusPanelEngine &&
@@ -1153,7 +1148,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
           }
           steerEnabled={options.steerEnabled}
           isProcessing={options.isProcessing}
-          draftText={options.draftText}
           onDraftChange={options.onDraftChange}
           attachedImages={options.activeImages}
           onPickImages={options.onPickImages}
@@ -2173,7 +2167,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
       onOpenDiffPath={handleOpenDiffPath}
       onOpenFilePath={handleOpenDiffFromActivity}
       onSelectSubagent={options.onSelectSubagent}
-      onJumpToConversationMessage={dispatchMessageJumpEvent}
       variant="dock"
       visibleDockTabs={bottomActivityVisibleTabs}
       onRefreshGitStatus={options.queueGitStatusRefresh}

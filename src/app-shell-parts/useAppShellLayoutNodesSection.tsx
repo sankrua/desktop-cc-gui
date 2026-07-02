@@ -152,7 +152,6 @@ export function useAppShellLayoutNodesSection(
     activeDiffError,
     activeDiffLoading,
     activeDiffs,
-    activeDraft,
     activeEditorFilePath,
     activeEditorLineRange,
     activeEngine,
@@ -1698,7 +1697,6 @@ export function useAppShellLayoutNodesSection(
         });
       },
       activeQueue,
-      draftText: activeDraft,
       onDraftChange: handleDraftChange,
       activeImages,
       onPickImages: pickImages,

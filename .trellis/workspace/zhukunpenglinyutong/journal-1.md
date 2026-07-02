@@ -401,3 +401,44 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 9: 按引擎持久化 composer 偏好与会话绑定加固
+
+**Date**: 2026-07-02
+**Task**: 提交暂存的 composer 偏好持久化等改动
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+新增 per-engine composer 偏好持久化:每个引擎记住最近一次使用的 model/effort/access mode/plan 模式,新会话按引擎默认恢复;同时加固 pending 线程会话绑定(established 目标不再被反向命中),Claude 上下文窗口估算默认改 1M(Haiku 保持 200K),掉帧监视器剔除挂起恢复造成的假掉帧。
+
+### Main Changes
+
+| 模块 | 变更 |
+|------|------|
+| composer 偏好 | 新增 `composerEnginePrefs.ts`(归一化/immutable upsert/legacy codex 字段迁移)+ 单测;`AppSettings` 增加 `lastComposerPrefsByEngine`;`useSelectedComposerSession` 对全新 pending 线程应用引擎默认;`useThreadScopedCollaborationMode` 仅显式 plan/code 切换时回写偏好;app-shell 接线 |
+| 会话绑定 | `useThreadTurnEvents` 新增 `hasEstablishedThreadItems` 守卫:目标线程已有条目时 active-pending 兜底不再触发(Claude 每 turn 重播 session id 导致的串会话) |
+| 上下文窗口 | `claudeContextWindow` 默认 1M,仅 Haiku 200K;`ContextUsageIndicator` 默认值同步 |
+| perf 监控 | `frameDropMonitor` 新增 `SUSPEND_GAP_MS=5000` 挂起恢复识别(记 `perf.suspend-gap` 不计掉帧)、visibilitychange 重置计时、`isLongTaskObservable()`;`diagnosticsReport` 统计剔除脏数据 |
+| UI 细节 | ThreadList 有 runtime badge 时隐藏相对时间;`ReadToolGroupBlock` 改用 explore-inline 样式(净减 72 行) |
+
+**Updated Files**: 27 files (+821/-150),核心见上表;commit `d94ad984`
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `d94ad984` | feat(composer): persist per-engine composer preferences |
+
+### Testing
+
+- 未运行(用户仅要求提交暂存变更,不做二次确认)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- 工作区仍有未提交改动:`src-tauri/src/engine/claude/lifecycle.rs`、`tests_core.rs`、`TokenIndicator.test.tsx`,待后续整理提交

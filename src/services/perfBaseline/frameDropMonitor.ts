@@ -33,6 +33,21 @@ function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
 }
 
+// 交互标签只在"交互发生在这帧(或紧邻其前)"时才有归因意义。perfContextBridge 记录的
+// 是"最近一次"交互且永不过期,曾把 35 秒前的 pointerdown 标到 idle 渲染风暴的帧上,
+// 让报告把 82% 的 idle 掉帧误读成"指针触发"。超时的标签置空并标记 interactionStale。
+function readAttributableContext(windowMs: number) {
+  const ctx = readPerfContext();
+  const staleThresholdMs = Math.max(250, windowMs);
+  if (
+    ctx.lastInteractionAgoMs === null ||
+    ctx.lastInteractionAgoMs <= staleThresholdMs
+  ) {
+    return ctx;
+  }
+  return { ...ctx, lastInteractionLabel: null, interactionStale: true };
+}
+
 function reportFrameDrop(deltaMs: number): void {
   const at = nowMs();
   if (at - lastReportAt < MIN_REPORT_INTERVAL_MS) {
@@ -47,7 +62,7 @@ function reportFrameDrop(deltaMs: number): void {
     deltaMs: Math.round(deltaMs),
     approxFps: Math.max(1, Math.round(1000 / deltaMs)),
     level: deltaMs >= SEVERE_FRAME_MS ? "severe" : "warn",
-    ...readPerfContext(),
+    ...readAttributableContext(deltaMs),
     topRenders: getRecentReactScanRenderSummary(600),
   });
 }
@@ -148,7 +163,7 @@ export function startLongTaskObserver(): void {
           durationMs: Math.round(entry.duration),
           startTime: Math.round(entry.startTime),
           name: entry.name,
-          ...readPerfContext(),
+          ...readAttributableContext(entry.duration),
         });
       }
     });

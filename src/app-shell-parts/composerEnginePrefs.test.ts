@@ -3,6 +3,7 @@ import {
   EMPTY_COMPOSER_ENGINE_PREF,
   getComposerEnginePref,
   normalizeComposerEnginePrefsRecord,
+  resolveRestoredAccessMode,
   upsertComposerEnginePref,
 } from "./composerEnginePrefs";
 
@@ -96,5 +97,37 @@ describe("composerEnginePrefs", () => {
       { modelId: "gpt-5.5", effort: "high" },
     );
     expect(normalized.codex?.modelId).toBe("gpt-5.4");
+  });
+});
+
+describe("resolveRestoredAccessMode", () => {
+  it("prefers the stored mode over the configured default", () => {
+    expect(resolveRestoredAccessMode("claude", "full-access", "current")).toBe(
+      "full-access",
+    );
+  });
+
+  it("falls back to the configured default, then full-access", () => {
+    expect(resolveRestoredAccessMode("gemini", null, "read-only")).toBe(
+      "read-only",
+    );
+    expect(resolveRestoredAccessMode("gemini", null, undefined)).toBe(
+      "full-access",
+    );
+  });
+
+  it("degrades claude's disabled acceptEdits mode to default", () => {
+    expect(resolveRestoredAccessMode("claude", "current", undefined)).toBe(
+      "default",
+    );
+    expect(resolveRestoredAccessMode("claude", null, "current")).toBe(
+      "default",
+    );
+  });
+
+  it("keeps acceptEdits for engines that allow it", () => {
+    expect(resolveRestoredAccessMode("gemini", "current", undefined)).toBe(
+      "current",
+    );
   });
 });

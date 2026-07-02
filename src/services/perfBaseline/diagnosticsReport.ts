@@ -7,7 +7,7 @@ import {
   exportRendererDiagnostics,
   type RendererDiagnosticEntry,
 } from "../rendererDiagnostics";
-import { isReactScanStartupEnabled } from "../reactScanController";
+import { getReactScanAttributionState } from "../reactScanController";
 import { SUSPEND_GAP_MS, isLongTaskObservable } from "./frameDropMonitor";
 
 const REPORT_MAX_ENTRIES = 80;
@@ -87,10 +87,15 @@ export function buildDiagnosticsReportText(): string {
       "longTaskSupport: unsupported — 本平台无 longtask API,longTaskCount 恒为 0,不代表没有长任务",
     );
   }
+  const attributionState = getReactScanAttributionState();
   headerLines.push(
-    isReactScanStartupEnabled()
+    attributionState === "on"
       ? "renderAttribution: on — topRenders 为掉帧前 600ms 内渲染最多的组件(react-scan overlay)"
-      : "renderAttribution: off — topRenders 为空是预期;需要组件归因请在设置里开启 react-scan overlay 后复现",
+      : attributionState === "paused"
+        ? "renderAttribution: paused — react-scan 工具条处于暂停态,onRender 归因被闸门跳过,topRenders 恒空;重开设置里的 react-scan 开关恢复"
+        : attributionState === "missing"
+          ? "renderAttribution: flag-on 但 instrumentation 未就绪 — topRenders 为空不代表没有渲染发生"
+          : "renderAttribution: off — topRenders 为空是预期;需要组件归因请在设置里开启 react-scan overlay 后复现",
   );
   if (suspendResumeFrames.length > 0) {
     headerLines.push(

@@ -33,6 +33,7 @@ import type {
 import type { EngineDisplayInfo } from "../../engine/hooks/useEngineController";
 import { computeDictationInsertion } from "../../../utils/dictation";
 import { useComposerAutocompleteState } from "../hooks/useComposerAutocompleteState";
+import { useComposerDraft } from "../hooks/composerDraftStore";
 import { usePromptHistory } from "../hooks/usePromptHistory";
 import { useInlineHistoryCompletion } from "../hooks/useInlineHistoryCompletion";
 import { recordHistory as recordInputHistory } from "../hooks/useInputHistoryStore";
@@ -251,7 +252,6 @@ type ComposerProps = {
   onJumpToUserInputRequest?: (request: RequestUserInputRequest) => void;
   runtimeLifecycleState?: RuntimeLifecycleState | null;
   sendLabel?: string;
-  draftText?: string;
   onDraftChange?: (text: string) => void;
   historyKey?: string | null;
   attachedImages?: string[];
@@ -518,7 +518,6 @@ function ComposerImpl({
   onJumpToUserInputRequest,
   runtimeLifecycleState = null,
   sendLabel: _sendLabel = "Send",
-  draftText = "",
   onDraftChange,
   historyKey = null,
   attachedImages = [],
@@ -624,6 +623,9 @@ function ComposerImpl({
     selectedEngine === "claude" ||
     selectedEngine === "codex" ||
     selectedEngine === "gemini";
+  // 草稿值直接订阅模块级 store(而非经 app-shell 根 prop 灌入):按键写 store 时
+  // 只有 Composer 自身重渲染,不再把整个 app-shell 拖下水。
+  const draftText = useComposerDraft(activeThreadId);
   const [text, setText] = useState(draftText);
   const [selectionStart, setSelectionStart] = useState<number | null>(null);
   const [selectedSkillNames, setSelectedSkillNames] = useState<string[]>([]);

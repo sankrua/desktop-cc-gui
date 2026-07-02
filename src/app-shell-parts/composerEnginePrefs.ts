@@ -102,6 +102,23 @@ export function upsertComposerEnginePref(
 }
 
 /**
+ * Resolve the access mode to restore when switching to an engine. Claude's
+ * permission menu keeps acceptEdits ("current") disabled, so a stored or
+ * default "current" degrades to the approval-required "default" instead.
+ */
+export function resolveRestoredAccessMode(
+  engine: EngineType,
+  stored: AccessMode | null,
+  defaultAccessMode: AccessMode | undefined,
+): AccessMode {
+  const restored = stored ?? defaultAccessMode ?? "full-access";
+  if (engine === "claude" && restored === "current") {
+    return "default";
+  }
+  return restored;
+}
+
+/**
  * Sanitize a raw persisted record. Unknown engines and malformed fields are dropped.
  * When the record has no `codex` entry, legacy top-level composer fields seed it so
  * older settings keep working after the migration to per-engine preferences.

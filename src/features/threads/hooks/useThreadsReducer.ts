@@ -103,6 +103,12 @@ export type { ThreadAction, ThreadState } from "./threadReducerTypes";
 const REDUCER_NOOP_GUARD_ENABLED = isReducerNoopGuardEnabled();
 const INCREMENTAL_DERIVATION_ENABLED = isIncrementalDerivationEnabled();
 const PENDING_THREAD_LAST_AGENT_ANCHOR_TTL_MS = 5 * 60 * 1000;
+// Continuation evidence arrives once per engine event (heartbeat/delta/item/*)
+// via raw dispatch, bypassing the delta batching layers. Consumers only do
+// monotonic `>` comparisons on continuationPulse, so per-thread throttling is
+// safe and keeps engine progress from forcing app-shell-root re-renders on
+// every event.
+const CONTINUATION_EVIDENCE_MIN_INTERVAL_MS = 1000;
 type ThreadsReducerProfileSnapshot = {
   componentRenderCounts: Record<string, number>;
   prepareThreadItemsCallCount: number;
@@ -971,6 +977,15 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
     }
     case "markContinuationEvidence": {
       const previous = state.threadStatusById[action.threadId];
+      if (!action.force) {
+        if (!previous?.isProcessing) {
+          return state;
+        }
+        const lastAt = previous.lastContinuationEvidenceAtMs ?? 0;
+        if (action.at - lastAt < CONTINUATION_EVIDENCE_MIN_INTERVAL_MS) {
+          return state;
+        }
+      }
       const nextPulse = (previous?.continuationPulse ?? 0) + 1;
       return {
         ...state,
@@ -979,6 +994,7 @@ export function threadReducer(state: ThreadState, action: ThreadAction): ThreadS
           [action.threadId]: {
             ...withThreadStatusDefaults(previous),
             continuationPulse: nextPulse,
+            lastContinuationEvidenceAtMs: action.at,
           },
         },
       };

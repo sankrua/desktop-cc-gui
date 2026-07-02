@@ -276,7 +276,11 @@ describe("buildDiagnosticsReportText", () => {
     expect(buildDiagnosticsReportText()).toContain("renderAttribution: off");
     localStorage.setItem("ccgui.perf.reactScan", "1");
     try {
-      expect(buildDiagnosticsReportText()).toContain("renderAttribution: on");
+      // flag 开着但 react-scan 模块未加载(测试环境不加载)时,必须如实汇报
+      // instrumentation 未就绪,而不是笼统的 "on"。
+      expect(buildDiagnosticsReportText()).toContain(
+        "renderAttribution: flag-on 但 instrumentation 未就绪",
+      );
     } finally {
       localStorage.removeItem("ccgui.perf.reactScan");
     }

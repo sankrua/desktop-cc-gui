@@ -85,7 +85,10 @@ export const formatContextPercent = (
   if (typeof percent !== "number" || !Number.isFinite(percent)) {
     return undefined;
   }
-  return percentFormatter.format(percent / PERCENT_MAX);
+  // 占用百分比超出 [0, 100] 只可能来自脏数据（如累计 usage 被误当快照），
+  // 展示层封顶兜底，避免出现 7,179.2% 这类无意义读数。
+  const clamped = Math.min(Math.max(percent, 0), PERCENT_MAX);
+  return percentFormatter.format(clamped / PERCENT_MAX);
 };
 
 export const formatContextCostUSD = (
@@ -144,7 +147,7 @@ export const Context = ({
       costUSD,
     }}
   >
-    <HoverCard closeDelay={0} openDelay={0} {...props} />
+    <HoverCard openDelay={300} closeDelay={100} {...props} />
   </ContextContext.Provider>
 );
 
