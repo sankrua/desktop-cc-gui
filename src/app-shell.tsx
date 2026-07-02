@@ -58,7 +58,18 @@ import {
   openOrFocusDetachedFileExplorer,
 } from "./features/files/detachedFileExplorer";
 import { pickWorkspacePath } from "./services/tauri";
-import type { AccessMode, AppMode, ComposerEditorSettings } from "./types";
+import type {
+  AccessMode,
+  AppMode,
+  ComposerEditorSettings,
+  ComposerEnginePrefs,
+  EngineType,
+} from "./types";
+import {
+  getComposerEnginePref,
+  upsertComposerEnginePref,
+} from "./app-shell-parts/composerEnginePrefs";
+import { resolveThreadEngine } from "./app-shell-parts/selectedComposerSession";
 import { useCodeCssVars } from "./features/app/hooks/useCodeCssVars";
 import { useAccountSwitching } from "./features/app/hooks/useAccountSwitching";
 import { pushErrorToast } from "./services/toasts";
@@ -127,6 +138,41 @@ export function AppShell() {
     queueSaveSettings,
   } = useAppSettingsController();
   useCodeCssVars(appSettings);
+  // Durable per-engine composer preferences (model / effort / permission / plan mode)
+  // so a brand-new conversation reopens with the user's last choices after restart.
+  const persistComposerEnginePref = useCallback(
+    (engine: EngineType, patch: Partial<ComposerEnginePrefs>) => {
+      setAppSettings((current) => {
+        const nextByEngine = upsertComposerEnginePref(
+          current.lastComposerPrefsByEngine,
+          engine,
+          patch,
+        );
+        if (nextByEngine === current.lastComposerPrefsByEngine) {
+          return current;
+        }
+        const nextSettings = {
+          ...current,
+          lastComposerPrefsByEngine: nextByEngine,
+        };
+        void queueSaveSettings(nextSettings);
+        return nextSettings;
+      });
+    },
+    [queueSaveSettings, setAppSettings],
+  );
+  const activeEngineRef = useRef<EngineType>("claude");
+  const persistClaudeCollaborationMode = useCallback(
+    (modeId: string | null) => {
+      if (activeEngineRef.current !== "claude") {
+        return;
+      }
+      persistComposerEnginePref("claude", {
+        collaborationModeId: modeId === "plan" ? "plan" : "code",
+      });
+    },
+    [persistComposerEnginePref],
+  );
   const {
     dictationModel,
     dictationState,
@@ -535,6 +581,7 @@ export function AppShell() {
     handleCollaborationModeResolved,
   } = useThreadScopedCollaborationMode({
     setSelectedCollaborationModeId,
+    onExplicitCollaborationModeChange: persistClaudeCollaborationMode,
   });
 
   const { skills } = useSkills({
@@ -560,6 +607,7 @@ export function AppShell() {
     },
     onDebug: addDebugEntry,
   });
+  activeEngineRef.current = activeEngine;
   const { handleRefreshModelConfig, isModelConfigRefreshing } =
     useModelConfigRefresh({
       activeEngine,
@@ -602,7 +650,9 @@ export function AppShell() {
     reorderTask: kanbanReorderTask,
   } = useKanbanStore(workspaces);
 
-  // Sync accessMode when switching engines (Codex forces full-access, Claude restores saved mode)
+  // Sync accessMode when switching engines. Codex forces full-access; non-codex
+  // engines restore the permission the user last chose for that engine (persisted
+  // across restart), falling back to the configured defaultAccessMode.
   useEffect(() => {
     if (activeEngine === "codex") {
       setAccessMode((prev) => {
@@ -611,20 +661,31 @@ export function AppShell() {
         }
         return "full-access";
       });
-    } else {
-      setAccessMode(claudeAccessModeRef.current);
+      return;
     }
-  }, [activeEngine]);
+    const storedAccessMode =
+      appSettings.lastComposerPrefsByEngine?.[activeEngine]?.accessMode ?? null;
+    const restored =
+      storedAccessMode ?? appSettings.defaultAccessMode ?? "full-access";
+    claudeAccessModeRef.current = restored;
+    setAccessMode(restored);
+  }, [
+    activeEngine,
+    appSettings.lastComposerPrefsByEngine,
+    appSettings.defaultAccessMode,
+  ]);
 
-  // Keep claudeAccessModeRef in sync when user changes mode on a non-codex engine
+  // Remember the permission the user picks on a non-codex engine so future
+  // conversations (and app restarts) reopen with the same access mode.
   const handleSetAccessMode = useCallback(
     (mode: AccessMode) => {
       setAccessMode(mode);
       if (activeEngine !== "codex") {
         claudeAccessModeRef.current = mode;
+        persistComposerEnginePref(activeEngine, { accessMode: mode });
       }
     },
-    [activeEngine],
+    [activeEngine, persistComposerEnginePref],
   );
 
   const {
@@ -945,6 +1006,23 @@ export function AppShell() {
     [activeThreadId, selectOpenCodeVariantForThread],
   );
 
+  // Seed a brand-new conversation with the model/effort the user last chose for its
+  // engine. Codex keeps its own global-selection path, so it opts out here.
+  const composerEnginePrefsByEngine = appSettings.lastComposerPrefsByEngine;
+  const resolveEngineDefaultComposerSelection = useCallback(
+    (threadId: string) => {
+      const engine = resolveThreadEngine(threadId);
+      if (!engine || engine === "codex") {
+        return null;
+      }
+      const pref = getComposerEnginePref(composerEnginePrefsByEngine, engine);
+      if (pref.modelId === null && pref.effort === null) {
+        return null;
+      }
+      return { modelId: pref.modelId, effort: pref.effort };
+    },
+    [composerEnginePrefsByEngine],
+  );
   const {
     selectedComposerSelection,
     handleSelectComposerSelection,
@@ -954,6 +1032,7 @@ export function AppShell() {
     activeThreadId,
     activeWorkspaceId,
     resolveCanonicalThreadId,
+    resolveEngineDefaultComposerSelection,
     onDebug: addDebugEntry,
   });
   const {
@@ -990,6 +1069,7 @@ export function AppShell() {
     handleSetAccessMode,
     models,
     modelsReady,
+    persistComposerEnginePref,
     persistComposerSelectionForThread,
     queueSaveSettings,
     selectedCollaborationMode,
@@ -1225,6 +1305,11 @@ export function AppShell() {
   }, [activeThreadId, activeThreadIdForModeRef]);
 
   useEffect(() => {
+    const claudePlanCodeDefault =
+      getComposerEnginePref(composerEnginePrefsByEngine, "claude")
+        .collaborationModeId === "plan"
+        ? "plan"
+        : "code";
     const syncResult = resolveThreadScopedCollaborationModeSync({
       activeEngine,
       activeThreadId,
@@ -1233,6 +1318,8 @@ export function AppShell() {
         : null,
       selectedCollaborationModeId,
       lastSyncedThreadId: lastCodexModeSyncThreadRef.current,
+      newThreadDefaultMode:
+        activeEngine === "claude" ? claudePlanCodeDefault : "code",
     });
     if (!syncResult) {
       return;
@@ -1248,6 +1335,7 @@ export function AppShell() {
     activeThreadId,
     codexComposerModeRef,
     collaborationUiModeByThread,
+    composerEnginePrefsByEngine,
     lastCodexModeSyncThreadRef,
     selectedCollaborationModeId,
     setSelectedCollaborationModeId,

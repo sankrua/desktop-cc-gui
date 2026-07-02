@@ -2531,6 +2531,8 @@ export function useThreads({
     resolvePendingThreadForTurn,
     getActiveTurnIdForThread: (threadId: string) =>
       state.activeTurnIdByThread[threadId] ?? null,
+    hasEstablishedThreadItems: (threadId: string) =>
+      (state.itemsByThread[threadId]?.length ?? 0) > 0,
     renamePendingMemoryCaptureKey,
     onAgentMessageCompletedExternal: handleAgentMessageCompletedForMemory,
     onTurnCompletedExternal: (payload) => {

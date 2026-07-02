@@ -91,6 +91,7 @@ export function useThreadEventHandlers({
   resolvePendingThreadForSession,
   resolvePendingThreadForTurn,
   getActiveTurnIdForThread,
+  hasEstablishedThreadItems,
   renamePendingMemoryCaptureKey,
   onAgentMessageCompletedExternal,
   onTurnCompletedExternal,
@@ -1285,6 +1286,7 @@ export function useThreadEventHandlers({
     resolvePendingThreadForSession,
     resolvePendingThreadForTurn,
     getActiveTurnIdForThread,
+    hasEstablishedThreadItems,
     renamePendingMemoryCaptureKey,
     onDebug,
   });

@@ -5,7 +5,8 @@ import {
 } from "./claudeContextWindow";
 
 describe("estimateClaudeContextWindow", () => {
-  it("falls back to the default 200k window for regular models", () => {
+  it("defaults to the 1M window for modern Claude models", () => {
+    expect(DEFAULT_CLAUDE_CONTEXT_WINDOW).toBe(1_000_000);
     expect(estimateClaudeContextWindow("claude-opus-4-8")).toBe(
       DEFAULT_CLAUDE_CONTEXT_WINDOW,
     );
@@ -18,7 +19,12 @@ describe("estimateClaudeContextWindow", () => {
     expect(estimateClaudeContextWindow("")).toBe(DEFAULT_CLAUDE_CONTEXT_WINDOW);
   });
 
-  it("recognizes 1M long-context models by the [1m] suffix", () => {
+  it("keeps the 200k window for Haiku models", () => {
+    expect(estimateClaudeContextWindow("claude-haiku-4-5")).toBe(200_000);
+    expect(estimateClaudeContextWindow("Claude-Haiku-4-5")).toBe(200_000);
+  });
+
+  it("treats [1m] long-context variants as 1M", () => {
     expect(estimateClaudeContextWindow("claude-sonnet-4-5[1m]")).toBe(
       1_000_000,
     );

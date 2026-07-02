@@ -28,6 +28,7 @@ import {
   DEFAULT_OPEN_APP_TARGETS,
 } from "../../app/constants";
 import { getClientStoreSync } from "../../../services/clientStorage";
+import { normalizeComposerEnginePrefsRecord } from "../../../app-shell-parts/composerEnginePrefs";
 import { normalizeOpenAppTargets } from "../../app/utils/openApp";
 import { getDefaultInterruptShortcut } from "../../../utils/shortcuts";
 import { normalizeHexColor } from "../../../utils/colorUtils";
@@ -220,6 +221,7 @@ const defaultSettings: AppSettings = {
   cycleWorkspacePrevShortcut: "cmd+shift+up",
   lastComposerModelId: null,
   lastComposerReasoningEffort: null,
+  lastComposerPrefsByEngine: {},
   uiScale: UI_SCALE_DEFAULT,
   theme: "system",
   lightThemePresetId: "vscode-light-modern",
@@ -502,6 +504,13 @@ function normalizeAppSettings(
     ),
     openAppTargets: normalizedTargets,
     selectedOpenAppId,
+    lastComposerPrefsByEngine: normalizeComposerEnginePrefsRecord(
+      settings.lastComposerPrefsByEngine,
+      {
+        modelId: settings.lastComposerModelId,
+        effort: settings.lastComposerReasoningEffort,
+      },
+    ),
   };
 }
 

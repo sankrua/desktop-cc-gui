@@ -17,12 +17,17 @@ const WARN_FRAME_MS = 50; // 约掉 3 帧(60fps 下)
 const SEVERE_FRAME_MS = 100; // 约掉 6 帧
 const MIN_REPORT_INTERVAL_MS = 500; // 节流:相邻掉帧上报最短间隔,避免日志雪崩
 const MAX_FRAME_DROP_REPORTS = 200; // 单次会话上报上限
+// rAF 间隔超过该值视为挂起(睡眠/后台)恢复而非渲染掉帧:WKWebView 在页面不可见或系统
+// 睡眠时会暂停 rAF,恢复后第一帧的 delta 等于整段停摆时长(实测可达几十分钟),曾把
+// worstFrameMs 污染成无意义的天文数字。diagnosticsReport 统计时用同一阈值剔除历史脏数据。
+export const SUSPEND_GAP_MS = 5000;
 
 let rafHandle: number | null = null;
 let lastFrameTime: number | null = null;
 let lastReportAt = Number.NEGATIVE_INFINITY;
 let frameDropReports = 0;
 let longTaskObserver: PerformanceObserver | null = null;
+let detachVisibilityListener: (() => void) | null = null;
 
 function nowMs(): number {
   return typeof performance !== "undefined" ? performance.now() : Date.now();
@@ -61,7 +66,13 @@ export function startFrameDropMonitor(): void {
     const now = nowMs();
     if (lastFrameTime !== null) {
       const delta = now - lastFrameTime;
-      if (delta >= WARN_FRAME_MS) {
+      if (delta >= SUSPEND_GAP_MS) {
+        // 挂起恢复:单独记一条以解释日志时间轴断层,不计入掉帧。
+        appendRendererDiagnostic("perf.suspend-gap", {
+          gapMs: Math.round(delta),
+          ...readPerfContext(),
+        });
+      } else if (delta >= WARN_FRAME_MS) {
         reportFrameDrop(delta);
       }
     }
@@ -69,6 +80,19 @@ export function startFrameDropMonitor(): void {
     rafHandle = window.requestAnimationFrame(tick);
   };
   rafHandle = window.requestAnimationFrame(tick);
+  if (typeof document !== "undefined") {
+    // 页面隐藏的瞬间丢弃计时起点:短暂切后台(< SUSPEND_GAP_MS)恢复后的第一帧
+    // 不会被算成一次掉帧;睡眠等不触发 visibilitychange 的挂起由 SUSPEND_GAP_MS 兜底。
+    const onVisibilityChange = () => {
+      if (document.hidden) {
+        lastFrameTime = null;
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    detachVisibilityListener = () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
+  }
 }
 
 /** 停止 rAF 掉帧监视循环。幂等。 */
@@ -78,6 +102,21 @@ export function stopFrameDropMonitor(): void {
   }
   rafHandle = null;
   lastFrameTime = null;
+  detachVisibilityListener?.();
+  detachVisibilityListener = null;
+}
+
+/** 本平台 PerformanceObserver 是否支持 longtask(WebKit 不支持);供报告标注口径。 */
+export function isLongTaskObservable(): boolean {
+  if (typeof PerformanceObserver === "undefined") {
+    return false;
+  }
+  const supportedEntryTypes = (
+    PerformanceObserver as typeof PerformanceObserver & {
+      supportedEntryTypes?: readonly string[];
+    }
+  ).supportedEntryTypes;
+  return supportedEntryTypes?.includes("longtask") === true;
 }
 
 /** 启动 longtask 观测;不支持时记录一次并降级依赖 rAF。幂等。 */
