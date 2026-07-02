@@ -1255,6 +1255,8 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
                 }
               : null
           }
+          // 首页（branchControlEnabled=false）的分支/指示器行由 HomeChat 自行渲染
+          footerUsageIndicatorEnabled={branchControlEnabled}
           rewindWorkspaceGitState={rewindWorkspaceGitState}
           plan={options.plan}
           isPlanMode={options.isPlanMode}

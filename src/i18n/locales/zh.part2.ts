@@ -2567,6 +2567,7 @@ const zhPart2 = {
     claudeContextInputLabel: "输入",
     claudeContextOutputLabel: "输出",
     claudeContextCacheLabel: "缓存",
+    claudeContextTotalCostLabel: "总成本",
     claudeContextInputDetail: "input {{tokens}}",
     claudeContextCachedDetail: "cached {{tokens}}",
     claudeContextCachedExcludedDetail: "cached {{tokens}} 不计入本轮新消耗",

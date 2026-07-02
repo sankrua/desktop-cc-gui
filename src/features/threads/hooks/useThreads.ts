@@ -909,6 +909,7 @@ export function useThreads({
   } = useThreadActions({
     dispatch,
     itemsByThread: state.itemsByThread,
+    tokenUsageByThread: state.tokenUsageByThread,
     userInputRequests: state.userInputRequests,
     threadsByWorkspace: state.threadsByWorkspace,
     activeThreadIdByWorkspace: state.activeThreadIdByWorkspace,

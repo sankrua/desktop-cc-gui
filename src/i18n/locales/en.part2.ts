@@ -2689,6 +2689,7 @@ const enPart2 = {
     claudeContextInputLabel: "Input",
     claudeContextOutputLabel: "Output",
     claudeContextCacheLabel: "Cache",
+    claudeContextTotalCostLabel: "Total cost",
     claudeContextInputDetail: "input {{tokens}}",
     claudeContextCachedDetail: "cached {{tokens}}",
     claudeContextCachedExcludedDetail:
