@@ -75,6 +75,7 @@ import {
   getTimelineVirtualizationThresholdReason,
   isEmptyVirtualProjectionRow,
   observeTimelineElementOffset,
+  remeasureTimelineVirtualizerRows,
   resolveTimelineCanvasOverscan,
   resolveTimelineVirtualizerStabilityRecovery,
   TIMELINE_LIGHTWEIGHT_ROW_PLACEHOLDER_HEIGHT,
@@ -904,7 +905,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
           timelineVirtualizer.resizeItem(index, TIMELINE_LIGHTWEIGHT_ROW_PLACEHOLDER_HEIGHT);
         }
       });
-      timelineVirtualizer.measure();
+      remeasureTimelineVirtualizerRows(timelineVirtualizer);
     });
   }, [
     lightweightTimelineRowSignature,
@@ -940,7 +941,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     }
     liveRowRemeasureRafRef.current = window.requestAnimationFrame(() => {
       liveRowRemeasureRafRef.current = null;
-      timelineVirtualizer.measure();
+      remeasureTimelineVirtualizerRows(timelineVirtualizer);
     });
   }, [
     activeLiveTimelineRowKeys.length,
@@ -972,7 +973,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       }
       hydrationRemeasureRafRef.current = window.requestAnimationFrame(() => {
         hydrationRemeasureRafRef.current = null;
-        timelineVirtualizer.measure();
+        remeasureTimelineVirtualizerRows(timelineVirtualizer);
       });
     }
     if (!recovery.shouldDiagnose) {
@@ -1132,11 +1133,11 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       scrollElement.scrollTo({ top: 0, behavior: "auto" });
     }
     if (typeof window === "undefined") {
-      timelineVirtualizer.measure();
+      remeasureTimelineVirtualizerRows(timelineVirtualizer);
       return undefined;
     }
     const raf = window.requestAnimationFrame(() => {
-      timelineVirtualizer.measure();
+      remeasureTimelineVirtualizerRows(timelineVirtualizer);
     });
     return () => {
       window.cancelAnimationFrame(raf);
@@ -1188,7 +1189,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     });
     timelineStabilityRecoveryBudgetRef.current = recovery.nextBudget;
     if (recovery.shouldRemeasure) {
-      timelineVirtualizer.measure();
+      remeasureTimelineVirtualizerRows(timelineVirtualizer);
     }
     if (!recovery.shouldDiagnose) {
       return;
