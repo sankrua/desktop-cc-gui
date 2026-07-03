@@ -2,7 +2,7 @@ import type { ConversationItem } from "../../../types";
 import type { ConversationEngine } from "../../threads/contracts/conversationCurtainContracts";
 
 const PARAGRAPH_BREAK_SPLIT_REGEX = /\r?\n[^\S\r\n]*\r?\n+/;
-const REASONING_SEGMENT_ID_REGEX = /(?:^|[:-])seg-\d+$/;
+const REASONING_SEGMENT_ID_REGEX = /(?:^|[:-])seg-(\d+)$/;
 
 type ReasoningConversationItem = Extract<ConversationItem, { kind: "reasoning" }>;
 
@@ -383,7 +383,7 @@ function isReasoningDuplicate(previous: ParsedReasoning, next: ParsedReasoning) 
   return false;
 }
 
-function appendReasoningRunText(existing: string, incoming: string) {
+export function appendReasoningRunText(existing: string, incoming: string) {
   if (!existing) {
     return incoming;
   }
@@ -454,6 +454,11 @@ export function isExplicitReasoningSegmentId(id: string) {
   return REASONING_SEGMENT_ID_REGEX.test(id);
 }
 
+export function reasoningSegmentNumber(id: string) {
+  const match = REASONING_SEGMENT_ID_REGEX.exec(id);
+  return match?.[1] ? Number(match[1]) : null;
+}
+
 export function dedupeAdjacentReasoningItems(
   list: ConversationItem[],
   reasoningMetaById: Map<string, ParsedReasoning>,
@@ -467,10 +472,8 @@ export function dedupeAdjacentReasoningItems(
       deduped.push(item);
       continue;
     }
-    if (
-      isExplicitReasoningSegmentId(previous.id) ||
-      isExplicitReasoningSegmentId(item.id)
-    ) {
+    // 段号不同 = 中间发生过工具调用，保持分开；同段的相邻思考走正常去重/合并。
+    if (reasoningSegmentNumber(previous.id) !== reasoningSegmentNumber(item.id)) {
       if (engine === "gemini") {
         if (
           isGenericPlaceholderReasoningItem(previous) &&
@@ -530,18 +533,15 @@ export function collapseConsecutiveReasoningRuns(
       index += 1;
       continue;
     }
-    if (isExplicitReasoningSegmentId(item.id)) {
-      collapsed.push(item);
-      index += 1;
-      continue;
-    }
 
+    // 相邻且同段（同 seg 编号或都没有）的思考合并为一块；段号变化说明中间有过工具调用，保持分开。
+    const segment = reasoningSegmentNumber(item.id);
     let end = index + 1;
     while (end < list.length) {
       const candidate = list[end];
       if (
         !isReasoningConversationItem(candidate) ||
-        isExplicitReasoningSegmentId(candidate.id)
+        reasoningSegmentNumber(candidate.id) !== segment
       ) {
         break;
       }

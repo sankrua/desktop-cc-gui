@@ -19,6 +19,10 @@ export type ResponsiveIconToolbarItem = {
   priority?: number;
   keepVisible?: boolean;
   pinToEnd?: boolean;
+  /** true 时选中后不外显到工具栏（一次性动作项，如打开新窗口） */
+  noPromote?: boolean;
+  /** pin 模式下：false 时该行不显示外显勾选框（一次性动作项） */
+  pinnable?: boolean;
   ariaCurrent?: "page" | "step" | "location" | "date" | "time" | true;
 };
 
@@ -33,7 +37,15 @@ type ResponsiveIconToolbarProps = {
   minVisibleItems?: number;
   maxVisibleItems?: number;
   collapseInactiveItems?: boolean;
+  /** 溢出触发器图标，缺省用 SquareMenu */
+  overflowIcon?: ReactNode;
+  /** 提供 onTogglePin 即进入 pin 模式：溢出菜单展示全部条目并带外显勾选框 */
+  pinnedIds?: readonly string[];
+  onTogglePin?: (id: string) => void;
+  pinToggleLabel?: string;
 };
+
+const EMPTY_PINNED_IDS: readonly string[] = [];
 
 function sortByVisibilityPriority(
   items: ResponsiveIconToolbarItem[],
@@ -105,10 +117,15 @@ export function ResponsiveIconToolbar({
   minVisibleItems = 1,
   maxVisibleItems,
   collapseInactiveItems = false,
+  overflowIcon,
+  pinnedIds = EMPTY_PINNED_IDS,
+  onTogglePin,
+  pinToggleLabel,
 }: ResponsiveIconToolbarProps) {
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [containerWidth, setContainerWidth] = useState(0);
   const [promotedItemId, setPromotedItemId] = useState<string | null>(null);
+  const pinMode = typeof onTogglePin === "function";
 
   useEffect(() => {
     const root = rootRef.current;
@@ -150,9 +167,17 @@ export function ResponsiveIconToolbar({
   );
   const leadingVisibleItems = visibleItems.filter((item) => !item.pinToEnd);
   const pinnedVisibleItems = visibleItems.filter((item) => item.pinToEnd);
+  // pin 模式下溢出菜单展示全部条目（含已外显项，便于取消勾选）；否则只展示被折叠项
+  const overflowMenuItems = pinMode ? items : overflowItems;
+  const showOverflowTrigger = pinMode
+    ? items.length > 0
+    : overflowItems.length > 0;
 
   const selectItem = (item: ResponsiveIconToolbarItem) => {
-    setPromotedItemId(item.id);
+    // pin 模式改为显式勾选外显，不再点击后临时置顶
+    if (!pinMode && !item.noPromote) {
+      setPromotedItemId(item.id);
+    }
     item.onSelect();
   };
 
@@ -182,7 +207,7 @@ export function ResponsiveIconToolbar({
           </span>
         </TooltipIconButton>
       ))}
-      {overflowItems.length > 0 ? (
+      {showOverflowTrigger ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -192,23 +217,54 @@ export function ResponsiveIconToolbar({
               title={overflowLabel}
               data-tauri-drag-region="false"
             >
-              <SquareMenu size={14} aria-hidden />
+              {overflowIcon ?? <SquareMenu size={14} aria-hidden />}
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="responsive-icon-toolbar-menu" align="end">
-            {overflowItems.map((item) => (
-              <DropdownMenuItem
-                key={item.id}
-                className={item.menuItemClassName}
-                onSelect={() => selectItem(item)}
-                data-tauri-drag-region="false"
-              >
-                <span className={item.iconClassName} aria-hidden>
-                  {item.icon}
-                </span>
-                <span>{item.label}</span>
-              </DropdownMenuItem>
-            ))}
+            {overflowMenuItems.map((item) => {
+              const showPin = pinMode && item.pinnable !== false;
+              return (
+                <DropdownMenuItem
+                  key={item.id}
+                  className={item.menuItemClassName}
+                  onSelect={() => selectItem(item)}
+                  aria-label={item.label}
+                  data-tauri-drag-region="false"
+                >
+                  <span className={item.iconClassName} aria-hidden>
+                    {item.icon}
+                  </span>
+                  <span className="responsive-icon-toolbar-menu-label">
+                    {item.label}
+                  </span>
+                  {showPin ? (
+                    <input
+                      type="checkbox"
+                      className="responsive-icon-toolbar-pin"
+                      checked={pinnedIds.includes(item.id)}
+                      // 在 onClick 里 toggle：stopPropagation 会挡掉 React 委托的
+                      // onChange，所以直接在这里切换，并阻止冒泡触发菜单项 select
+                      onChange={() => {}}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onTogglePin?.(item.id);
+                      }}
+                      onKeyDown={(event) => {
+                        // 仅拦截 Space/Enter 用于切换外显；方向键/Esc 放行给 Radix 导航
+                        if (event.key === " " || event.key === "Enter") {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          onTogglePin?.(item.id);
+                        }
+                      }}
+                      aria-label={pinToggleLabel}
+                      title={pinToggleLabel}
+                      data-tauri-drag-region="false"
+                    />
+                  ) : null}
+                </DropdownMenuItem>
+              );
+            })}
           </DropdownMenuContent>
         </DropdownMenu>
       ) : null}

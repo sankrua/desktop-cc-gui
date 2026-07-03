@@ -40,7 +40,6 @@ export function useFileTreeViewState({
   onRefreshFiles,
 }: UseFileTreeViewStateOptions) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [rootExpanded, setRootExpanded] = useState(true);
   const [previewPath, setPreviewPath] = useState<string | null>(null);
   const [previewAnchor, setPreviewAnchor] = useState<FileTreePreviewAnchor | null>(null);
   const [previewContent, setPreviewContent] = useState("");
@@ -151,7 +150,6 @@ export function useFileTreeViewState({
     setNewFolderParent(null);
     setNewFolderName("");
     setSuppressedDeletedPaths(new Set());
-    setRootExpanded(true);
     setSelectedNodePath(null);
     setSelectedNodeType(null);
     setSelectedNodePaths(new Set());
@@ -201,7 +199,6 @@ export function useFileTreeViewState({
     renameDraftName,
     renameInputRef,
     renamePrompt,
-    rootExpanded,
     selectedNodePath,
     selectedNodePaths,
     selectedNodeType,
@@ -233,7 +230,6 @@ export function useFileTreeViewState({
     setPreviewTruncated,
     setRenameDraftName,
     setRenamePrompt,
-    setRootExpanded,
     setSelectedNodePath,
     setSelectedNodePaths,
     setSelectedNodeType,

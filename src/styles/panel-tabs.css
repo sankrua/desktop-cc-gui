@@ -2,6 +2,7 @@
   --panel-tab-active-accent: #d97706;
   display: inline-flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
   flex: 1 1 auto;
   min-width: 0;
@@ -13,7 +14,7 @@
   background: transparent;
   border: none;
   border-left: none;
-  border-right: 1px solid var(--border-default);
+  border-right: none;
 }
 
 :root[data-theme="light"] .panel-tabs {
@@ -53,9 +54,7 @@
 .panel-tab.is-active {
   background: transparent;
   color: color-mix(in srgb, var(--panel-tab-active-accent) 88%, var(--text-emphasis));
-  border-color: color-mix(in srgb, var(--panel-tab-active-accent) 46%, transparent);
   box-shadow: none;
-  border-radius: 6px;
   opacity: 1;
 }
 
@@ -92,9 +91,6 @@
 .panel-tab.is-active.is-live {
   color: var(--panel-tab-active-accent);
   color: color-mix(in srgb, var(--panel-tab-active-accent) 88%, var(--text-emphasis));
-  box-shadow:
-    inset 0 0 0 1px rgba(87, 209, 140, 0.38),
-    0 0 0 1px rgba(87, 209, 140, 0.06);
 }
 
 .panel-tab-menu-item.is-active {

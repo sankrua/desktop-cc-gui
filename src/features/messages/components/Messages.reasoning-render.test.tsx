@@ -598,6 +598,39 @@ describe("Messages reasoning render", () => {
     expect(container.textContent ?? "").toContain("输出最终分析报告");
   });
 
+  it("merges adjacent claude reasoning items within the same tool segment", () => {
+    const items: ConversationItem[] = [
+      {
+        id: "reasoning-a-seg-2",
+        kind: "reasoning",
+        summary: "先读取 README 并识别技术栈",
+        content: "先读取 README 并识别技术栈",
+      },
+      {
+        id: "reasoning-b-seg-2",
+        kind: "reasoning",
+        summary: "继续读取 CLAUDE.md 并整理结论",
+        content: "继续读取 CLAUDE.md 并整理结论",
+      },
+    ];
+
+    const { container } = render(
+      <Messages
+        items={items}
+        threadId="thread-1"
+        workspaceId="ws-1"
+        isThinking
+        activeEngine="claude"
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    expect(container.querySelectorAll(".thinking-block").length).toBe(1);
+    expect(container.textContent ?? "").toContain("先读取 README 并识别技术栈");
+    expect(container.textContent ?? "").toContain("继续读取 CLAUDE.md 并整理结论");
+  });
+
   it("keeps first multiline claude reasoning content after collapsing runs", () => {
     const items: ConversationItem[] = [
       {

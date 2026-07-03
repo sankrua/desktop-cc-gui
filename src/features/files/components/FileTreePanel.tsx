@@ -12,7 +12,6 @@ import { emitTo } from "@tauri-apps/api/event";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { confirm } from "@tauri-apps/plugin-dialog";
 import LoaderCircle from "lucide-react/dist/esm/icons/loader-circle";
-import TreePine from "lucide-react/dist/esm/icons/tree-pine";
 import type { PanelTabId } from "../../layout/components/PanelTabs";
 import {
   createWorkspaceDirectory,
@@ -213,7 +212,6 @@ export function FileTreePanel({
     renameDraftName,
     renameInputRef,
     renamePrompt,
-    rootExpanded,
     selectedNodePath,
     selectedNodePaths,
     selectedNodeType,
@@ -245,7 +243,6 @@ export function FileTreePanel({
     setPreviewTruncated,
     setRenameDraftName,
     setRenamePrompt,
-    setRootExpanded,
     setSelectedNodePath,
     setSelectedNodePaths,
     setSelectedNodeType,
@@ -437,20 +434,17 @@ export function FileTreePanel({
     return map;
   }, [gitRootWorkspacePrefix, gitStatusFiles, workspacePath]);
 
-  const isRootVisibleExpanded = rootExpanded;
   const visibleTreeNodeEntries = useMemo(() => {
-    const entries: VisibleTreeNodeEntry[] = [{ path: "", type: "root", depth: 0, node: null }];
+    const entries: VisibleTreeNodeEntry[] = [];
     const visit = (node: FileTreeNode, depth: number) => {
       entries.push({ path: node.path, type: node.type, depth, node });
       if (node.type === "folder" && effectiveExpandedFolders.has(node.path)) {
         node.children.forEach((child) => visit(child, depth + 1));
       }
     };
-    if (rootExpanded) {
-      nodes.forEach((node) => visit(node, 1));
-    }
+    nodes.forEach((node) => visit(node, 0));
     return entries;
-  }, [effectiveExpandedFolders, nodes, rootExpanded]);
+  }, [effectiveExpandedFolders, nodes]);
   const visibleFileTreeRows = useMemo(() => {
     const rows: VisibleFileTreeRow[] = [];
     for (const entry of visibleTreeNodeEntries) {
@@ -1613,10 +1607,6 @@ export function FileTreePanel({
     [],
   );
 
-  const selectedParentFolder = useMemo(
-    () => resolveParentFolderForNode(selectedNodePath, selectedNodeType),
-    [resolveParentFolderForNode, selectedNodePath, selectedNodeType],
-  );
   const detachedInitialFilePath = selectedNodeType === "file" ? selectedNodePath : null;
   const orderedSelectedNodePaths = useMemo(
     () =>
@@ -1665,9 +1655,6 @@ export function FileTreePanel({
     crossWindowDragTargetLabel,
     lastCrossWindowDragBroadcastRef,
   ]);
-  const canTrashSelectedNode =
-    selectedNodeType !== null && selectedNodePath !== null && selectedNodePath.length > 0;
-
   const showContextMenu = useCallback(
     (event: MouseEvent<HTMLButtonElement>, relativePath: string, isFolder: boolean) => {
       event.preventDefault();
@@ -1887,68 +1874,23 @@ export function FileTreePanel({
 
   return (
     <aside className="diff-panel file-tree-panel" ref={panelRef}>
-      <div className="file-tree-top-zone">
-        <div className="file-tree-root-row">
-          <div className="file-tree-root-wrap">
-            <button
-              type="button"
-              className={`file-tree-row is-folder is-root${selectedNodePaths.has("") ? " is-selected" : ""}${selectedNodePath === "" ? " is-primary" : ""}`}
-              onClick={() => {
-                setSingleSelection("", "root");
-                setRootExpanded((prev) => !prev);
-              }}
-              onContextMenu={(event) => {
-                if (!selectedNodePaths.has("")) {
-                  setSingleSelection("", "root");
-                } else {
-                  setSelectedNodePath("");
-                  setSelectedNodeType("folder");
-                }
-                showContextMenu(event, "", true);
-              }}
-            >
-              <span
-                className={`file-tree-chevron file-tree-root-chevron${isRootVisibleExpanded ? " is-open" : ""}`}
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setRootExpanded((prev) => !prev);
-                }}
-              >
-                ›
-              </span>
-              <span className="file-tree-icon file-tree-icon-root-special" aria-hidden>
-                <TreePine size={13} />
-              </span>
-              <span className="file-tree-name">{workspaceRootLabel}</span>
-            </button>
+      {showSpecHubAction || showDetachedExplorerAction ? (
+        <div className="file-tree-top-zone">
+          <div className="file-tree-root-row">
+            <FileTreeRootActions
+              isSpecHubActive={isSpecHubActive}
+              onOpenDetachedExplorer={onOpenDetachedExplorer}
+              detachedInitialFilePath={detachedInitialFilePath}
+              onOpenSpecHub={onOpenSpecHub}
+              showSpecHubAction={showSpecHubAction}
+              showDetachedExplorerAction={showDetachedExplorerAction}
+            />
           </div>
-          <FileTreeRootActions
-            canTrashSelectedNode={canTrashSelectedNode}
-            isSpecHubActive={isSpecHubActive}
-            selectedParentFolder={selectedParentFolder}
-            onOpenDetachedExplorer={onOpenDetachedExplorer}
-            detachedInitialFilePath={detachedInitialFilePath}
-            onOpenNewFile={(parentFolder) => openNewFilePrompt(parentFolder ?? "")}
-            onOpenNewFolder={(parentFolder) => openNewFolderPrompt(parentFolder ?? "")}
-            onRefreshFiles={refreshFileTree}
-            onTrashSelected={() => {
-              if (!canTrashSelectedNode || !selectedNodePath || !selectedNodeType) {
-                return;
-              }
-              void trashItem(selectedNodePath, selectedNodeType === "folder");
-            }}
-            onOpenSpecHub={onOpenSpecHub}
-            showSpecHubAction={showSpecHubAction}
-            showDetachedExplorerAction={showDetachedExplorerAction}
-          />
         </div>
-      </div>
+      ) : null}
       <div
         ref={fileTreeListRef}
-        className={`file-tree-list${isRootVisibleExpanded && nodes.length > 0 ? " has-root-guide" : ""}${
-          shouldVirtualizeFileTree ? " is-virtualized" : ""
-        }`}
+        className={`file-tree-list${shouldVirtualizeFileTree ? " is-virtualized" : ""}`}
         data-file-tree-row-count={visibleFileTreeRows.length}
       >
         {showLoading ? (
@@ -1956,7 +1898,7 @@ export function FileTreePanel({
             <LoaderCircle className="file-tree-loading-spinner" size={13} aria-hidden />
             <span>{t("files.loadingFiles")}</span>
           </div>
-        ) : !isRootVisibleExpanded ? null : normalizedLoadError && !hasTreeEntries ? (
+        ) : normalizedLoadError && !hasTreeEntries ? (
           <FileTreeRefreshControls
             loadError={normalizedLoadError}
             canRefresh={Boolean(onRefreshFiles)}

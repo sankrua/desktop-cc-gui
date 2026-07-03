@@ -1429,6 +1429,8 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
   const onFilePanelModeChange = options.onFilePanelModeChange;
   const onOpenProjectMap = options.onOpenProjectMap;
   const onOpenIntentCanvas = options.onOpenIntentCanvas;
+  const onOpenSpecHub = options.onOpenSpecHub;
+  const onOpenDetachedFileExplorer = options.onOpenDetachedFileExplorer;
   const handleAssociateIntentCanvasCodeAnchor = useCallback(
     async (anchor: IntentCanvasCodeSelectionAnchor) => {
       if (!options.activeWorkspace) {
@@ -1488,6 +1490,14 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
 
   const handleRightPanelTabSelect = useCallback(
     (tabId: RightPanelTabSelection) => {
+      if (tabId === "specHub") {
+        onOpenSpecHub();
+        return;
+      }
+      if (tabId === "detachedExplorer") {
+        onOpenDetachedFileExplorer?.();
+        return;
+      }
       if (tabId === "intentCanvas") {
         if (isIntentCanvasSurfaceActive) {
           setCenterMode("chat");
@@ -1524,6 +1534,8 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
       onFilePanelModeChange,
       onOpenProjectMap,
       onOpenIntentCanvas,
+      onOpenSpecHub,
+      onOpenDetachedFileExplorer,
       isEditorFileMaximized,
       onToggleEditorFileMaximized,
       setCenterMode,
@@ -1532,11 +1544,13 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
   );
 
   const rightPanelToolbarNode = buildRightPanelToolbarNode({
-    active: isIntentCanvasSurfaceActive
-      ? "intentCanvas"
-      : isProjectMapSurfaceActive
-        ? "projectMap"
-        : options.filePanelMode,
+    active: options.activeTab === "spec"
+      ? "specHub"
+      : isIntentCanvasSurfaceActive
+        ? "intentCanvas"
+        : isProjectMapSurfaceActive
+          ? "projectMap"
+          : options.filePanelMode,
     showToolbar: showRightActivityToolbar,
     hasVisibleControl: hasVisibleRightToolbarControl,
     activityLive: workspaceActivity.isProcessing,
@@ -1569,9 +1583,8 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
         onSelectOpenAppId={options.onSelectOpenAppId}
         onToggleRuntimeConsole={options.onToggleRuntimeConsole}
         isRuntimeConsoleVisible={options.runtimeConsoleVisible}
-        onOpenSpecHub={options.onOpenSpecHub}
-        isSpecHubActive={options.activeTab === "spec"}
-        onOpenDetachedExplorer={options.onOpenDetachedFileExplorer}
+        showSpecHubAction={false}
+        showDetachedExplorerAction={false}
         gitStatusFiles={options.gitStatus.files}
         gitignoredFiles={options.gitignoredFiles}
         gitignoredDirectories={options.gitignoredDirectories}

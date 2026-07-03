@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { renderHook } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useAppShellViewStateSection } from "./useAppShellViewStateSection";
 
@@ -28,6 +28,22 @@ function createParams(
 }
 
 describe("useAppShellViewStateSection", () => {
+  it("keeps the bottom status panel collapsed by default and re-collapses on thread switch", () => {
+    const view = renderHook((params) => useAppShellViewStateSection(params), {
+      initialProps: createParams(),
+    });
+
+    expect(view.result.current.isPlanPanelDismissed).toBe(true);
+
+    act(() => {
+      view.result.current.openPlanPanel();
+    });
+    expect(view.result.current.isPlanPanelDismissed).toBe(false);
+
+    view.rerender(createParams({ activeThreadId: "thread-2" }));
+    expect(view.result.current.isPlanPanelDismissed).toBe(true);
+  });
+
   it("does not repeatedly dispatch default workspace activation while state is still pending", () => {
     const setActiveThreadId = vi.fn();
     const setActiveWorkspaceId = vi.fn();

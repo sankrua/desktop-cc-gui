@@ -49,7 +49,11 @@ import {
   type MessageOutlineSnapshot,
 } from "./messagesOutlineState";
 import { appendRendererDiagnostic } from "../../../services/rendererDiagnostics";
-import { parseReasoning } from "./messagesReasoning";
+import {
+  appendReasoningRunText,
+  compactComparableReasoningText,
+  parseReasoning,
+} from "./messagesReasoning";
 import type { RuntimeReconnectRecoveryCallbackResult } from "./runtimeReconnect";
 import type { MessagesPresentationMode } from "./messagesLiveWindow";
 import {
@@ -98,6 +102,12 @@ import {
   type HydrationRemeasureBudget,
 } from "./messagesRenderLoopGuards";
 
+// ponytail: bottom-right outline floater hidden by product decision (2026-07-03).
+// Flip to true to restore. Gating the outline at both consumers below also
+// disables useMessageOutlineActive's window scroll/resize listener, so no
+// per-scroll setState fires while the floater is hidden.
+const SHOW_OUTLINE_FLOATER = false;
+
 const TIMELINE_VIRTUALIZER_STABILITY_REMEASURE_COOLDOWN_MS = 750;
 const TIMELINE_VIRTUALIZER_STABILITY_DIAGNOSTIC_COOLDOWN_MS = 5_000;
 const TIMELINE_RENDER_WEIGHT_DIAGNOSTIC_COOLDOWN_MS = 5_000;
@@ -135,7 +145,6 @@ type MessagesTimelineProps = {
   agentTaskNodeByToolUseIdRef: MutableRefObject<Map<string, HTMLDivElement>>;
   approvalNode: ReactNode;
   assistantFinalBoundarySet: Set<string>;
-  assistantFinalWithVisibleProcessSet: Set<string>;
   assistantLiveTurnFinalBoundarySuppressedSet: Set<string>;
   bottomRef: RefObject<HTMLDivElement | null>;
   claudeDockedReasoningItems: Array<{
@@ -238,11 +247,30 @@ function resolveLiveRenderItem(
   item: ConversationItem,
   liveAssistantItem: Extract<ConversationItem, { kind: "message" }> | null,
   liveReasoningItem: Extract<ConversationItem, { kind: "reasoning" }> | null,
+  preserveMergedReasoningPrefix = false,
 ) {
   if (item.kind === "message" && liveAssistantItem?.id === item.id) {
     return liveAssistantItem;
   }
   if (item.kind === "reasoning" && liveReasoningItem?.id === item.id) {
+    if (!preserveMergedReasoningPrefix) {
+      return liveReasoningItem;
+    }
+    // timeline 条目可能是同段相邻思考的合并块；直播原始条目只有最后一段，
+    // 直接替换会把前段文本顶掉。检测到前缀缺失时保留合并前缀、只刷新直播尾段。
+    const compactTimeline = compactComparableReasoningText(
+      item.content || item.summary || "",
+    );
+    const compactLive = compactComparableReasoningText(
+      liveReasoningItem.content || liveReasoningItem.summary || "",
+    );
+    if (compactTimeline && !compactLive.includes(compactTimeline)) {
+      return {
+        ...liveReasoningItem,
+        summary: appendReasoningRunText(item.summary, liveReasoningItem.summary),
+        content: appendReasoningRunText(item.content, liveReasoningItem.content),
+      };
+    }
     return liveReasoningItem;
   }
   return item;
@@ -257,7 +285,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   agentTaskNodeByToolUseIdRef,
   approvalNode,
   assistantFinalBoundarySet,
-  assistantFinalWithVisibleProcessSet,
   assistantLiveTurnFinalBoundarySuppressedSet,
   bottomRef,
   claudeDockedReasoningItems,
@@ -353,7 +380,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
   }, [handleLiveOutlineReady, liveAssistantMessageId]);
   const floaterContainerRef = useRef<HTMLDivElement | null>(null);
   const { activeHeadingId } = useMessageOutlineActive(
-    currentOutline?.outline ?? null,
+    SHOW_OUTLINE_FLOATER ? (currentOutline?.outline ?? null) : null,
     floaterContainerRef,
   );
   useEffect(() => {
@@ -1165,15 +1192,22 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     if (!reset.shouldResetScroll && !reset.shouldMeasure) {
       return undefined;
     }
-    if (scrollElement && reset.shouldResetScroll && scrollElement.scrollTop > 0) {
-      scrollElement.scrollTo({ top: 0, behavior: "auto" });
-    }
+    // 历史会话应默认落在底部（最新消息处），而不是顶部。
+    const pinScrollToBottom =
+      scrollElement && reset.shouldResetScroll
+        ? () => {
+            scrollElement.scrollTo({ top: scrollElement.scrollHeight, behavior: "auto" });
+          }
+        : null;
+    pinScrollToBottom?.();
     if (typeof window === "undefined") {
       remeasureTimelineVirtualizerRows(timelineVirtualizer);
       return undefined;
     }
     const raf = window.requestAnimationFrame(() => {
       remeasureTimelineVirtualizerRows(timelineVirtualizer);
+      // 重测把估高替换为真实行高、总高度随之变化，需再钉一次底部。
+      pinScrollToBottom?.();
     });
     return () => {
       window.cancelAnimationFrame(raf);
@@ -1283,6 +1317,8 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       item,
       liveAssistantItem,
       liveReasoningItem,
+      // 与 messagesViewModel 的 appendReasoningRuns 同谓词:仅追加式引擎会产生合并块
+      activeEngine === "claude" || activeEngine === "gemini",
     );
     const renderKind = resolveNormalizedRenderKind(renderItem);
     if (renderKind === "message" && renderItem.kind === "message") {
@@ -1294,8 +1330,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
         renderItem.isFinal === true &&
         assistantFinalBoundarySet.has(renderItem.id) &&
         !assistantLiveTurnFinalBoundarySuppressedSet.has(renderItem.id);
-      const shouldRenderReasoningBoundary =
-        shouldRenderFinalBoundary && assistantFinalWithVisibleProcessSet.has(renderItem.id);
       const finalMetaParts: string[] = [];
       if (typeof renderItem.finalCompletedAt === "number" && renderItem.finalCompletedAt > 0) {
         finalMetaParts.push(formatCompletedTimeMs(renderItem.finalCompletedAt));
@@ -1443,19 +1477,6 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       };
       return (
         <Fragment key={itemRenderKey}>
-          {shouldRenderReasoningBoundary && (
-            <Marker
-              variant="separator"
-              role="separator"
-              className="messages-turn-boundary messages-reasoning-boundary"
-            >
-              <span className="messages-turn-boundary-label">
-                <span className="messages-turn-boundary-label-content">
-                  {t("messages.reasoningProcessBoundary")}
-                </span>
-              </span>
-            </Marker>
-          )}
           <div
             ref={bindMessageNode}
             data-message-anchor-id={renderItem.id}
@@ -2049,7 +2070,7 @@ export const MessagesTimeline = memo(function MessagesTimeline({
       data-timeline-presentation-scope={presentationScopeKey}
     >
       <MessagesOutlineFloater
-        outline={currentOutline?.outline ?? null}
+        outline={SHOW_OUTLINE_FLOATER ? (currentOutline?.outline ?? null) : null}
         activeHeadingId={activeHeadingId}
         onJumpToHeading={handleJumpToHeading}
       />

@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import type { ConversationItem } from "../../../types";
 import {
   buildAssistantFinalBoundarySet,
-  buildAssistantFinalWithVisibleProcessSet,
   buildLiveTailWorkingSet,
   buildMessagesPresentationScopeKey,
   buildRenderedItemsWindow,
@@ -300,31 +299,5 @@ describe("messages live window", () => {
     ]);
 
     expect(Array.from(boundarySet)).toEqual(["assistant-1b", "assistant-2c"]);
-  });
-
-  it("marks only final assistant boundaries that have visible process items in the turn", () => {
-    const items: ConversationItem[] = [
-      userMessage("user-1", "问题 1"),
-      {
-        id: "reasoning-1",
-        kind: "reasoning",
-        summary: "分析中",
-        content: "",
-      },
-      {
-        ...assistantMessage("assistant-1", "最终回答 1"),
-        isFinal: true,
-      },
-      userMessage("user-2", "问题 2"),
-      {
-        ...assistantMessage("assistant-2", "最终回答 2"),
-        isFinal: true,
-      },
-    ];
-
-    const boundarySet = buildAssistantFinalBoundarySet(items);
-    const processSet = buildAssistantFinalWithVisibleProcessSet(items, boundarySet);
-
-    expect(Array.from(processSet)).toEqual(["assistant-1"]);
   });
 });

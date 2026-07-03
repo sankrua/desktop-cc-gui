@@ -1234,4 +1234,6 @@ export type LayoutNodesResult = {
 export type RightPanelTabSelection =
   | LayoutNodesFlatOptions["filePanelMode"]
   | "projectMap"
-  | "intentCanvas";
+  | "intentCanvas"
+  | "specHub"
+  | "detachedExplorer";

@@ -23,10 +23,10 @@ export function useAppShellViewStateSection({
   const hasPlanData = Boolean(
     activePlan && (activePlan.steps.length > 0 || activePlan.explanation)
   );
-  const [isPlanPanelDismissed, setIsPlanPanelDismissed] = useState(false);
+  const [isPlanPanelDismissed, setIsPlanPanelDismissed] = useState(true);
   const hasActivePlan = hasPlanData && !isPlanPanelDismissed;
   useEffect(() => {
-    setIsPlanPanelDismissed(false);
+    setIsPlanPanelDismissed(true);
   }, [activeThreadId]);
   const openPlanPanel = useCallback(() => {
     setIsPlanPanelDismissed(false);

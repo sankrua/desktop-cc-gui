@@ -1,7 +1,7 @@
 import type { DragEvent, MouseEvent } from "react";
 import type { TFunction } from "i18next";
 import Plus from "lucide-react/dist/esm/icons/plus";
-import FileIcon from "../../../components/FileIcon";
+import { getFileTreeIconSvg } from "../utils/fileTreeIcons";
 import type { DetachedFileTreeDragBridgePayload } from "../detachedFileTreeDragBridge";
 import {
   bindChatDropTargetsForTreeDrag,
@@ -200,7 +200,7 @@ function FileTreeNodeRow({
       <button
         type="button"
         className={`file-tree-row${row.isFolder ? " is-folder" : " is-file"}${row.isGitignored ? " is-gitignored" : ""}${row.isSelected ? " is-selected" : ""}${row.isPrimarySelection ? " is-primary" : ""}`}
-        style={{ paddingLeft: `${depth * 10}px` }}
+        style={{ paddingLeft: `${8 + depth * 12}px` }}
         onClick={(event) => {
           const isToggleSelect = event.metaKey || event.ctrlKey;
           if (event.shiftKey) {
@@ -245,22 +245,25 @@ function FileTreeNodeRow({
         }}
         onDragEnd={handleDragEnd}
       >
-        {row.isFolder && row.canExpand ? (
+        <span className="file-tree-icon-cell" aria-hidden>
           <span
-            className={`file-tree-chevron${row.isExpanded ? " is-open" : ""}`}
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              handlers.toggleFolderExpandedState(node.path, row.isLazyFolder);
+            className="file-tree-icon"
+            dangerouslySetInnerHTML={{
+              __html: getFileTreeIconSvg(node.name, row.isFolder, row.isExpanded),
             }}
-          >
-            &rsaquo;
-          </span>
-        ) : (
-          <span className="file-tree-spacer" aria-hidden />
-        )}
-        <span className="file-tree-icon" aria-hidden>
-          <FileIcon filePath={node.name} isFolder={row.isFolder} isOpen={row.isExpanded} />
+          />
+          {row.isFolder && row.canExpand && (
+            <span
+              className={`file-tree-chevron${row.isExpanded ? " is-open" : ""}`}
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                handlers.toggleFolderExpandedState(node.path, row.isLazyFolder);
+              }}
+            >
+              &rsaquo;
+            </span>
+          )}
         </span>
         <span className={`file-tree-name${row.gitStatusClass}`}>{node.name}</span>
       </button>
@@ -308,7 +311,7 @@ export function FileTreeLazyStateRow({
     return (
       <div
         className="file-tree-lazy-state"
-        style={depth === undefined ? undefined : { paddingLeft: `${depth * 10 + 16}px` }}
+        style={depth === undefined ? undefined : { paddingLeft: `${depth * 12 + 32}px` }}
       >
         {t("files.loadingFiles")}
       </div>
@@ -319,7 +322,7 @@ export function FileTreeLazyStateRow({
       <button
         type="button"
         className="file-tree-lazy-retry"
-        style={depth === undefined ? undefined : { marginLeft: `${depth * 10}px` }}
+        style={depth === undefined ? undefined : { marginLeft: `${depth * 12 + 8}px` }}
         onClick={() => onLoad(path)}
         title={error ?? undefined}
       >
@@ -330,7 +333,7 @@ export function FileTreeLazyStateRow({
   return (
     <div
       className="file-tree-lazy-state"
-      style={depth === undefined ? undefined : { paddingLeft: `${depth * 10 + 16}px` }}
+      style={depth === undefined ? undefined : { paddingLeft: `${depth * 12 + 32}px` }}
     >
       {t("files.noFilesAvailable")}
     </div>

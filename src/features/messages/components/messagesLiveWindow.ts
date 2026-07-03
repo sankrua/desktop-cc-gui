@@ -290,48 +290,6 @@ export function buildAssistantFinalBoundarySet(items: ConversationItem[]) {
   return ids;
 }
 
-export function buildAssistantFinalWithVisibleProcessSet(
-  items: ConversationItem[],
-  assistantFinalBoundarySet: Set<string>,
-) {
-  const ids = new Set<string>();
-  let hasVisibleProcessItemsInTurn = false;
-  let lastFinalAssistantIdInTurn: string | null = null;
-  let lastFinalAssistantHasProcessInTurn = false;
-  const flushTurn = () => {
-    if (
-      lastFinalAssistantIdInTurn &&
-      lastFinalAssistantHasProcessInTurn &&
-      assistantFinalBoundarySet.has(lastFinalAssistantIdInTurn)
-    ) {
-      ids.add(lastFinalAssistantIdInTurn);
-    }
-    lastFinalAssistantIdInTurn = null;
-    lastFinalAssistantHasProcessInTurn = false;
-  };
-  items.forEach((entry) => {
-    if (entry.kind === "message" && entry.role === "user") {
-      flushTurn();
-      hasVisibleProcessItemsInTurn = false;
-      return;
-    }
-    if (entry.kind === "reasoning" || entry.kind === "tool") {
-      hasVisibleProcessItemsInTurn = true;
-      return;
-    }
-    if (
-      entry.kind === "message" &&
-      entry.role === "assistant" &&
-      entry.isFinal === true
-    ) {
-      lastFinalAssistantIdInTurn = entry.id;
-      lastFinalAssistantHasProcessInTurn = hasVisibleProcessItemsInTurn;
-    }
-  });
-  flushTurn();
-  return ids;
-}
-
 export function buildLiveTailWorkingSet(
   items: ConversationItem[],
   options: {

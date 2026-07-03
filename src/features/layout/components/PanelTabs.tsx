@@ -1,5 +1,6 @@
-import { memo, useMemo, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
+import Ellipsis from "lucide-react/dist/esm/icons/ellipsis";
 import Folder from "lucide-react/dist/esm/icons/folder";
 import GitBranch from "lucide-react/dist/esm/icons/git-branch";
 import Globe2 from "lucide-react/dist/esm/icons/globe-2";
@@ -10,10 +11,16 @@ import Activity from "lucide-react/dist/esm/icons/activity";
 import LayoutList from "lucide-react/dist/esm/icons/layout-list";
 import NotebookPen from "lucide-react/dist/esm/icons/notebook-pen";
 import PenLine from "lucide-react/dist/esm/icons/pen-line";
+import LayoutDashboard from "lucide-react/dist/esm/icons/layout-dashboard";
+import ExternalLink from "lucide-react/dist/esm/icons/external-link";
 import {
   ResponsiveIconToolbar,
   type ResponsiveIconToolbarItem,
 } from "../../../components/ui/responsive-icon-toolbar";
+import {
+  getClientStoreSync,
+  writeClientStoreValue,
+} from "../../../services/clientStorage";
 
 export type PanelTabId =
   | "radar"
@@ -25,7 +32,12 @@ export type PanelTabId =
   | "memory"
   | "activity";
 
-export type PanelToolbarTabId = PanelTabId | "projectMap" | "intentCanvas";
+export type PanelToolbarTabId =
+  | PanelTabId
+  | "projectMap"
+  | "intentCanvas"
+  | "specHub"
+  | "detachedExplorer";
 
 type PanelTab = {
   id: PanelToolbarTabId;
@@ -46,6 +58,39 @@ const SHOW_PROMPTS_TAB = false;
 // Toggle to show/hide git tab
 const SHOW_GIT_TAB = true;
 
+// 动作型条目：点击执行动作而非切换面板，选中后不外显到工具栏
+const actionTabIds = new Set<PanelToolbarTabId>(["specHub", "detachedExplorer"]);
+
+// 用户自选外显：菜单里勾选的面板以图标按钮形式常驻顶栏（仿 headerPinnedActions）
+const RIGHT_PANEL_PINNED_TABS_KEY = "rightPanelPinnedTabs";
+const DEFAULT_RIGHT_PANEL_PINNED_TABS: PanelToolbarTabId[] = [
+  "files",
+  "git",
+  "search",
+];
+
+function useRightPanelPinnedTabs() {
+  const [pinnedIds, setPinnedIds] = useState<string[]>(() => {
+    const stored = getClientStoreSync<unknown>(
+      "app",
+      RIGHT_PANEL_PINNED_TABS_KEY,
+    );
+    return Array.isArray(stored)
+      ? stored.filter((id): id is string => typeof id === "string")
+      : DEFAULT_RIGHT_PANEL_PINNED_TABS;
+  });
+  const togglePinned = useCallback((id: string) => {
+    setPinnedIds((prev) => {
+      const next = prev.includes(id)
+        ? prev.filter((pinnedId) => pinnedId !== id)
+        : [...prev, id];
+      writeClientStoreValue("app", RIGHT_PANEL_PINNED_TABS_KEY, next);
+      return next;
+    });
+  }, []);
+  return { pinnedIds, togglePinned };
+}
+
 const tabIds: PanelToolbarTabId[] = ([
   "activity",
   "projectMap",
@@ -56,6 +101,8 @@ const tabIds: PanelToolbarTabId[] = ([
   "search",
   "notes",
   "prompts",
+  "specHub",
+  "detachedExplorer",
 ] as const).filter(
   (id) =>
     (id !== "prompts" || SHOW_PROMPTS_TAB) &&
@@ -73,6 +120,8 @@ const tabIcons: Record<PanelToolbarTabId, ReactNode> = {
   intentCanvas: <PenLine aria-hidden />,
   activity: <Activity aria-hidden />,
   prompts: <ScrollText aria-hidden />,
+  specHub: <LayoutDashboard aria-hidden />,
+  detachedExplorer: <ExternalLink aria-hidden />,
 };
 
 const tabI18nKeys: Record<PanelToolbarTabId, string> = {
@@ -86,6 +135,8 @@ const tabI18nKeys: Record<PanelToolbarTabId, string> = {
   intentCanvas: "panels.intentCanvas",
   activity: "panels.activity",
   prompts: "panels.prompts",
+  specHub: "sidebar.specHub",
+  detachedExplorer: "files.openDetachedExplorer",
 };
 
 function PanelTabsImpl({
@@ -96,6 +147,7 @@ function PanelTabsImpl({
   visibleTabs,
 }: PanelTabsProps) {
   const { t } = useTranslation();
+  const { pinnedIds, togglePinned } = useRightPanelPinnedTabs();
   const resolvedTabs = useMemo(
     () =>
       tabs ??
@@ -115,20 +167,25 @@ function PanelTabsImpl({
       visibleResolvedTabs.map((tab, index) => {
         const isActive = active === tab.id;
         const isLive = Boolean(liveStates?.[tab.id]);
+        const isAction = actionTabIds.has(tab.id);
+        const isPinned = pinnedIds.includes(tab.id);
         return {
           id: tab.id,
           label: tab.label,
           icon: tab.icon,
           onSelect: () => onSelect(tab.id),
           priority: index,
-          keepVisible: isActive || isLive,
+          // 外显条件：激活 / live / 用户勾选（动作项永不外显）
+          keepVisible: isActive || isLive || (!isAction && isPinned),
+          noPromote: isAction,
+          pinnable: !isAction,
           ariaCurrent: isActive ? "page" : undefined,
           buttonClassName: `panel-tab${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
           iconClassName: `panel-tab-icon${isLive ? " is-live" : ""}`,
           menuItemClassName: `panel-tab-menu-item${isActive ? " is-active" : ""}${isLive ? " is-live" : ""}`,
         };
       }),
-    [active, liveStates, onSelect, visibleResolvedTabs],
+    [active, liveStates, onSelect, pinnedIds, visibleResolvedTabs],
   );
   if (toolbarItems.length === 0) {
     return null;
@@ -141,6 +198,10 @@ function PanelTabsImpl({
       ariaLabel="Panel"
       items={toolbarItems}
       overflowLabel={t("common.moreActions")}
+      overflowIcon={<Ellipsis size={14} aria-hidden />}
+      pinnedIds={pinnedIds}
+      onTogglePin={togglePinned}
+      pinToggleLabel={t("common.showInHeader")}
       itemWidth={29}
       overflowButtonWidth={30}
       collapseInactiveItems

@@ -234,26 +234,48 @@ body[data-panel-resizing="true"] .main {
 .open-app-command-option {
   width: 100%;
   min-height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  color: var(--text-emphasis);
+}
+
+.open-app-command-main {
+  flex: 1;
+  min-width: 0;
+  min-height: 36px;
   border: none;
   border-radius: 8px;
   background: transparent;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) 22px;
+  grid-template-columns: 22px minmax(0, 1fr);
   align-items: center;
   gap: 7px;
   padding: 4px 8px;
-  color: var(--text-emphasis);
+  color: inherit;
   font-size: 14px;
   line-height: 1.2;
   text-align: left;
 }
 
 .open-app-command-option:hover,
-.open-app-command-option:focus-visible,
+.open-app-command-option:focus-within,
 .open-app-command-option.is-active {
   background: var(--surface-hover);
   color: var(--text-stronger);
+}
+
+.open-app-command-main:focus-visible {
   outline: none;
+}
+
+.open-app-command-pin {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin: 0 8px 0 0;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 .open-app-command-icon {
@@ -273,13 +295,6 @@ body[data-panel-resizing="true"] .main {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.open-app-command-shortcut {
-  justify-self: end;
-  color: var(--text-muted);
-  font-size: 13px;
-  font-variant-numeric: tabular-nums;
 }
 
 .open-app-button {
@@ -655,7 +670,7 @@ body[data-panel-resizing="true"] .main {
 .responsive-icon-toolbar-menu [role="menuitem"] {
   min-height: 36px;
   display: grid;
-  grid-template-columns: 22px minmax(0, 1fr);
+  grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
   gap: 7px;
   padding: 4px 8px;
@@ -663,6 +678,23 @@ body[data-panel-resizing="true"] .main {
   color: var(--text-emphasis);
   font-size: 14px;
   line-height: 1.2;
+}
+
+.responsive-icon-toolbar-menu-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.responsive-icon-toolbar-pin {
+  flex: none;
+  justify-self: end;
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 .responsive-icon-toolbar-menu [role="menuitem"]:hover,
@@ -2243,6 +2275,7 @@ body.editor-horizontal-split-resizing * {
 }
 
 .app.layout-desktop.layout-swapped .right-panel-toolbar .panel-tabs {
+  justify-content: flex-start;
   border-right: none;
   border-left: 1px solid var(--border-default);
 }

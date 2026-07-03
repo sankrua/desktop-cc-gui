@@ -25,37 +25,38 @@ describe("FileTreeRootActions", () => {
   });
 
   it("replays spin animation when clicking the same action repeatedly", () => {
-    const onOpenNewFile = vi.fn();
+    const onOpenSpecHub = vi.fn();
 
-    render(
-      <FileTreeRootActions
-        canTrashSelectedNode={false}
-        selectedParentFolder={null}
-        onOpenNewFile={onOpenNewFile}
-        onOpenNewFolder={() => undefined}
-        onTrashSelected={() => undefined}
-      />,
-    );
+    render(<FileTreeRootActions onOpenSpecHub={onOpenSpecHub} />);
 
-    const button = screen.getByRole("button", { name: "files.newFile" });
+    const button = screen.getByRole("button", { name: "sidebar.specHub" });
 
     fireEvent.click(button);
     act(() => {
       vi.advanceTimersByTime(16);
     });
     expect(button.className).toContain("is-spinning");
-    expect(onOpenNewFile).toHaveBeenCalledTimes(1);
+    expect(onOpenSpecHub).toHaveBeenCalledTimes(1);
 
     fireEvent.click(button);
     act(() => {
       vi.advanceTimersByTime(16);
     });
     expect(button.className).toContain("is-spinning");
-    expect(onOpenNewFile).toHaveBeenCalledTimes(2);
+    expect(onOpenSpecHub).toHaveBeenCalledTimes(2);
 
     act(() => {
       vi.advanceTimersByTime(420);
     });
     expect(button.className).not.toContain("is-spinning");
+  });
+
+  it("does not render new-file, new-folder, refresh, or delete actions", () => {
+    render(<FileTreeRootActions onOpenSpecHub={() => undefined} />);
+
+    expect(screen.queryByRole("button", { name: "files.newFile" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.newFolder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.refreshFiles" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.deleteItem" })).toBeNull();
   });
 });

@@ -231,7 +231,6 @@ vi.mock("react-i18next", () => ({
         "home.addWorkspace": "Add Workspace",
         "home.usageSnapshot": "Usage snapshot",
         "home.refreshUsage": "Refresh usage",
-        "messages.reasoningProcessBoundary": "Thinking Process",
         "messages.finalMessageBoundary": "Final Message",
         "messages.rowRenderFailedTitle": "This message could not be rendered.",
         "messages.rowRenderFailedDescription":

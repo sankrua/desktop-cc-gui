@@ -1655,7 +1655,16 @@
   display: block;
   max-height: 360px;
   overflow-y: auto;
-  contain: strict;
+  /*
+   * Use `content` (layout + paint), NOT `strict`. `strict` adds `size`
+   * containment, which sizes the box as if it had no contents — so with only
+   * a `max-height` (and no explicit height) the scroll viewport collapses to
+   * 0px and the virtualizer renders nothing, hiding every session when the
+   * list expands past the virtualization threshold. The real height lives on
+   * the inner `.thread-list-virtual-spacer`; letting it drive the box height
+   * (capped by max-height) is exactly what makes the scroll window work.
+   */
+  contain: content;
 }
 
 .thread-list-virtual-spacer {

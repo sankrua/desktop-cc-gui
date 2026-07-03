@@ -121,7 +121,7 @@ afterEach(() => {
 });
 
 describe("FileTreePanel run action isolation", () => {
-  it("renders a single workspace root node and keeps it expanded by default", () => {
+  it("renders top-level entries directly without a workspace root row", () => {
     const { container } = render(
       <FileTreePanel
         workspaceId="workspace-1"
@@ -141,17 +141,18 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /workspace/ })).toBeTruthy();
-    expect(container.querySelectorAll(".file-tree-row.is-root")).toHaveLength(1);
+    expect(screen.queryByRole("button", { name: /workspace/ })).toBeNull();
+    expect(container.querySelectorAll(".file-tree-row.is-root")).toHaveLength(0);
     expect(screen.getByRole("button", { name: /src/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "README.md" })).toBeTruthy();
   });
 
-  it("restores child expansion state after collapsing and re-expanding workspace root", () => {
-    const { container } = render(
+  it("restores child expansion state after collapsing and re-expanding a parent folder", () => {
+    render(
       <FileTreePanel
         workspaceId="workspace-1"
         workspacePath="/tmp/workspace"
-        files={["src/index.ts"]}
+        files={["src/index.ts", "src/app/main.ts"]}
         isLoading={false}
         filePanelMode="files"
         onFilePanelModeChange={() => undefined}
@@ -168,18 +169,18 @@ describe("FileTreePanel run action isolation", () => {
 
     fireEvent.doubleClick(screen.getByRole("button", { name: /src/ }));
     expect(screen.getByText("index.ts")).toBeTruthy();
+    fireEvent.doubleClick(screen.getByRole("button", { name: /app/ }));
+    expect(screen.getByText("main.ts")).toBeTruthy();
 
-    const rootChevron = container.querySelector(".file-tree-root-chevron");
-    expect(rootChevron).toBeTruthy();
-    fireEvent.click(rootChevron as Element);
-    expect(screen.queryByText("index.ts")).toBeNull();
+    fireEvent.doubleClick(screen.getByRole("button", { name: /src/ }));
+    expect(screen.queryByText("main.ts")).toBeNull();
 
-    fireEvent.click(rootChevron as Element);
-    expect(screen.getByText("index.ts")).toBeTruthy();
+    fireEvent.doubleClick(screen.getByRole("button", { name: /src/ }));
+    expect(screen.getByText("main.ts")).toBeTruthy();
   });
 
-  it("places workspace root on its own row", () => {
-    render(
+  it("keeps the root actions toolbar without a workspace root button", () => {
+    const { container } = render(
       <FileTreePanel
         workspaceId="workspace-1"
         workspacePath="/tmp/workspace"
@@ -199,13 +200,14 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    const rootButton = screen.getByRole("button", { name: /workspace/ });
-    const rootRow = rootButton.closest(".file-tree-root-row");
-    expect(rootRow).toBeTruthy();
-    expect(rootRow?.querySelectorAll(".file-tree-row.is-root")).toHaveLength(1);
+    const actionsRow = container.querySelector(".file-tree-root-row");
+    expect(actionsRow).toBeTruthy();
+    expect(actionsRow?.querySelector(".file-tree-root-actions")).toBeTruthy();
+    expect(actionsRow?.querySelectorAll(".file-tree-row")).toHaveLength(0);
+    expect(screen.queryByRole("button", { name: /workspace/ })).toBeNull();
   });
 
-  it("keeps opened-file contract when running non-open action from root context menu", async () => {
+  it("keeps opened-file contract when running non-open action from a file context menu", async () => {
     const onOpenFile = vi.fn();
     const writeTextMock = vi.fn(async () => undefined);
     Object.defineProperty(navigator, "clipboard", {
@@ -232,10 +234,10 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    fireEvent.contextMenu(screen.getByRole("button", { name: /workspace/ }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "README.md" }));
     fireEvent.click(await screen.findByRole("menuitem", { name: "files.copyPath" }));
 
-    expect(writeTextMock).toHaveBeenCalledWith("/tmp/workspace/");
+    expect(writeTextMock).toHaveBeenCalledWith("/tmp/workspace/README.md");
     expect(onOpenFile).not.toHaveBeenCalled();
   });
 
@@ -837,66 +839,6 @@ describe("FileTreePanel run action isolation", () => {
     });
   });
 
-  it("clears loaded lazy directories when the file tree refresh button is clicked", async () => {
-    const onRefreshFiles = vi.fn();
-    invokeMock.mockImplementation(async (...args: any[]): Promise<any> => {
-      const command = args[0];
-      if (command === "list_workspace_directory_children") {
-        return {
-          files: ["packages/large/index.ts"],
-          directories: [] as string[],
-          gitignored_files: [] as string[],
-          gitignored_directories: [] as string[],
-          scan_state: "complete",
-          limit_hit: false,
-          directory_entries: [
-            {
-              path: "packages/large",
-              child_state: "loaded",
-            },
-          ],
-        };
-      }
-      return null;
-    });
-
-    render(
-      <FileTreePanel
-        workspaceId="workspace-1"
-        workspacePath="/tmp/workspace"
-        files={[]}
-        directories={["packages/large"]}
-        directoryMetadata={[
-          {
-            path: "packages/large",
-            child_state: "unknown",
-          },
-        ]}
-        isLoading={false}
-        filePanelMode="files"
-        onFilePanelModeChange={() => undefined}
-        onOpenFile={() => undefined}
-        onInsertText={() => undefined}
-        openTargets={[]}
-        openAppIconById={{}}
-        selectedOpenAppId=""
-        onSelectOpenAppId={() => undefined}
-        gitStatusFiles={[]}
-        gitignoredFiles={new Set<string>()}
-        onRefreshFiles={onRefreshFiles}
-      />,
-    );
-
-    fireEvent.doubleClick(screen.getByRole("button", { name: /packages/ }));
-    fireEvent.doubleClick(screen.getByRole("button", { name: /large/ }));
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(1));
-
-    fireEvent.click(screen.getByRole("button", { name: "files.refreshFiles" }));
-
-    await waitFor(() => expect(invokeMock).toHaveBeenCalledTimes(2));
-    expect(onRefreshFiles).toHaveBeenCalledTimes(1);
-  });
-
   it("drops stale lazy directory responses when the root source version changes", async () => {
     const childrenResponse = createDeferred<any>();
     invokeMock.mockImplementation(async (...args: any[]): Promise<any> => {
@@ -1127,7 +1069,7 @@ describe("FileTreePanel run action isolation", () => {
     });
   });
 
-  it("shows root action buttons and trashes selected node from root row", async () => {
+  it("hides file-management toolbar buttons and trashes a node from its context menu", async () => {
     const onRefreshFiles = vi.fn();
 
     render(
@@ -1150,19 +1092,13 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    const deleteButton = screen.getByRole("button", { name: "files.deleteItem" }) as HTMLButtonElement;
-    const refreshButton = screen.getByRole("button", { name: "files.refreshFiles" }) as HTMLButtonElement;
-    expect(screen.getByRole("button", { name: "files.newFile" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "files.newFolder" })).toBeTruthy();
-    expect(refreshButton).toBeTruthy();
-    expect(deleteButton).toBeTruthy();
-    expect(deleteButton.disabled).toBe(true);
-    fireEvent.click(refreshButton);
-    expect(onRefreshFiles).toHaveBeenCalledTimes(1);
+    expect(screen.queryByRole("button", { name: "files.newFile" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.newFolder" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.refreshFiles" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "files.deleteItem" })).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "README.md" }));
-    expect(deleteButton.disabled).toBe(false);
-    fireEvent.click(deleteButton);
+    fireEvent.contextMenu(screen.getByRole("button", { name: "README.md" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "files.deleteItem" }));
 
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("trash_workspace_item", {
@@ -1170,7 +1106,7 @@ describe("FileTreePanel run action isolation", () => {
         path: "README.md",
       });
     });
-    expect(onRefreshFiles).toHaveBeenCalledTimes(2);
+    expect(onRefreshFiles).toHaveBeenCalledTimes(1);
   });
 
   it("removes a trashed folder subtree from the visible tree before parent refresh settles", async () => {
@@ -1197,8 +1133,8 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /target/ }));
-    fireEvent.click(screen.getByRole("button", { name: "files.deleteItem" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /target/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "files.deleteItem" }));
 
     await waitFor(() => {
       expect(invokeMock).toHaveBeenCalledWith("trash_workspace_item", {
@@ -1212,7 +1148,7 @@ describe("FileTreePanel run action isolation", () => {
     expect(onRefreshFiles).toHaveBeenCalledTimes(1);
   });
 
-  it("creates new folder from root action", async () => {
+  it("creates new folder at root from a root-level file context menu", async () => {
     const onRefreshFiles = vi.fn();
 
     render(
@@ -1235,7 +1171,8 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "files.newFolder" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "README.md" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "files.newFolder" }));
     const folderInput = screen.getByPlaceholderText("files.newFolderNamePlaceholder");
     fireEvent.change(folderInput, { target: { value: "docs" } });
     fireEvent.keyDown(folderInput, { key: "Enter" });
@@ -1249,7 +1186,7 @@ describe("FileTreePanel run action isolation", () => {
     expect(onRefreshFiles).toHaveBeenCalledTimes(1);
   });
 
-  it("creates new folder under selected folder from root action", async () => {
+  it("creates new folder under a folder from its context menu", async () => {
     render(
       <FileTreePanel
         workspaceId="workspace-1"
@@ -1269,8 +1206,8 @@ describe("FileTreePanel run action isolation", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /src/ }));
-    fireEvent.click(screen.getByRole("button", { name: "files.newFolder" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: /src/ }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "files.newFolder" }));
     const folderInput = screen.getByPlaceholderText("files.newFolderNamePlaceholder");
     fireEvent.change(folderInput, { target: { value: "docs" } });
     fireEvent.keyDown(folderInput, { key: "Enter" });
@@ -1283,7 +1220,7 @@ describe("FileTreePanel run action isolation", () => {
     });
   });
 
-  it("creates new file under selected file parent from root action", async () => {
+  it("creates new file next to a file from its context menu", async () => {
     render(
       <FileTreePanel
         workspaceId="workspace-1"
@@ -1304,8 +1241,8 @@ describe("FileTreePanel run action isolation", () => {
     );
 
     fireEvent.doubleClick(screen.getByRole("button", { name: /src/ }));
-    fireEvent.click(screen.getByRole("button", { name: "index.ts" }));
-    fireEvent.click(screen.getByRole("button", { name: "files.newFile" }));
+    fireEvent.contextMenu(screen.getByRole("button", { name: "index.ts" }));
+    fireEvent.click(await screen.findByRole("menuitem", { name: "files.newFile" }));
     const fileInput = screen.getByPlaceholderText("files.newFileNamePlaceholder");
     fireEvent.change(fileInput, { target: { value: "utils.ts" } });
     fireEvent.keyDown(fileInput, { key: "Enter" });

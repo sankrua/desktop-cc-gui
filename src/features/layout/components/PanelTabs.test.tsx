@@ -1,10 +1,20 @@
 // @vitest-environment jsdom
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { resetClientStorageForTests } from "../../../services/clientStorage";
 import { PanelTabs } from "./PanelTabs";
 
 describe("PanelTabs", () => {
   beforeEach(() => {
+    // 隔离每个用例的 pin 状态，回到默认外显 files/git/search
+    resetClientStorageForTests();
     vi.useFakeTimers();
   });
 
@@ -130,20 +140,94 @@ describe("PanelTabs", () => {
     expect(onSelect).toHaveBeenNthCalledWith(4, "memory");
   });
 
-  it("keeps inactive tabs in the overflow menu until selected", () => {
+  it("externalizes the default pinned tabs (files, git, search) as toolbar buttons", () => {
+    render(<PanelTabs active="files" onSelect={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "panels.files" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "panels.git" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "panels.search" })).toBeTruthy();
+    // 未勾选的面板只留在「更多」菜单里，不外显
+    expect(screen.queryByRole("button", { name: "panels.activity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "panels.notes" })).toBeNull();
+  });
+
+  it("pins an inactive tab as a toolbar button when its checkbox is checked", () => {
+    render(<PanelTabs active="files" onSelect={vi.fn()} />);
+
+    expect(screen.queryByRole("button", { name: "panels.activity" })).toBeNull();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "common.moreActions" }),
+      { button: 0, ctrlKey: false },
+    );
+    const activityMenuItem = screen.getByRole("menuitem", {
+      name: "panels.activity",
+    });
+    const activityCheckbox = within(activityMenuItem).getByRole("checkbox");
+    expect((activityCheckbox as HTMLInputElement).checked).toBe(false);
+
+    fireEvent.click(activityCheckbox);
+
+    // 菜单仍开着时 Radix 会把工具栏标记为 aria-hidden，故用 hidden 查询
+    expect((activityCheckbox as HTMLInputElement).checked).toBe(true);
+    expect(
+      screen.getByRole("button", { name: "panels.activity", hidden: true }),
+    ).toBeTruthy();
+  });
+
+  it("removes a pinned tab's toolbar button when its checkbox is unchecked", () => {
+    render(<PanelTabs active="files" onSelect={vi.fn()} />);
+
+    expect(screen.getByRole("button", { name: "panels.git" })).toBeTruthy();
+
+    fireEvent.pointerDown(
+      screen.getByRole("button", { name: "common.moreActions" }),
+      { button: 0, ctrlKey: false },
+    );
+    const gitMenuItem = screen.getByRole("menuitem", { name: "panels.git" });
+    const gitCheckbox = within(gitMenuItem).getByRole("checkbox");
+    expect((gitCheckbox as HTMLInputElement).checked).toBe(true);
+
+    fireEvent.click(gitCheckbox);
+
+    expect((gitCheckbox as HTMLInputElement).checked).toBe(false);
+    // 取消勾选后彻底从工具栏移除（含 aria-hidden 也查不到）
+    expect(
+      screen.queryByRole("button", { name: "panels.git", hidden: true }),
+    ).toBeNull();
+  });
+
+  it("keeps the active tab visible even when it is not pinned", () => {
+    render(<PanelTabs active="notes" onSelect={vi.fn()} />);
+
+    // notes 不在默认外显里，但作为激活项必须外显
+    expect(screen.getByRole("button", { name: "panels.notes" })).toBeTruthy();
+  });
+
+  it("offers spec hub and detached explorer as menu actions without promoting them", () => {
     const onSelect = vi.fn();
 
     render(<PanelTabs active="files" onSelect={onSelect} />);
-
-    expect(screen.queryByRole("button", { name: "panels.search" })).toBeNull();
 
     fireEvent.pointerDown(screen.getByRole("button", { name: "common.moreActions" }), {
       button: 0,
       ctrlKey: false,
     });
-    fireEvent.click(screen.getByRole("menuitem", { name: "panels.search" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "files.openDetachedExplorer" }));
 
-    expect(onSelect).toHaveBeenCalledWith("search");
-    expect(screen.getByRole("button", { name: "panels.search" })).toBeTruthy();
+    expect(onSelect).toHaveBeenCalledWith("detachedExplorer");
+    // 动作项不外显到工具栏
+    expect(
+      screen.queryByRole("button", { name: "files.openDetachedExplorer" }),
+    ).toBeNull();
+
+    fireEvent.pointerDown(screen.getByRole("button", { name: "common.moreActions" }), {
+      button: 0,
+      ctrlKey: false,
+    });
+    fireEvent.click(screen.getByRole("menuitem", { name: "sidebar.specHub" }));
+
+    expect(onSelect).toHaveBeenCalledWith("specHub");
+    expect(screen.queryByRole("button", { name: "sidebar.specHub" })).toBeNull();
   });
 });

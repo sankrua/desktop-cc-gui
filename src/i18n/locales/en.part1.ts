@@ -2556,7 +2556,6 @@ const enPart1 = {
     thinking: "Thinking…",
     thinkingLabel: "Thinking",
     thinkingProcess: "Thinking Process",
-    reasoningProcessBoundary: "Thinking Process",
     finalMessageBoundary: "Final Message",
     noThinkingContent: "No thinking content",
     hiddenThinkingContent: "Thinking content is hidden by the current setting.",

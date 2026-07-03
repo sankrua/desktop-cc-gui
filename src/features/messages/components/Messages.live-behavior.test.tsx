@@ -894,6 +894,10 @@ describe("Messages live behavior", () => {
       />,
     );
 
+    // Opening a thread pins the viewport to the bottom once; static item
+    // changes afterwards must not trigger any follow-up scrolling.
+    scrollSpy.mockClear();
+
     rerender(
       <Messages
         items={[

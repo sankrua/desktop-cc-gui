@@ -194,7 +194,13 @@
 .home-chat-workspace-picker-list[data-virtualized="true"] {
   display: block;
   overflow-y: auto;
-  contain: strict;
+  /*
+   * Same collapse hazard as `.thread-list[data-virtualized]`: this list's
+   * height comes from `max-height` + content, not an external flex size, so
+   * `size` containment (via `strict`) would zero the scroll viewport. Keep
+   * `content` (layout + paint only) so virtualization stays visible.
+   */
+  contain: content;
 }
 
 .home-chat-workspace-picker-virtual-spacer {
