@@ -222,6 +222,50 @@ describe("Messages history loading", () => {
     expect(screen.queryByText(/tools\.bashGroupBatchRun/)).toBeNull();
   });
 
+  it("pins the viewport to the bottom when opening a loaded history thread", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    render(
+      <Messages
+        items={[
+          { id: "m-1", kind: "message", role: "user", text: "hello" },
+          { id: "m-2", kind: "message", role: "assistant", text: "world", isFinal: true },
+        ]}
+        threadId="thread-history-bottom-pin"
+        workspaceId="ws-1"
+        isThinking={false}
+        activeEngine="codex"
+        onUserInputSubmit={vi.fn()}
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: "instant", block: "end" });
+  });
+
+  it("does not pin the viewport while history is still loading", () => {
+    const scrollIntoView = vi.fn();
+    HTMLElement.prototype.scrollIntoView = scrollIntoView;
+
+    render(
+      <Messages
+        items={[]}
+        threadId="thread-history-loading-no-pin"
+        workspaceId="ws-1"
+        isThinking={false}
+        isHistoryLoading
+        activeEngine="codex"
+        onUserInputSubmit={vi.fn()}
+        openTargets={[]}
+        selectedOpenAppId=""
+      />,
+    );
+
+    expect(scrollIntoView).not.toHaveBeenCalled();
+  });
+
   it("prefers request_user_input UI over history loading when the active thread has a pending request", () => {
     const request: RequestUserInputRequest = {
       request_id: "request-1",

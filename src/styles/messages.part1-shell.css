@@ -3,6 +3,8 @@
   --message-meta-font-size: var(--client-meta-font-size, 12px);
   --message-content-font-size: var(--client-content-font-size, 13px);
   --message-title-font-size: var(--client-title-font-size, 14px);
+  /* 思考正文比 meta(12px) 再小一档、比 caption(10px) 大，介于两者之间以示轻盈 */
+  --message-thinking-font-size: 11px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -395,10 +397,6 @@
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
   color: color-mix(in srgb, var(--text-strong) 82%, var(--text-muted));
-}
-
-.messages-reasoning-boundary {
-  margin-bottom: 25px;
 }
 
 .message-provenance-row {

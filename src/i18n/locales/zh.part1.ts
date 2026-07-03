@@ -2530,7 +2530,6 @@ const zhPart1 = {
     thinking: "思考中…",
     thinkingLabel: "思考",
     thinkingProcess: "思考过程",
-    reasoningProcessBoundary: "推理过程",
     finalMessageBoundary: "最终消息",
     noThinkingContent: "无思考内容",
     hiddenThinkingContent: "思考内容已按当前设置隐藏",

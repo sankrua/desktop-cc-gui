@@ -30,7 +30,7 @@
 
 .thinking-title {
   flex: 0 0 auto;
-  font-weight: 600;
+  font-weight: 500;
   color: var(--text-secondary);
 }
 
@@ -87,9 +87,9 @@
 }
 
 .reasoning-markdown {
-  font-size: var(--message-meta-font-size);
-  line-height: 1.4;
-  color: var(--text-secondary);
+  font-size: var(--message-thinking-font-size, 11px);
+  line-height: 1.5;
+  color: var(--text-tertiary);
 }
 
 .reasoning-markdown > * {
@@ -100,18 +100,17 @@
   margin-top: 10px;
 }
 
+/* 首段不再加重加深：思考正文整体保持比正文更轻的层级 */
 .reasoning-markdown > :first-child {
   margin-top: 0;
   font-size: 1em;
-  line-height: 1.4;
-  font-weight: 500;
-  color: var(--text-stronger);
+  line-height: 1.5;
 }
 
 /* Keep live-streaming typography stable while markdown AST is still converging. */
 .reasoning-markdown.markdown-live-streaming > :first-child {
   font-size: 1em;
-  line-height: 1.4;
+  line-height: 1.5;
 }
 
 .reasoning-markdown :where(h1, h2) {
@@ -119,10 +118,10 @@
   border-bottom: 1px solid var(--border);
 }
 
-/* shadcn typography 特征：semibold + tracking-tight（thinking 次要尺度） */
+/* shadcn typography 特征：semibold + tracking-tight（thinking 次要尺度，配色比正文轻一档） */
 .reasoning-markdown :where(h1, h2, h3, h4) {
   font-weight: 600;
-  color: var(--text-strongest, var(--text-stronger));
+  color: var(--text-secondary);
   letter-spacing: -0.02em;
 }
 

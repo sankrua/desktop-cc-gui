@@ -50,7 +50,6 @@ import {
 } from "./messagesReasoning";
 import {
   buildAssistantFinalBoundarySet,
-  buildAssistantFinalWithVisibleProcessSet,
   buildLiveTailWorkingSet,
   buildMessagesPresentationScopeKey,
   buildRenderedItemsWindow,
@@ -386,6 +385,7 @@ export const Messages = memo(function Messages({
   const agentTaskNodeByTaskIdRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const agentTaskNodeByToolUseIdRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const autoScrollRef = useRef(true);
+  const initialBottomPinScopeRef = useRef<string | null>(null);
   const anchorUpdateRafRef = useRef<number | null>(null);
   const lastRenderSnapshotRef = useRef<LastRenderSnapshot | null>(null);
   const preservedReadableWindowRef = useRef<PreservedReadableWindow>({
@@ -2008,6 +2008,50 @@ export const Messages = memo(function Messages({
     scrollKey,
   ]);
 
+  // Opening a thread should land the viewport at the bottom (latest messages),
+  // matching chat conventions. Runs once per workspace+thread once history
+  // content is actually rendered; live auto-follow and anchor jumps own all
+  // subsequent scrolling.
+  useLayoutEffect(() => {
+    const scope = `${workspaceId ?? ""} ${threadId}`;
+    if (initialBottomPinScopeRef.current === scope) {
+      return undefined;
+    }
+    if (isHistoryLoading || timelinePresentationItems.length === 0) {
+      return undefined;
+    }
+    initialBottomPinScopeRef.current = scope;
+    if (isWorking || isThinking || pendingJumpMessageId) {
+      return undefined;
+    }
+    const target = bottomRef.current;
+    if (!target) {
+      return undefined;
+    }
+    autoScrollRef.current = true;
+    target.scrollIntoView({ behavior: "instant", block: "end" });
+    if (typeof window === "undefined") {
+      return undefined;
+    }
+    // ponytail: virtualized rows start on estimated heights, so re-pin once on
+    // the next frame; if late row measurements still drift the viewport, the
+    // upgrade path is re-pinning until the scroll height stabilizes.
+    const raf = window.requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: "instant", block: "end" });
+    });
+    return () => {
+      window.cancelAnimationFrame(raf);
+    };
+  }, [
+    isHistoryLoading,
+    isThinking,
+    isWorking,
+    pendingJumpMessageId,
+    threadId,
+    timelinePresentationItems,
+    workspaceId,
+  ]);
+
   const groupedEntries = useMemo(
     () => groupToolItems(timelinePresentationItems),
     [timelinePresentationItems],
@@ -2025,12 +2069,6 @@ export const Messages = memo(function Messages({
   const assistantFinalBoundarySet = useMemo(() => {
     return buildAssistantFinalBoundarySet(timelinePresentationItems);
   }, [timelinePresentationItems]);
-  const assistantFinalWithVisibleProcessSet = useMemo(() => {
-    return buildAssistantFinalWithVisibleProcessSet(
-      timelinePresentationItems,
-      assistantFinalBoundarySet,
-    );
-  }, [assistantFinalBoundarySet, timelinePresentationItems]);
   const assistantLiveTurnFinalBoundarySuppressedSet = useMemo(() => {
     const ids = new Set<string>();
     if (!liveAssistantMessageId) {
@@ -2223,7 +2261,6 @@ export const Messages = memo(function Messages({
           agentTaskNodeByToolUseIdRef={agentTaskNodeByToolUseIdRef}
           approvalNode={approvalNode}
           assistantFinalBoundarySet={assistantFinalBoundarySet}
-          assistantFinalWithVisibleProcessSet={assistantFinalWithVisibleProcessSet}
           assistantLiveTurnFinalBoundarySuppressedSet={assistantLiveTurnFinalBoundarySuppressedSet}
           bottomRef={bottomRef}
           claudeDockedReasoningItems={claudeDockedReasoningItems}
