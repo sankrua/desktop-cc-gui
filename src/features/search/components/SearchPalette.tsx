@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import SearchIcon from "lucide-react/dist/esm/icons/search";
-import projectIconUrl from "../../../../icon.png";
 import { isComposingEvent } from "../../../utils/keys";
 import { loadSearchPaletteStyles } from "../../../styles/featureStyleLoaders";
 import { useFeatureStylesReady } from "../../../styles/useFeatureStylesReady";
@@ -227,13 +226,6 @@ export function SearchPalette({
               flushQuery(sanitizeSearchQueryInput(event.currentTarget.value));
             }}
           />
-          <span className="search-palette-project-icon-box" aria-hidden="true">
-            <img
-              className="search-palette-project-icon"
-              src={projectIconUrl}
-              alt=""
-            />
-          </span>
         </div>
         <div className="search-palette-scope">
           <span className="search-palette-scope-label">{t("searchPalette.scope")}</span>
