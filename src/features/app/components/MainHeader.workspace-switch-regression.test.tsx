@@ -61,10 +61,6 @@ function WorkspaceSwitchHarness() {
         openAppIconById={{}}
         selectedOpenAppId=""
         onSelectOpenAppId={() => undefined}
-        branchName="main"
-        branches={[{ name: "main", lastCommit: Date.now() }]}
-        onCheckoutBranch={() => undefined}
-        onCreateBranch={() => undefined}
         groupedWorkspaces={groupedWorkspaces}
         activeWorkspaceId={activeWorkspaceId}
         onSelectWorkspace={setActiveWorkspaceId}

@@ -40,10 +40,6 @@ function renderHeaderWithWidth(width: number) {
       openAppIconById={{}}
       selectedOpenAppId=""
       onSelectOpenAppId={() => {}}
-      branchName="main"
-      branches={[{ name: "main", lastCommit: Date.now() }]}
-      onCheckoutBranch={() => {}}
-      onCreateBranch={() => {}}
       sessionTabsNode={
         <TopbarSessionTabs
           ariaLabel="topbar tabs"
@@ -137,10 +133,6 @@ describe("MainHeader topbar session tabs integration", () => {
         openAppIconById={{}}
         selectedOpenAppId=""
         onSelectOpenAppId={() => {}}
-        branchName="main"
-        branches={[{ name: "main", lastCommit: Date.now() }]}
-        onCheckoutBranch={() => {}}
-        onCreateBranch={() => {}}
         launchScript="npm test"
         launchScriptEditorOpen={false}
         launchScriptDraft="npm test"

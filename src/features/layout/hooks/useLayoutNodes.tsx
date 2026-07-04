@@ -1356,10 +1356,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
     <MainHeader
       workspace={options.activeWorkspace}
       parentName={options.activeParentWorkspace?.name ?? null}
-      worktreeLabel={options.worktreeLabel}
-      worktreeRename={options.worktreeRename}
-      disableBranchMenu={options.isWorktreeWorkspace}
-      parentPath={options.activeParentWorkspace?.path ?? null}
       worktreePath={
         options.isWorktreeWorkspace ? options.activeWorkspace.path : null
       }
@@ -1367,10 +1363,6 @@ export function useLayoutNodes(input: LayoutNodesOptions): LayoutNodesResult {
       openAppIconById={options.openAppIconById}
       selectedOpenAppId={options.selectedOpenAppId}
       onSelectOpenAppId={options.onSelectOpenAppId}
-      branchName={options.branchName}
-      branches={options.branches}
-      onCheckoutBranch={options.onCheckoutBranch}
-      onCreateBranch={options.onCreateBranch}
       sessionTabsNode={sessionTabsNode}
       canCopyThread={canCopyActiveThread}
       onCopyThread={options.onCopyThread}

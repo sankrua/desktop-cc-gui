@@ -61,6 +61,8 @@ export function OpenAppMenu({
 }: OpenAppMenuProps) {
   const { t } = useTranslation();
   const [openMenuOpen, setOpenMenuOpen] = useState(false);
+  // 保持菜单挂载到退出动画播完，`data-state="closed"` 才能渲染出渐隐
+  const [menuRendered, setMenuRendered] = useState(false);
   const openMenuRef = useRef<HTMLDivElement | null>(null);
   const availableTargets =
     openTargets.length > 0 ? openTargets : DEFAULT_OPEN_APP_TARGETS;
@@ -123,6 +125,12 @@ export function OpenAppMenu({
       targetId: target.id,
     });
   };
+
+  useEffect(() => {
+    if (openMenuOpen) {
+      setMenuRendered(true);
+    }
+  }, [openMenuOpen]);
 
   useEffect(() => {
     if (!openMenuOpen) {
@@ -194,8 +202,17 @@ export function OpenAppMenu({
         >
           <Ellipsis size={16} aria-hidden />
         </TooltipIconButton>
-        {openMenuOpen && (
-          <div className="open-app-command-menu popover-surface" role="menu">
+        {menuRendered && (
+          <div
+            className="open-app-command-menu popover-surface"
+            role="menu"
+            data-state={openMenuOpen ? "open" : "closed"}
+            onAnimationEnd={(event) => {
+              if (event.target === event.currentTarget && !openMenuOpen) {
+                setMenuRendered(false);
+              }
+            }}
+          >
             {resolvedOpenTargets.map((target) => (
               <div
                 key={target.id}

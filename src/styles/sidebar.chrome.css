@@ -48,10 +48,7 @@
   justify-content: flex-end;
 }
 
-.sidebar-topbar-content .topbar-leading > .main-header-action,
-.sidebar-topbar-content .workspace-separator,
-.sidebar-topbar-content .workspace-branch-static-row,
-.sidebar-topbar-content .workspace-branch-menu {
+.sidebar-topbar-content .topbar-leading > .main-header-action {
   display: none;
 }
 
