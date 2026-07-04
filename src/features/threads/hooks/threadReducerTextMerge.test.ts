@@ -407,6 +407,27 @@ describe("threadReducerTextMerge", () => {
     expect(mergeAgentMessageText(base, snapshot)).toBe(snapshot);
   });
 
+  it("streams full-snapshot deltas in near-linear time via the clean-prefix fast path", () => {
+    // Claude 走整段快照：每次 delta = 到目前为止的完整文本（恰以上一次为前缀）。
+    // 旧路径每次对整段 existing 做多趟 O(L) 归一化 → 累计 O(L^2)；快路径应退化为近线性。
+    let text = "起始内容。".repeat(420);
+    const start = performance.now();
+    for (let index = 0; index < 1000; index += 1) {
+      text = mergeAgentMessageText(text, `${text}片段${index}的后续内容，`);
+    }
+    const elapsed = performance.now() - start;
+    expect(text.endsWith("片段999的后续内容，")).toBe(true);
+    expect(text.match(/片段0的后续内容，/g)).toHaveLength(1);
+    expect(elapsed).toBeLessThan(250);
+  });
+
+  it("routes full-snapshot deltas whose suffix crosses a paragraph break through the full path without corruption", () => {
+    const base = "引导文字。".repeat(500);
+    const snapshot = `${base}\n\n这是一个全新的段落，与前文互不重复。`;
+    // 后缀含 \n\n 段落边界 → 快路径回退到完整路径；新内容非重复，应原样合并、不损坏。
+    expect(mergeAgentMessageText(base, snapshot)).toBe(snapshot);
+  });
+
   it("still collapses duplicate paragraphs when the delta carries a paragraph break", () => {
     const paragraph = "重复的段落内容需要足够长，确保超过二十个字符的下限限制。";
     const base = `${"引导文字。".repeat(500)}\n\n${paragraph}`;

@@ -715,7 +715,38 @@ function collapseLeadingCompletedSnapshotEcho(value: string) {
   return value;
 }
 
+const CLEAN_SNAPSHOT_LEADING_ECHO_PROBE_CHARS = 16;
+
+/**
+ * 快照增长快路径的回显护栏：delta 恰以 existing 为前缀时，新增后缀本应是全新内容；
+ * 但若后缀 trimStart 后又以 existing 的开头重放（Claude 偶发的整段回显 existing+existing…），
+ * 则需回退到完整去重机器。只探测 existing 头部固定字符，O(1) 成本，不扫全文。
+ */
+function suffixReplaysLeadingSnapshot(existing: string, suffix: string) {
+  if (existing.length < CLEAN_SNAPSHOT_LEADING_ECHO_PROBE_CHARS) {
+    return false;
+  }
+  const probe = existing.slice(0, CLEAN_SNAPSHOT_LEADING_ECHO_PROBE_CHARS);
+  return suffix.trimStart().startsWith(probe);
+}
+
 export function mergeAgentMessageText(existing: string, delta: string) {
+  // 快照增长快路径（Claude 主路径）：delta 是不断增长的整段快照、恰以 existing 为前缀时，
+  // 新增后缀若不跨段落边界（去重按 \n\n 段落工作）也不回显 existing 头部，直接追加即可，
+  // 把整段去重/归一化推迟到下一个边界快照或收尾——与 mergeReasoningText 等既有的
+  // “归一化推迟到边界”约束一致。由此跳过 stripLeadingEchoFromSnapshot / compact /
+  // getMarkdownInlineCodeInfo / sharedPrefixLength 对整段 existing 的多趟 O(L) 扫描，
+  // 把每次快照更新从 ~O(L) 多趟降到单趟 O(L) 前缀比对 + O(后缀)，消除长回复的 O(L^2) 累计成本。
+  if (existing && delta.length > existing.length && delta.startsWith(existing)) {
+    const appendedSuffix = delta.slice(existing.length);
+    if (
+      appendedSuffix &&
+      !hasParagraphBreak(appendedSuffix) &&
+      !suffixReplaysLeadingSnapshot(existing, appendedSuffix)
+    ) {
+      return `${existing}${appendedSuffix}`;
+    }
+  }
   const snapshotCandidate = collapseRepeatedAssistantEcho(
     stripLeadingEchoFromSnapshot(
       existing,

@@ -8,6 +8,7 @@ import {
   resolveMessagesPresentationMode,
   resolveStreamingPresentationItems,
 } from "./messagesLiveWindow";
+import { STREAMING_VISIBLE_WINDOW } from "./messagesRenderUtils";
 
 function userMessage(id: string, text = id): Extract<ConversationItem, { kind: "message" }> {
   return {
@@ -299,5 +300,35 @@ describe("messages live window", () => {
     ]);
 
     expect(Array.from(boundarySet)).toEqual(["assistant-1b", "assistant-2c"]);
+  });
+
+  it("bounds the streaming live tail using STREAMING_VISIBLE_WINDOW while keeping idle history full", () => {
+    // SCALE-1 契约：会话条目数超过流式窗口容量（STREAMING_VISIBLE_WINDOW*2）时，流式期
+    // 裁到 live 尾窗、保留最新用户提问并报告折叠数，把「越聊越卡」压回尾窗；idle 保留全量。
+    const total = STREAMING_VISIBLE_WINDOW * 2 + 40;
+    const items: ConversationItem[] = [
+      userMessage("user-latest", "最新问题"),
+      ...Array.from({ length: total }, (_, index) =>
+        assistantMessage(`assistant-${index}`, `回复 ${index}`),
+      ),
+    ];
+
+    const streaming = buildLiveTailWorkingSet(items, {
+      isThinking: true,
+      showAllHistoryItems: false,
+      visibleWindow: STREAMING_VISIBLE_WINDOW,
+    });
+    expect(streaming.items.length).toBeLessThan(items.length);
+    expect(streaming.items.length).toBeLessThanOrEqual(STREAMING_VISIBLE_WINDOW * 2 + 1);
+    expect(streaming.items.some((item) => item.id === "user-latest")).toBe(true);
+    expect(streaming.omittedBeforeWorkingSetCount).toBeGreaterThan(0);
+
+    const idle = buildLiveTailWorkingSet(items, {
+      isThinking: false,
+      showAllHistoryItems: false,
+      visibleWindow: STREAMING_VISIBLE_WINDOW,
+    });
+    expect(idle.items).toBe(items);
+    expect(idle.omittedBeforeWorkingSetCount).toBe(0);
   });
 });

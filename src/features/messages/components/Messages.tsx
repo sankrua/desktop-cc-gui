@@ -93,6 +93,7 @@ import {
   isClaudeHistoryTranscriptHeavy,
   toConversationEngine,
   VISIBLE_MESSAGE_WINDOW,
+  STREAMING_VISIBLE_WINDOW,
 } from "./messagesRenderUtils";
 import {
   buildMessageActionTargets,
@@ -503,7 +504,9 @@ export const Messages = memo(function Messages({
       buildLiveTailWorkingSet(effectiveItems, {
         isThinking,
         showAllHistoryItems,
-        visibleWindow: VISIBLE_MESSAGE_WINDOW,
+        // 流式期裁到 live 尾窗（buildLiveTailWorkingSet 仅在 isThinking 时裁剪）；
+        // idle/展开态该函数直接返回全部条目，故对静止长对话的可见集零影响。
+        visibleWindow: STREAMING_VISIBLE_WINDOW,
         enableCollaborationBadge,
       }),
     [effectiveItems, enableCollaborationBadge, isThinking, showAllHistoryItems],

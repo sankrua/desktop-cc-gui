@@ -110,7 +110,6 @@ import {
 } from "../../shared-session/services/sharedSessions";
 import { normalizeSharedSessionEngine } from "../../shared-session/utils/sharedSessionEngines";
 import { type ConversationCompletionEmailMetadata } from "../utils/conversationCompletionEmail";
-import { buildThreadBackgroundActivityProjection } from "../utils/threadBackgroundActivityProjection";
 import {
   createDomainEventGovernanceConsumer,
   createDomainEventRuntimeController,
@@ -2673,21 +2672,6 @@ export function useThreads({
     useNormalizedRealtimeAdapters,
   });
 
-  const backgroundActivityByThread = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.keys(state.threadStatusById).map((threadId) => [
-          threadId,
-          buildThreadBackgroundActivityProjection({
-            threadId,
-            status: state.threadStatusById[threadId],
-            approvals: state.approvals,
-          }),
-        ]),
-      ),
-    [state.approvals, state.threadStatusById],
-  );
-
   return {
     activeThreadId,
     setActiveThreadId,
@@ -2699,7 +2683,6 @@ export function useThreads({
     threadsByWorkspace: state.threadsByWorkspace,
     threadParentById: state.threadParentById,
     threadStatusById: state.threadStatusById,
-    backgroundActivityByThread,
     historyLoadingByThreadId,
     threadListLoadingByWorkspace: state.threadListLoadingByWorkspace,
     threadListPagingByWorkspace: state.threadListPagingByWorkspace,

@@ -58,4 +58,42 @@ describe("layoutShellSummary", () => {
     expect(summary.isActiveThreadContextCompacting).toBe(true);
     expect(summary.sidebarSubagentItems).toEqual([tool]);
   });
+
+  it("reuses the same sidebar subagent array reference when tool items are unchanged across text tokens", () => {
+    const tool = toolItem("tool-1");
+    const first = buildShellRuntimeSummary({
+      activeWorkspaceId: "ws-1",
+      activeThreadId: "claude:thread-stable",
+      activeItems: [assistantItem("assistant-1", "chunk 1"), tool],
+      activeThreadStatus: { isProcessing: true },
+    });
+    // 模拟纯文本 token：assistant 消息换新对象、activeItems 是新数组，但工具项对象不变。
+    const second = buildShellRuntimeSummary({
+      activeWorkspaceId: "ws-1",
+      activeThreadId: "claude:thread-stable",
+      activeItems: [assistantItem("assistant-1", "chunk 1 更多"), tool],
+      activeThreadStatus: { isProcessing: true },
+    });
+    expect(second.sidebarSubagentItems).toBe(first.sidebarSubagentItems);
+  });
+
+  it("returns a fresh sidebar subagent array when a tool item changes", () => {
+    const runningTool = toolItem("tool-1");
+    const first = buildShellRuntimeSummary({
+      activeWorkspaceId: "ws-1",
+      activeThreadId: "claude:thread-change",
+      activeItems: [runningTool],
+      activeThreadStatus: { isProcessing: true },
+    });
+    // 子代理进展：工具项换成新对象 → 应产生新引用，驱动 Sidebar 更新 live subagent 行。
+    const updatedTool = { ...runningTool, title: "Tool: Agent (done)" };
+    const second = buildShellRuntimeSummary({
+      activeWorkspaceId: "ws-1",
+      activeThreadId: "claude:thread-change",
+      activeItems: [updatedTool],
+      activeThreadStatus: { isProcessing: true },
+    });
+    expect(second.sidebarSubagentItems).not.toBe(first.sidebarSubagentItems);
+    expect(second.sidebarSubagentItems).toEqual([updatedTool]);
+  });
 });
