@@ -151,6 +151,20 @@ describe("PanelTabs", () => {
     expect(screen.queryByRole("button", { name: "panels.notes" })).toBeNull();
   });
 
+  it("does not externalize a live tab when it is neither active nor pinned", () => {
+    render(
+      <PanelTabs
+        active="files"
+        onSelect={vi.fn()}
+        liveStates={{ activity: true, radar: true }}
+      />,
+    );
+
+    // live 状态不再强制外显：未勾选且非激活的面板只留在「更多」菜单里
+    expect(screen.queryByRole("button", { name: "panels.activity" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "panels.radar" })).toBeNull();
+  });
+
   it("pins an inactive tab as a toolbar button when its checkbox is checked", () => {
     render(<PanelTabs active="files" onSelect={vi.fn()} />);
 

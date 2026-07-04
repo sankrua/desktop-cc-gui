@@ -175,8 +175,10 @@ function PanelTabsImpl({
           icon: tab.icon,
           onSelect: () => onSelect(tab.id),
           priority: index,
-          // 外显条件：激活 / live / 用户勾选（动作项永不外显）
-          keepVisible: isActive || isLive || (!isAction && isPinned),
+          // 外显条件：激活 / 用户勾选（动作项永不外显）。
+          // 刻意不再因 live 状态自动外显：未勾选的面板即使在对话/运行中也严格
+          // 保持收纳在「更多」菜单里，完全按用户勾选来决定是否常驻顶栏。
+          keepVisible: isActive || (!isAction && isPinned),
           noPromote: isAction,
           pinnable: !isAction,
           ariaCurrent: isActive ? "page" : undefined,
