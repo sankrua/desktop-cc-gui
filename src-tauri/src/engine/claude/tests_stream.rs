@@ -921,6 +921,66 @@ async fn send_message_treats_stream_result_as_raw_and_emits_single_final_complet
     assert_eq!(completed, &json!({ "text": "final answer" }));
 }
 
+/// Regression: once Claude emits its final `result`, the turn must settle even
+/// if an MCP child / Stop hook inherits stdout and keeps the pipe open past the
+/// CLI leader's exit. Before the post-result grace was wired into the read loop,
+/// stdout never reached EOF and the turn hung on "generating" forever. The grace
+/// now bounds that wait and force-kills the lingering process group.
+///
+/// ponytail: unix-only. It relies on a backgrounded `sleep` inheriting stdout
+/// and on POSIX process-group kill; Windows pipe-inheritance / taskkill would
+/// need a separate harness. The 5s grace makes the test take ~5s.
+#[cfg(unix)]
+#[tokio::test]
+async fn send_message_settles_turn_when_child_holds_stdout_open_after_result() {
+    let script_body = concat!(
+        "#!/bin/sh\n",
+        "echo '{\"type\":\"result\",\"session_id\":\"11111111-1111-4111-8111-111111111111\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"final answer\"}]}}'\n",
+        "# Inherit stdout in a background child that outlives the CLI leader, so\n",
+        "# the read loop never sees EOF until the process group is force-killed.\n",
+        "sleep 30 &\n",
+        "exit 0\n",
+    );
+    let (root, workspace_path, script_path) = create_fake_claude_script(script_body);
+
+    let session = ClaudeSession::new(
+        "test-workspace".to_string(),
+        workspace_path,
+        Some(EngineConfig {
+            bin_path: Some(script_path.to_string_lossy().to_string()),
+            home_dir: None,
+            custom_args: None,
+            default_model: None,
+        }),
+    );
+    let mut receiver = session.subscribe();
+    let mut params = SendMessageParams::default();
+    params.text = "hello".to_string();
+
+    // Bound the whole call well above the 5s grace: a regression would hang here
+    // (stdout never EOFs) until the outer timeout fires and fails the test.
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        session.send_message(params, "turn-grace"),
+    )
+    .await
+    .expect("send_message must settle within the post-result grace, not hang")
+    .expect("grace-settled turn should report success");
+
+    let events = drain_turn_events(&mut receiver);
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert_eq!(response, "final answer");
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event.event, EngineEvent::TurnCompleted { .. }))
+            .count(),
+        1,
+        "exactly one TurnCompleted must be emitted once the grace settles the turn",
+    );
+}
+
 #[tokio::test]
 async fn send_message_reports_exit_metadata_when_claude_fails_without_output() {
     #[cfg(windows)]

@@ -1277,6 +1277,16 @@ impl ClaudeSession {
             Duration::ZERO
         };
         let mut pending_text_delta = BufferedClaudeTextDelta::default();
+        // Timestamp of the final `result` event. Once seen, the turn is
+        // logically complete and we only wait for the CLI to exit; that wait is
+        // bounded by CLAUDE_POST_RESULT_GRACE (see below) so lingering MCP
+        // children / Stop hooks that inherit the stdio pipes cannot keep the UI
+        // stuck on "generating" forever.
+        let mut result_seen_at: Option<Instant> = None;
+        // Set when we stop waiting because the post-result grace elapsed. The
+        // turn is settled as a success (result was already emitted) and the
+        // exit-status failure checks are skipped for the process we force-kill.
+        let mut settled_by_grace = false;
 
         // Spawn stderr reader
         let stderr_reader = BufReader::new(stderr);
@@ -1306,7 +1316,25 @@ impl ClaudeSession {
 
             let next_line = if pending_text_delta.is_empty() {
                 if saw_valid_stream_event {
-                    lines.next_line().await
+                    match result_seen_at {
+                        // Turn is logically done (`result` seen). Bound the wait
+                        // for stdout EOF: if MCP children / Stop hooks keep the
+                        // pipe open, stop waiting once the grace elapses and
+                        // settle the turn instead of hanging on "generating".
+                        Some(seen_at) => {
+                            let remaining = CLAUDE_POST_RESULT_GRACE
+                                .checked_sub(seen_at.elapsed())
+                                .unwrap_or(Duration::ZERO);
+                            match tokio::time::timeout(remaining, lines.next_line()).await {
+                                Ok(result) => result,
+                                Err(_) => {
+                                    settled_by_grace = true;
+                                    break;
+                                }
+                            }
+                        }
+                        None => lines.next_line().await,
+                    }
                 } else {
                     let wait_duration = first_event_deadline
                         .checked_duration_since(Instant::now())
@@ -1381,6 +1409,11 @@ impl ClaudeSession {
 
             match parse_claude_stream_json_line(&line) {
                 Ok(event) => {
+                    if result_seen_at.is_none()
+                        && event.get("type").and_then(|v| v.as_str()) == Some("result")
+                    {
+                        result_seen_at = Some(Instant::now());
+                    }
                     if Self::is_valid_claude_stream_event(&event) {
                         if stream_startup_timing
                             .first_valid_stream_event_at_ms
@@ -1578,7 +1611,20 @@ impl ClaudeSession {
             active.remove(turn_id)
         };
         let status = if let Some(mut child_proc) = child.take() {
-            child_proc.wait().await.ok()
+            if settled_by_grace {
+                // Post-result grace elapsed: the turn already produced `result`,
+                // and the process only lingers because MCP children / Stop hooks
+                // inherited its stdio pipes. Kill the whole process group so every
+                // pipe write end closes (unblocking the stderr reader below) and no
+                // descendants leak, then reap. The killed exit status is expected,
+                // so it is NOT treated as a failure (see the `settled_by_grace`
+                // guard on the status checks).
+                self.force_kill_process_group(&mut child_proc).await;
+                let _ = child_proc.wait().await;
+                None
+            } else {
+                child_proc.wait().await.ok()
+            }
         } else {
             None
         };
@@ -1640,8 +1686,10 @@ impl ClaudeSession {
                 self.clear_turn_ephemeral_state(turn_id);
                 return Err(error_msg);
             }
-        } else {
+        } else if !settled_by_grace {
             // Process handle was taken by interrupt() or missing.
+            // (A grace-settled turn also reports no status because we force-kill
+            // it above; that path is a success and skips these failure checks.)
             // Check the interrupted flag to distinguish user-initiated interrupts
             // from unexpected process disappearance.
             let was_interrupted = self.interrupted.swap(false, Ordering::SeqCst);
@@ -1727,6 +1775,37 @@ impl ClaudeSession {
 
         self.clear_turn_ephemeral_state(turn_id);
         Ok(response_text)
+    }
+
+    /// Kill the entire process group of `child` unconditionally — even when the
+    /// group leader has already exited — so lingering descendants (MCP children,
+    /// Stop hooks) that inherited the CLI's stdio pipes are terminated and their
+    /// held-open pipe write ends are closed. Unlike `terminate_child_process`,
+    /// this deliberately does not early-return on an already-reaped leader: the
+    /// whole point is to reap the *children* that keep the turn from settling.
+    #[allow(clippy::unused_async)]
+    async fn force_kill_process_group(&self, child: &mut Child) {
+        let Some(pid) = child.id() else {
+            return;
+        };
+        #[cfg(unix)]
+        {
+            // Negative pid targets the whole group (the leader called setpgid).
+            unsafe {
+                libc::kill(-(pid as libc::pid_t), libc::SIGKILL);
+            }
+        }
+        #[cfg(windows)]
+        {
+            let _ = crate::utils::async_command("taskkill")
+                .args(["/PID", &pid.to_string(), "/T", "/F"])
+                .status()
+                .await;
+        }
+        #[cfg(not(any(unix, windows)))]
+        {
+            let _ = child.start_kill();
+        }
     }
 
     async fn terminate_child_process(
