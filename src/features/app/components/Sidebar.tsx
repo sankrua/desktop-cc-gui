@@ -22,6 +22,7 @@ import { SidebarFolderMovePicker } from "./SidebarFolderMovePicker";
 import { SidebarSearchBox } from "./SidebarSearchBox";
 import { SidebarSettingsMenu } from "./SidebarSettingsMenu";
 import { SidebarTopbarSlot } from "./SidebarTopbarSlot";
+import { SidebarVersionTag } from "./SidebarVersionTag";
 import { SidebarWorkspaceDropOverlay } from "./SidebarWorkspaceDropOverlay";
 import { SidebarWorkspaceMenuOverlay } from "./SidebarWorkspaceMenuOverlay";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -2027,6 +2028,7 @@ function SidebarImpl({
               onAppModeChange={onAppModeChange}
             />
             {runtimeNoticeDockNode}
+            <SidebarVersionTag t={t} onOpenReleaseNotes={onOpenReleaseNotes} />
           </div>
         </div>
       </div>
