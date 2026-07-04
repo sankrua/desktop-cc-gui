@@ -21,6 +21,15 @@ export type MessageMarkdownHeavyIslandSummary = {
   islands: MessageMarkdownHeavyIsland[];
 };
 
+// 稳定的空摘要：轻量流式 / 纯代码块模式下 classify 的结果不参与渲染（消费方均被 gate），
+// 用它替代每 token 的全行重扫。常量引用稳定，避免下游 useMemo/useEffect 依赖抖动。
+export const EMPTY_MESSAGE_MARKDOWN_HEAVY_ISLAND_SUMMARY: MessageMarkdownHeavyIslandSummary = {
+  totalSourceLines: 0,
+  totalHeavyIslands: 0,
+  categoryCounts: {},
+  islands: [],
+};
+
 const TABLE_ROW_MINIMUM = 6;
 const TOOL_CALL_XML_PATTERN =
   /<\s*(?:antml:)?(?:function_calls?|invoke|tool_call|tool_result|tool_use)\b/i;

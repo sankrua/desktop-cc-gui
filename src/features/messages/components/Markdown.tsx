@@ -58,7 +58,10 @@ import {
   isStaleMessageMarkdownPrecomputeResult,
   runMessageMarkdownPrecompute,
 } from "../../markdown/messageMarkdownPrecompute";
-import { classifyMessageMarkdownHeavyIslands } from "../../markdown/messageMarkdownHeavyIslands";
+import {
+  classifyMessageMarkdownHeavyIslands,
+  EMPTY_MESSAGE_MARKDOWN_HEAVY_ISLAND_SUMMARY,
+} from "../../markdown/messageMarkdownHeavyIslands";
 import { appendMarkdownPrecomputeDiagnostic } from "../../../services/rendererDiagnostics";
 
 type MarkdownProps = {
@@ -1693,9 +1696,14 @@ export const Markdown = memo(function Markdown({
       );
     return normalizeOutsideMarkdownCode(renderValue, normalizeDisplayText);
   }, [renderValue, codeBlock, liveRenderMode, preserveFormatting]);
+  // 轻量流式 / 纯代码块模式下 shouldDeferMarkdownHeavyIslands 短路、precompute effect 早退，
+  // 该分类结果全不参与渲染；此时跳过每 token 的全行重扫，返回稳定空摘要。
   const markdownHeavyIslandSummary = useMemo(
-    () => classifyMessageMarkdownHeavyIslands(content),
-    [content],
+    () =>
+      liveRenderMode === "lightweight" || codeBlock
+        ? EMPTY_MESSAGE_MARKDOWN_HEAVY_ISLAND_SUMMARY
+        : classifyMessageMarkdownHeavyIslands(content),
+    [content, liveRenderMode, codeBlock],
   );
   const shouldDeferMarkdownHeavyIslands =
     liveRenderMode !== "lightweight" &&
