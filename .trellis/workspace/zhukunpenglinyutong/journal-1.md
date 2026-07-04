@@ -521,3 +521,52 @@
 - 第二批(已获用户同意开工):时间线 userActionNode 稳定化 + content-visibility + 行级诊断 effect 门控;常驻轮询统一可见性门控(CuratedSkillIndicator/task stores/runtime dock/blank watchdog);生产剥离 React Profiler 与 reactComponentName 插件
 - 已知残留:<24 字符空白改写的头部重发不再去重;2048 以下预热区仍付 collapseRepeatedParagraph 回溯正则(~7ms/delta)
 - 人工验证待做:真实长回复流式体感 + 终端面板首开(xterm 懒加载后)
+
+
+## Session 9: 优化快捷键录入交互并统一供应商面板配色
+
+**Date**: 2026-07-04
+**Task**: 优化快捷键录入交互并统一供应商面板配色
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| 模块 | 变更 |
+|------|------|
+| settings/shortcuts | 快捷键输入框改点击录制:聚焦清空并提示"请按快捷键",录制成功后自动 blur 回显;清除按钮改"重置为默认",已是默认值时禁用淡出 |
+| settings/vendor | 供应商面板复用基础设置配色令牌(surface/border/divider/control),count 徽章与实心按钮改用原生 shadcn primary |
+| styles | 新增快捷键输入框 hover/focus 样式(pointer + tint + focus ring) |
+| i18n | 新增 pressShortcutPrompt / resetToDefault 中英文案 |
+
+**Updated Files**: 6 files (+105/-24)
+- `src/features/settings/components/SettingsView.tsx`
+- `src/features/settings/components/settings-view/sections/ShortcutsSection.tsx`
+- `src/i18n/locales/en.part1.ts`
+- `src/i18n/locales/zh.part1.ts`
+- `src/styles/settings.part1.vendor-panels.css`
+- `src/styles/settings.part2.css`
+
+**Status**: [OK] Completed(已提交,人工验证待做:快捷键录制回显与重置按钮交互)
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `01805ddc` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
