@@ -67,22 +67,41 @@ function sortByVisibilityPriority(
   });
 }
 
-function splitToolbarItems(
+export function splitToolbarItems(
   items: ResponsiveIconToolbarItem[],
   visibleLimit: number,
   promotedItemId: string | null,
   collapseInactiveItems: boolean,
 ) {
   if (collapseInactiveItems) {
-    const visibleIds = new Set(
-      items
-        .filter((item) => item.keepVisible || item.id === promotedItemId)
-        .map((item) => item.id),
+    // 想外显的项：激活/临时置顶 + 用户勾选常驻
+    const preferredVisible = items.filter(
+      (item) => item.keepVisible || item.id === promotedItemId,
     );
+    // 宽度放得下就全部外显（维持宽面板下的既有行为）；放不下时按优先级裁剪，
+    // 激活项永远保留，其余超出容器的项挪进「更多」菜单，避免顶栏图标挤压重叠。
+    const keptIds =
+      preferredVisible.length > visibleLimit
+        ? new Set(
+            [...preferredVisible]
+              .sort((left, right) => {
+                const leftTop =
+                  left.id === promotedItemId || left.ariaCurrent != null;
+                const rightTop =
+                  right.id === promotedItemId || right.ariaCurrent != null;
+                if (leftTop !== rightTop) {
+                  return leftTop ? -1 : 1;
+                }
+                return (left.priority ?? 50) - (right.priority ?? 50);
+              })
+              .slice(0, Math.max(0, visibleLimit))
+              .map((item) => item.id),
+          )
+        : new Set(preferredVisible.map((item) => item.id));
 
     return {
-      visibleItems: items.filter((item) => visibleIds.has(item.id)),
-      overflowItems: items.filter((item) => !visibleIds.has(item.id)),
+      visibleItems: items.filter((item) => keptIds.has(item.id)),
+      overflowItems: items.filter((item) => !keptIds.has(item.id)),
     };
   }
 
