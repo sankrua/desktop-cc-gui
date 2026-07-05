@@ -11,31 +11,31 @@
   --git-panel-floating-actions-top: 8px;
   --git-panel-floating-actions-height: 30px;
   --git-panel-floating-actions-gap: 8px;
+  /* shadcn 圆角阶梯（基于全局 --radius = 0.625rem / 10px），统一收敛混乱的 4/5/7/8/12px */
+  --diff-radius-lg: var(--radius);
+  --diff-radius-md: calc(var(--radius) - 2px);
+  --diff-radius-sm: calc(var(--radius) - 4px);
   --git-filetree-section-gap: 0px;
   --git-filetree-section-padding: 4px;
-  --git-filetree-section-radius: 12px;
-  --git-filetree-section-border: color-mix(in srgb, var(--border-default) 48%, transparent);
-  --git-filetree-section-bg: color-mix(in srgb, var(--surface-card) 46%, transparent);
-  --git-filetree-row-min-height: 22px;
-  --git-filetree-row-gap: 5px;
-  --git-filetree-row-pad-y: 1px;
-  --git-filetree-row-pad-x: 6px;
-  --git-filetree-row-radius: 5px;
+  --git-filetree-section-radius: var(--diff-radius-lg);
+  --git-filetree-section-border: color-mix(in srgb, var(--border) 70%, transparent);
+  --git-filetree-section-bg: transparent;
+  --git-filetree-row-min-height: 26px;
+  --git-filetree-row-gap: 7px;
+  --git-filetree-row-pad-y: 3px;
+  --git-filetree-row-pad-x: 8px;
+  --git-filetree-row-radius: var(--diff-radius-sm);
   --git-filetree-indent-step: 8px;
   --git-filetree-icon-size: 12px;
-  --git-filetree-tree-line-color: color-mix(in srgb, var(--text-muted, #64748b) 34%, transparent);
-  --git-filetree-row-hover-bg: color-mix(in srgb, var(--surface-control-hover) 58%, transparent);
-  --git-filetree-row-active-bg: color-mix(in srgb, var(--surface-active) 56%, transparent);
+  --git-filetree-tree-line-color: color-mix(in srgb, var(--border) 85%, transparent);
+  --git-filetree-row-hover-bg: var(--accent);
+  --git-filetree-row-active-bg: var(--surface-active);
   --git-filetree-badge-font-size: var(--client-caption-font-size, var(--code-font-size, 10px));
   --git-filetree-badge-gap: 2px;
   --git-filetree-badge-pad-y: 1px;
-  --git-filetree-badge-pad-x: 8px;
-  --git-filetree-badge-radius: 999px;
-  /*
-   * 统一强调蓝：--accent-primary 在主题里从未定义，面板内多处 tab / 勾选框都在
-   * 走硬编码 fallback #2563eb，与 HUB/差异Diff 用的 --text-accent 形成两种蓝。
-   * 在面板作用域把它收敛到主题感知的 --text-accent，一处定义、全面板统一。
-   */
+  --git-filetree-badge-pad-x: 7px;
+  --git-filetree-badge-radius: var(--diff-radius-sm);
+  /* 强调蓝仅保留给状态图标（刷新等）；选中/激活/主操作已全面迁移到 shadcn primary/accent */
   --accent-primary: var(--text-accent, #7a9dcc);
   background: transparent;
   padding: 8px 8px 0;
@@ -49,11 +49,7 @@
 }
 
 .diff-panel--floating-git-actions {
-  transition: padding-top 150ms ease;
-}
-
-.diff-panel--floating-git-actions:hover,
-.diff-panel--floating-git-actions:focus-within {
+  /* 顶栏工具组常驻显示，面板始终为其预留顶部空间（不再 hover 才浮现） */
   padding-top: calc(
     var(--git-panel-floating-actions-top) + var(--git-panel-floating-actions-height) +
       var(--git-panel-floating-actions-gap)
@@ -162,31 +158,17 @@
   min-height: var(--git-panel-floating-actions-height);
   z-index: 5;
   border-bottom-color: transparent;
-  pointer-events: none;
+  pointer-events: auto;
 }
 
+/* 顶栏工具组常驻显示（不再依赖 hover 面板才浮现） */
 .git-panel-header--hover-actions .git-panel-actions {
   flex-wrap: nowrap;
   max-width: 100%;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateX(-10px);
-  transition:
-    opacity 150ms ease,
-    transform 170ms ease;
-  z-index: 2;
-}
-
-.diff-panel:hover .git-panel-header--hover-actions .git-panel-actions,
-.git-panel-header--hover-actions:focus-within .git-panel-actions {
   opacity: 1;
   pointer-events: auto;
-  transform: translateX(0);
-}
-
-.diff-panel:hover .git-panel-header--hover-actions,
-.git-panel-header--hover-actions:focus-within {
-  pointer-events: auto;
+  transform: none;
+  z-index: 2;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -204,34 +186,35 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  min-height: 24px;
-  padding: 4px 2px 5px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  min-height: 26px;
+  padding: 4px 8px;
+  border: 1px solid transparent;
+  border-radius: var(--diff-radius-md);
   background: transparent;
-  color: var(--text-faint);
-  font-size: 11px;
-  font-weight: 600;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
   letter-spacing: 0;
   line-height: 1;
   cursor: pointer;
-  transition: border-bottom-color 160ms ease, color 160ms ease;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
   outline: none;
 }
 
 .git-panel-select-trigger:hover {
-  color: var(--text-emphasis);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-trigger.is-open {
-  color: var(--text-accent, #7a9dcc);
-  border-bottom-color: var(--text-accent, #7a9dcc);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-trigger:focus-visible {
   outline: none;
-  color: var(--text-accent, #7a9dcc);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent);
 }
 
 .git-panel-select-icon {
@@ -267,26 +250,32 @@
   width: 246px;
   min-width: 0;
   max-width: min(320px, calc(100vw - 24px));
-  padding: 8px;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border-default, #d1d5db) 72%, transparent);
-  background: color-mix(in srgb, var(--surface-card, #ffffff) 98%, var(--surface-panel, #f8fafc) 2%);
+  padding: 6px;
+  border-radius: var(--diff-radius-lg);
+  border: 1px solid var(--border);
+  background: var(--popover);
   box-shadow:
-    0 12px 30px rgba(15, 23, 42, 0.14),
-    0 2px 6px rgba(15, 23, 42, 0.06);
+    0 10px 28px -6px rgba(0, 0, 0, 0.18),
+    0 4px 10px -4px rgba(0, 0, 0, 0.1);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   text-transform: none;
   letter-spacing: normal;
 }
 
 .git-panel-select-menu-title {
-  padding: 0 2px 2px;
-  font-size: 12px;
+  padding: 6px 8px 4px;
+  font-size: 11px;
   line-height: 1.35;
   font-weight: 500;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
+}
+
+.git-panel-select-menu-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--border);
 }
 
 .git-panel-select-option {
@@ -297,27 +286,30 @@
   width: 100%;
   border: none;
   background: transparent;
-  border-radius: 10px;
-  padding: 9px 10px;
-  color: var(--text-emphasis);
+  border-radius: var(--diff-radius-md);
+  padding: 8px 10px;
+  color: var(--popover-foreground);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
   cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
 }
 
 .git-panel-select-option:hover {
-  background: color-mix(in srgb, var(--surface-control-hover, #eef2f7) 94%, transparent);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-option.is-active {
-  background: color-mix(in srgb, var(--surface-control-hover, #eef2f7) 58%, transparent);
-  color: var(--text-emphasis);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-option:focus-visible {
   outline: none;
-  background: color-mix(in srgb, var(--surface-control-hover, #eef2f7) 80%, transparent);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-option-check {
@@ -325,7 +317,7 @@
   font-size: 14px;
   font-weight: 700;
   line-height: 1;
-  color: color-mix(in srgb, var(--text-emphasis) 88%, transparent);
+  color: currentColor;
   opacity: 0;
   margin-top: 1px;
 }
@@ -344,11 +336,12 @@
 .git-panel-select-option-icon {
   flex: 0 0 auto;
   margin-top: 1px;
-  color: color-mix(in srgb, var(--text-muted, #64748b) 92%, transparent);
+  color: var(--muted-foreground);
 }
 
+.git-panel-select-option:hover .git-panel-select-option-icon,
 .git-panel-select-option.is-active .git-panel-select-option-icon {
-  color: var(--text-accent, #7a9dcc);
+  color: var(--accent-foreground);
 }
 
 .git-panel-select-option-copy {
@@ -367,8 +360,8 @@
   min-width: 0;
   font-size: 12px;
   line-height: 1.25;
-  color: var(--text-muted);
-  font-weight: 500;
+  color: var(--muted-foreground);
+  font-weight: 400;
 }
 
 .diff-branch {
@@ -383,7 +376,7 @@
   flex-wrap: wrap;
   gap: 8px;
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--muted-foreground);
   margin-bottom: 4px;
 }
 
@@ -391,7 +384,7 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .git-root-path {
@@ -403,7 +396,7 @@
 }
 
 .git-root-inline-alert {
-  color: var(--status-error, #ff6b6b);
+  color: var(--destructive);
   font-size: 11px;
   font-weight: 600;
   white-space: nowrap;
@@ -414,9 +407,9 @@
   flex-direction: column;
   gap: 8px;
   padding: 10px;
-  border-radius: 12px;
-  border: 1px solid var(--border-muted);
-  background: var(--surface-card);
+  border-radius: var(--diff-radius-lg);
+  border: 1px solid var(--border);
+  background: var(--card);
 }
 
 .git-root-toolbar {
@@ -429,7 +422,8 @@
 
 .git-root-title {
   font-size: 12px;
-  color: var(--text-strong);
+  font-weight: 500;
+  color: var(--foreground);
 }
 
 .git-root-actions {
@@ -445,32 +439,50 @@
   gap: 6px;
   padding: 6px 10px;
   font-size: 11px;
-  border-radius: 8px;
+  font-weight: 500;
+  border-radius: var(--diff-radius-md);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.git-root-button:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-root-button--scan {
-  border: 0;
+  border: 1px solid transparent;
   box-shadow: none;
   background: transparent;
 }
 
 .git-root-button--workspace-root {
-  border: 0;
+  border: 1px solid transparent;
   box-shadow: none;
   background: transparent;
 }
 
+/* 切换仓库：shadcn outline 按钮 —— 从原来「透明无边框、几乎隐形」升级为有实体感的控件 */
 .git-root-button--toggle {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   justify-content: center;
-  padding: 6px 10px;
+  padding: 5px 10px;
   min-width: 52px;
-  min-height: 28px;
-  border: 0;
+  min-height: 26px;
+  border: 1px solid var(--border);
   box-shadow: none;
-  background: transparent;
+  background: var(--background);
+  color: var(--muted-foreground);
+}
+
+.git-root-button--toggle:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-root-button--toggle .git-root-button-icon {
@@ -487,15 +499,15 @@
   align-items: center;
   gap: 6px;
   font-size: 11px;
-  color: var(--text-faint);
+  color: var(--muted-foreground);
 }
 
 .git-root-select {
   padding: 5px 22px 5px 8px;
-  border-radius: 8px;
-  border: 1px solid var(--border-muted);
-  background: var(--surface-control);
-  color: var(--text-strong);
+  border-radius: var(--diff-radius-md);
+  border: 1px solid var(--input);
+  background: var(--background);
+  color: var(--foreground);
   font-size: 11px;
 }
 
@@ -511,26 +523,28 @@
   gap: 8px;
   width: 100%;
   text-align: left;
-  border: 1px solid var(--border-subtle);
-  background: var(--surface-control);
-  color: var(--text-emphasis);
+  border: 1px solid var(--border);
+  background: var(--background);
+  color: var(--foreground);
   padding: 6px 10px;
-  border-radius: 8px;
+  border-radius: var(--diff-radius-md);
   font-size: 11px;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
 }
 
 .git-root-item.active {
-  background: var(--surface-active);
-  border-color: var(--border-accent-soft);
+  background: var(--accent);
+  border-color: var(--ring);
 }
 
 .git-root-item:hover {
-  background: var(--surface-control-hover);
+  background: var(--accent);
 }
 
 .git-root-tag {
   font-size: 10px;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
@@ -604,25 +618,26 @@
   width: 20px;
   height: 20px;
   border: 0;
-  border-radius: 4px;
+  border-radius: var(--diff-radius-sm);
   background: transparent;
-  color: var(--accent-primary, #2563eb);
+  color: var(--muted-foreground);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   opacity: 1;
   padding: 0;
+  transition: background 150ms ease, color 150ms ease;
 }
 
 .git-status-refresh-button:hover {
-  background: transparent;
-  color: var(--accent-primary, #2563eb);
+  background: var(--accent);
+  color: var(--foreground);
 }
 
 .git-status-refresh-button:focus-visible {
-  outline: 2px solid var(--border-accent-soft);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent);
 }
 
 .git-status-refresh-button svg,
@@ -659,6 +674,10 @@
 .diff-tree-summary-root-toggle,
 .diff-tree-summary-root-icon {
   flex: 0 0 auto;
+}
+
+.diff-tree-summary-root-icon {
+  color: var(--muted-foreground);
 }
 
 .diff-tree-summary-root-name,
@@ -706,15 +725,16 @@
 }
 
 
+/* 平铺 / 树形 / 提交：shadcn ToggleGroup 分段控件 —— 一个 muted 底盒，激活片上浮 */
 .diff-list-view-toggle {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 2px;
   align-self: center;
-  padding: 0;
-  border: none;
-  border-radius: 0;
-  background: transparent;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--diff-radius-md);
+  background: var(--muted);
 }
 
 .diff-list-controls {
@@ -730,13 +750,14 @@
   align-items: center;
   gap: 4px;
   border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  padding: 4px 2px 5px;
+  border-radius: calc(var(--diff-radius-md) - 3px);
+  padding: 3px 8px;
   font-size: 11px;
-  color: var(--text-faint);
+  font-weight: 500;
+  color: var(--muted-foreground);
   background: transparent;
   cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
 .diff-list-view-button svg {
@@ -744,74 +765,77 @@
 }
 
 .diff-list-view-button:hover {
-  color: var(--text-emphasis);
+  color: var(--foreground);
 }
 
 .diff-list-view-button.active {
-  background: transparent;
-  color: var(--accent-primary, #7a9dcc);
-  border-bottom-color: var(--accent-primary, #2563eb);
-  border-bottom-width: 2px;
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.03);
   font-weight: 600;
 }
 
+/* 提交开关：独立 shadcn ghost 按钮（与 差异Diff 语言一致） */
 .diff-list-view-collapse-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
-  min-width: 16px;
-  min-height: 24px;
-  padding: 4px 2px 5px;
-  font-size: 11px;
-  color: var(--text-faint);
+  border: 1px solid transparent;
+  border-radius: var(--diff-radius-md);
+  min-height: 26px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted-foreground);
   background: transparent;
   cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .diff-list-view-collapse-toggle:hover {
-  color: var(--text-emphasis);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .diff-list-view-collapse-toggle.active {
-  color: var(--accent-primary, #7a9dcc);
-  border-bottom-color: var(--accent-primary, #2563eb);
-  border-bottom-width: 2px;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
+/* HUB / 历史：shadcn ghost 按钮（去掉唯一的大写 + 下划线，与差异Diff 语言统一） */
 .git-panel-history-button {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  border: none;
-  border-bottom: 2px solid transparent;
-  border-radius: 0;
+  border: 1px solid transparent;
+  border-radius: var(--diff-radius-md);
   background: transparent;
-  color: var(--text-faint);
-  font-size: 11px;
-  letter-spacing: 0.03em;
-  text-transform: uppercase;
-  min-height: 24px;
-  padding: 4px 2px 5px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  min-height: 26px;
+  padding: 4px 8px;
   cursor: pointer;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .git-panel-history-button:hover {
-  color: var(--text-emphasis);
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-history-button.is-active {
-  color: var(--text-accent, #7a9dcc);
-  border-bottom-color: var(--text-accent, #7a9dcc);
-  border-bottom-width: 2px;
+  background: var(--accent);
+  color: var(--accent-foreground);
 }
 
 .git-panel-history-button:focus-visible {
   outline: none;
-  color: var(--text-accent, #7a9dcc);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent);
 }
 
 .diff-status-issues {
@@ -927,7 +951,7 @@
   border: 1px solid transparent;
   border-radius: var(--git-filetree-row-radius);
   background: transparent;
-  color: var(--text-secondary);
+  color: var(--muted-foreground);
   padding: var(--git-filetree-row-pad-y) var(--git-filetree-row-pad-x);
   text-align: left;
   font-size: var(--git-filetree-name-font-size);
@@ -938,12 +962,12 @@
 
 .diff-tree-folder-row:hover {
   background: var(--git-filetree-row-hover-bg);
-  color: var(--text-emphasis);
+  color: var(--foreground);
 }
 
 .diff-tree-folder-row:focus-visible {
-  outline: 2px solid var(--border-accent-soft);
-  outline-offset: 2px;
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent);
 }
 
 .diff-tree-folder-toggle {
@@ -952,11 +976,11 @@
   height: var(--git-filetree-icon-size);
   align-items: center;
   justify-content: center;
-  color: color-mix(in srgb, var(--text-muted) 88%, transparent);
+  color: var(--muted-foreground);
 }
 
 .diff-tree-folder-row:hover .diff-tree-folder-toggle {
-  color: var(--text-secondary);
+  color: var(--foreground);
 }
 
 .diff-tree-folder-spacer {
@@ -983,17 +1007,17 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  color: var(--text-stronger);
+  color: var(--foreground);
 }
 
 .diff-empty {
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--muted-foreground);
 }
 
 .diff-error {
   font-size: 12px;
-  color: rgba(255, 160, 160, 0.9);
+  color: var(--destructive);
   white-space: pre-wrap;
 }
 
@@ -1015,48 +1039,50 @@
   --git-file-status-color: var(--text-emphasis);
 }
 
+/* 提交勾选框：统一为 shadcn Checkbox 语言 —— 修复原本文件行(蓝)与分组行(绿)两种不一致的勾选态 */
 .git-commit-scope-toggle {
   width: 16px;
   height: 16px;
-  border-radius: 5px;
-  border: 1px solid color-mix(in srgb, var(--text-muted, #64748b) 58%, var(--border-default));
-  background: color-mix(in srgb, var(--surface-control) 88%, var(--surface-card));
+  border-radius: 4px;
+  border: 1px solid var(--input);
+  background: var(--background);
   color: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   padding: 0;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease,
-    box-shadow 160ms ease;
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface-card) 64%, var(--text-muted, #64748b) 36%);
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease,
+    box-shadow 150ms ease;
+  box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
   flex: 0 0 auto;
 }
 
 .git-commit-scope-toggle.is-all {
-  background: color-mix(in srgb, var(--status-success, #78ebbe) 20%, var(--surface-control));
-  border-color: color-mix(in srgb, var(--status-success, #78ebbe) 56%, var(--border-subtle));
-  color: color-mix(in srgb, var(--status-success, #78ebbe) 92%, var(--text-emphasis));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-success, #78ebbe) 38%, transparent);
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
 }
 
 .git-commit-scope-toggle.is-partial {
-  background: color-mix(in srgb, var(--status-warning, #ffaf55) 18%, var(--surface-control));
-  border-color: color-mix(in srgb, var(--status-warning, #ffaf55) 52%, var(--border-subtle));
-  color: color-mix(in srgb, var(--status-warning, #ffaf55) 92%, var(--text-emphasis));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--status-warning, #ffaf55) 34%, transparent);
+  background: color-mix(in srgb, var(--primary) 42%, var(--background));
+  border-color: var(--primary);
+  color: var(--primary-foreground);
+  box-shadow: none;
 }
 
 .git-commit-scope-toggle.is-none:hover,
 .git-commit-scope-toggle.is-none:focus-visible {
-  border-color: color-mix(in srgb, var(--border-accent-soft) 76%, transparent);
-  background: color-mix(in srgb, var(--surface-control-hover) 88%, transparent);
-  color: var(--text-muted);
+  border-color: color-mix(in srgb, var(--ring) 70%, var(--border));
+  background: var(--accent);
+  color: var(--muted-foreground);
 }
 
 .git-commit-scope-toggle:focus-visible {
-  outline: 2px solid var(--border-accent-soft);
-  outline-offset: 2px;
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 40%, transparent);
 }
 
 .git-commit-scope-toggle:disabled {
@@ -1068,26 +1094,11 @@
   justify-self: center;
 }
 
+/* trailing 变体仅覆盖尺寸/圆角，配色完全继承上面的 shadcn checkbox 状态，保证全面板勾选态一致 */
 .diff-row-selection--trailing {
-  width: 20px;
-  height: 20px;
-  border-radius: 7px;
-  border-color: color-mix(in srgb, var(--border-default) 72%, var(--text-muted, #64748b));
-  background: color-mix(in srgb, var(--surface-control, #1a2230) 82%, var(--surface-card));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--surface-card) 72%, transparent);
-}
-
-.diff-row-selection--trailing.is-all {
-  border-color: color-mix(in srgb, var(--accent-primary, #2563eb) 72%, var(--border-default));
-  background: color-mix(in srgb, var(--accent-primary, #2563eb) 20%, var(--surface-control));
-  color: color-mix(in srgb, var(--accent-primary, #2563eb) 92%, var(--text-emphasis));
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary, #2563eb) 34%, transparent);
-}
-
-.diff-row-selection--trailing.is-partial {
-  border-color: color-mix(in srgb, var(--status-warning, #ffaf55) 62%, var(--border-subtle));
-  background: color-mix(in srgb, var(--status-warning, #ffaf55) 18%, var(--surface-control));
-  color: color-mix(in srgb, var(--status-warning, #ffaf55) 92%, var(--text-emphasis));
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
 }
 
 .git-commit-scope-toggle--section,
@@ -1163,8 +1174,8 @@
 
 .diff-row .diff-name-base,
 .diff-row .diff-name-ext {
-  color: var(--git-file-status-color);
-  font-weight: var(--git-filetree-name-font-weight);
+  color: var(--foreground);
+  font-weight: 500;
 }
 
 .diff-row-meta {
@@ -1391,28 +1402,14 @@
   padding: 0;
 }
 
-.diff-icon-added {
-  color: var(--git-file-status-color);
-}
-
-.diff-icon-modified {
-  color: var(--git-file-status-color);
-}
-
-.diff-icon-deleted {
-  color: var(--git-file-status-color);
-}
-
-.diff-icon-renamed {
-  color: var(--git-file-status-color);
-}
-
-.diff-icon-typechange {
-  color: var(--git-file-status-color);
-}
-
+/* 状态前缀 (U)/(A)/(D) 弱化为中性灰，让彩色文件图标与 +/- 徽章承担状态表达（对齐文件树观感） */
+.diff-icon-added,
+.diff-icon-modified,
+.diff-icon-deleted,
+.diff-icon-renamed,
+.diff-icon-typechange,
 .diff-icon-unknown {
-  color: var(--text-faint);
+  color: var(--muted-foreground);
 }
 
 .diff-file-icon {
@@ -1424,6 +1421,7 @@
   height: 16px;
   flex-shrink: 0;
   overflow: hidden;
+  color: var(--muted-foreground);
 }
 
 .diff-file-icon svg {
@@ -1489,15 +1487,15 @@
   min-width: max-content;
   padding: var(--git-filetree-badge-pad-y) var(--git-filetree-badge-pad-x);
   border-radius: var(--git-filetree-badge-radius);
-  border: 1px solid color-mix(in srgb, var(--border-default) 58%, transparent);
-  background: color-mix(in srgb, var(--surface-control) 62%, transparent);
+  border: 1px solid var(--border);
+  background: var(--secondary);
   font-family: var(--code-font-family);
   font-variant-numeric: tabular-nums;
 }
 
 .diff-row:hover .diff-counts-inline {
-  border-color: color-mix(in srgb, var(--border-default) 76%, transparent);
-  background: color-mix(in srgb, var(--surface-control-hover) 68%, transparent);
+  border-color: var(--border);
+  background: var(--background);
 }
 
 .diff-section-tree-list.git-filetree-list--tree .git-filetree-folder-row::before,
@@ -1824,28 +1822,28 @@
 .commit-message-input {
   width: 100%;
   font-family: var(--code-font-family);
-  font-size: var(--code-font-size, 11px);
+  font-size: var(--code-font-size, 12px);
   line-height: 1.5;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--input);
+  border-radius: var(--diff-radius-md);
   padding: 8px 36px 8px 10px;
   resize: vertical;
   min-height: 48px;
   max-height: 120px;
-  transition: border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+  transition: border-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
 }
 
 .commit-message-input::placeholder {
-  color: var(--text-faint);
+  color: var(--muted-foreground);
 }
 
 .commit-message-input:focus {
   outline: none;
-  border-color: var(--border-accent-soft);
-  color: var(--text-emphasis);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--border-accent-soft) 20%, transparent);
+  border-color: var(--ring);
+  color: var(--foreground);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ring) 35%, transparent);
 }
 
 .commit-message-input:disabled {
@@ -1862,21 +1860,22 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  border-radius: 4px;
-  border: 1px solid color-mix(in srgb, var(--border-default) 82%, transparent);
-  background: color-mix(in srgb, var(--surface-panel) 78%, transparent);
-  color: var(--text-emphasis);
+  border-radius: var(--diff-radius-sm);
+  border: 1px solid var(--border);
+  background: var(--secondary);
+  color: var(--secondary-foreground);
   cursor: pointer;
-  transition: background 160ms ease, color 160ms ease, border-color 160ms ease;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
 }
 
 .commit-message-generate-button:hover:not(:disabled) {
-  background: var(--surface-control-hover);
-  border-color: color-mix(in srgb, var(--border-default) 96%, transparent);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--border);
 }
 
 .commit-message-generate-button:disabled {
-  opacity: 0.72;
+  opacity: 0.6;
   cursor: not-allowed;
 }
 
@@ -1898,29 +1897,29 @@
   z-index: 40;
   min-width: 252px;
   max-width: min(320px, calc(100vw - 32px));
-  padding: 8px;
-  border: 1px solid color-mix(in srgb, var(--border-default) 78%, transparent);
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--surface-panel) 96%, transparent);
+  padding: 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--diff-radius-lg);
+  background: var(--popover);
   box-shadow:
-    0 14px 34px rgba(0, 0, 0, 0.2),
-    0 2px 8px rgba(0, 0, 0, 0.12);
+    0 10px 28px -6px rgba(0, 0, 0, 0.18),
+    0 4px 10px -4px rgba(0, 0, 0, 0.1);
 }
 
 .commit-message-generate-menu-group + .commit-message-generate-menu-group {
-  margin-top: 7px;
-  padding-top: 7px;
-  border-top: 1px solid color-mix(in srgb, var(--border-muted) 60%, transparent);
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
 }
 
 .commit-message-generate-menu-engine {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 4px 6px;
-  color: var(--text-muted);
+  padding: 4px 6px 6px;
+  color: var(--muted-foreground);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
 }
 
 .commit-message-generate-menu-engine-icon {
@@ -1931,23 +1930,26 @@
 .commit-message-generate-menu-languages {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
 }
 
 .commit-message-generate-menu-item {
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--diff-radius-md);
   background: transparent;
-  color: var(--text-strong);
+  color: var(--popover-foreground);
   padding: 7px 8px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   text-align: left;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
 }
 
 .commit-message-generate-menu-item:hover,
 .commit-message-generate-menu-item:focus-visible {
-  background: var(--surface-control-hover);
+  background: var(--accent);
+  color: var(--accent-foreground);
   outline: none;
 }
 
@@ -1971,17 +1973,17 @@
 
 .commit-message-error {
   font-size: 11px;
-  color: rgba(255, 160, 160, 0.9);
+  color: var(--destructive);
   padding: 2px 0;
 }
 
 .commit-message-hint {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   line-height: 1.4;
 }
 
-/* Commit button */
+/* Commit button —— shadcn primary：主操作应有最强的视觉层级（原来是幽灵灰，看着像禁用） */
 .commit-button-container {
   margin-top: 4px;
 }
@@ -1993,20 +1995,18 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border: 1px solid transparent;
+  border-radius: var(--diff-radius-md);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: background 150ms ease, opacity 150ms ease;
 }
 
 .commit-button:hover:not(:disabled) {
-  background: var(--surface-control-hover);
-  border-color: var(--border-accent-soft);
-  color: var(--text-emphasis);
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
 }
 
 .commit-button:disabled {
@@ -2018,8 +2018,8 @@
   width: 14px;
   height: 14px;
   border-radius: 50%;
-  border: 2px solid var(--border-subtle);
-  border-top-color: var(--text-emphasis);
+  border: 2px solid color-mix(in srgb, var(--primary-foreground) 35%, transparent);
+  border-top-color: var(--primary-foreground);
   animation: spin 0.9s linear infinite;
 }
 
@@ -2043,20 +2043,18 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-muted);
-  background: transparent;
-  border: 1px solid var(--border-strong);
-  border-radius: 8px;
+  color: var(--primary-foreground);
+  background: var(--primary);
+  border: 1px solid transparent;
+  border-radius: var(--diff-radius-md);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease, color 160ms ease;
+  transition: background 150ms ease, opacity 150ms ease;
 }
 
 .push-button:hover:not(:disabled) {
-  background: var(--surface-control-hover);
-  border-color: var(--border-accent-soft);
-  color: var(--text-emphasis);
+  background: color-mix(in srgb, var(--primary) 90%, transparent);
 }
 
 .push-button:disabled {
@@ -2070,19 +2068,20 @@
   justify-content: center;
   gap: 6px;
   padding: 8px 12px;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  color: var(--text-emphasis);
-  background: var(--surface-control);
-  border: 1px solid var(--border-subtle);
-  border-radius: 8px;
+  color: var(--secondary-foreground);
+  background: var(--secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--diff-radius-md);
   cursor: pointer;
-  transition: background 160ms ease, border-color 160ms ease;
+  transition: background 150ms ease, border-color 150ms ease, color 150ms ease;
 }
 
 .push-button-secondary:hover:not(:disabled) {
-  background: var(--surface-control-hover);
-  border-color: var(--border-accent-soft);
+  background: var(--accent);
+  color: var(--accent-foreground);
+  border-color: var(--border);
 }
 
 .push-button-secondary:disabled {
@@ -2099,16 +2098,16 @@
   padding: 0 5px;
   font-size: 10px;
   font-weight: 600;
-  color: var(--text-emphasis);
-  background: var(--surface-card-strong);
-  border-radius: 9px;
+  color: var(--primary-foreground);
+  background: color-mix(in srgb, var(--primary-foreground) 22%, transparent);
+  border-radius: 999px;
 }
 
 .diff-danger-dialog-overlay {
   position: fixed;
   inset: 0;
   z-index: 110;
-  background: color-mix(in srgb, #020617 54%, transparent);
+  background: color-mix(in srgb, var(--foreground) 45%, transparent);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2117,11 +2116,13 @@
 
 .diff-danger-dialog {
   width: min(560px, 100%);
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 78%, transparent);
-  background: color-mix(in srgb, var(--surface-card, #111725) 92%, #0b1220);
-  box-shadow: 0 14px 42px rgba(0, 0, 0, 0.34);
-  padding: 14px;
+  border-radius: var(--diff-radius-lg);
+  border: 1px solid var(--border);
+  background: var(--popover);
+  box-shadow:
+    0 16px 42px -8px rgba(0, 0, 0, 0.28),
+    0 6px 14px -6px rgba(0, 0, 0, 0.14);
+  padding: 16px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -2129,8 +2130,8 @@
 
 .diff-danger-dialog-title {
   font-size: 14px;
-  font-weight: 700;
-  color: var(--text-emphasis);
+  font-weight: 600;
+  color: var(--popover-foreground);
 }
 
 .diff-danger-dialog-copy {
@@ -2143,19 +2144,19 @@
   margin: 0;
   font-size: 13px;
   line-height: 1.45;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .diff-danger-dialog-list {
-  border-radius: 10px;
-  border: 1px solid color-mix(in srgb, var(--border-subtle) 64%, transparent);
-  background: color-mix(in srgb, var(--surface-control) 72%, transparent);
+  border-radius: var(--diff-radius-md);
+  border: 1px solid var(--border);
+  background: var(--muted);
   padding: 8px 10px;
 }
 
 .diff-danger-dialog-list-title {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   margin-bottom: 6px;
 }
 
@@ -2171,7 +2172,7 @@
 
 .diff-danger-dialog-list li {
   font-size: 12px;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
 }
 
 .diff-danger-dialog-file {
@@ -2187,23 +2188,23 @@
     monospace
   );
   font-size: 11px;
-  color: color-mix(in srgb, var(--text-muted) 90%, transparent);
+  color: var(--muted-foreground);
 }
 
 .diff-danger-dialog-note {
-  border-radius: 8px;
+  border-radius: var(--diff-radius-md);
   padding: 8px 10px;
-  background: color-mix(in srgb, #ef4444 14%, transparent);
+  background: color-mix(in srgb, var(--destructive) 12%, transparent);
   font-size: 12px;
   line-height: 1.4;
-  color: var(--text-muted);
+  color: var(--muted-foreground);
   display: inline-flex;
   flex-wrap: wrap;
   gap: 4px;
 }
 
 .diff-danger-dialog-keyword {
-  color: #ef4444;
+  color: var(--destructive);
   font-weight: 700;
 }
 
@@ -2216,13 +2217,18 @@
 .diff-danger-dialog-confirm {
   min-width: 110px;
   height: 32px;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, #ef4444 54%, transparent);
-  background: color-mix(in srgb, #ef4444 26%, transparent);
-  color: color-mix(in srgb, #ef4444 90%, #fee2e2);
+  border-radius: var(--diff-radius-md);
+  border: 1px solid transparent;
+  background: var(--destructive);
+  color: var(--destructive-foreground);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 500;
   cursor: pointer;
+  transition: opacity 150ms ease;
+}
+
+.diff-danger-dialog-confirm:hover:not(:disabled) {
+  opacity: 0.9;
 }
 
 .diff-danger-dialog-confirm:disabled {

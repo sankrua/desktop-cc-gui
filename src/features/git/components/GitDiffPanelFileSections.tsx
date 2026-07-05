@@ -12,7 +12,7 @@ import PanelRightOpen from "lucide-react/dist/esm/icons/panel-right-open";
 import Plus from "lucide-react/dist/esm/icons/plus";
 import SquarePen from "lucide-react/dist/esm/icons/square-pen";
 import Undo2 from "lucide-react/dist/esm/icons/undo-2";
-import FileIcon from "../../../components/FileIcon";
+import { getFileTreeIconSvg } from "../../files/utils/fileTreeIcons";
 import { GitDiffPanelSectionActions } from "./GitDiffPanelSectionActions";
 import {
   type InclusionState,
@@ -31,6 +31,34 @@ export type DiffFile = {
 };
 
 export const TREE_INDENT_STEP = 8;
+
+/**
+ * Git 面板文件/文件夹图标：复用项目文件树的彩色类型图标（getFileTreeIconSvg），
+ * 让提交面板与文件树的图标视觉保持一致，替代原先的单色 FileIcon。
+ */
+export function GitFileTreeIcon({
+  name,
+  isFolder = false,
+  isOpen = false,
+  className,
+}: {
+  name: string;
+  isFolder?: boolean;
+  isOpen?: boolean;
+  className?: string;
+}) {
+  const html = useMemo(
+    () => getFileTreeIconSvg(name, isFolder, isOpen),
+    [name, isFolder, isOpen],
+  );
+  return (
+    <span
+      className={className}
+      dangerouslySetInnerHTML={{ __html: html }}
+      aria-hidden
+    />
+  );
+}
 
 function splitPath(path: string) {
   const parts = path.replace(/\\/g, "/").split("/").filter(Boolean);
@@ -212,7 +240,7 @@ export function DiffFileRow({
         {statusSymbol}
       </span>
       <span className="diff-file-icon" aria-hidden>
-        <FileIcon filePath={file.path} />
+        <GitFileTreeIcon name={name ?? ""} />
       </span>
       <div className="diff-file">
         <div className="diff-path">
@@ -482,10 +510,9 @@ export function DiffSection({
               <span className="diff-tree-summary-root-toggle" aria-hidden>
                 <span className="diff-tree-folder-spacer" />
               </span>
-              <FileIcon
-                filePath={rootFolderName ?? ""}
+              <GitFileTreeIcon
+                name={rootFolderName ?? ""}
                 isFolder
-                isOpen={false}
                 className="diff-tree-summary-root-icon"
               />
               <span className="diff-tree-summary-root-name">{rootFolderName}</span>

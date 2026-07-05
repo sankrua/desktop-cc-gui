@@ -487,9 +487,9 @@
 }
 
 .tool-change-inline-diff.edit-diff-viewer {
-  margin: 0 0 8px 0;
-  border: 1px solid var(--border-subtle);
-  border-radius: 6px;
+  /* 边框/圆角/底色由外层 TOOL_MARKER_BODY_CLASS 提供——此处不再自带边框，
+     避免与外层叠成双层边框，并去掉底部 8px 外边距造成的空白区。 */
+  margin: 0;
   background: color-mix(in srgb, var(--surface-card) 86%, var(--surface-base));
   max-height: 180px;
   width: 100%;
