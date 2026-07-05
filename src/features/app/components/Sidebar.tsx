@@ -68,6 +68,7 @@ import GitBranch from "lucide-react/dist/esm/icons/git-branch";
 import House from "lucide-react/dist/esm/icons/house";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
+import Puzzle from "lucide-react/dist/esm/icons/puzzle";
 import Trash2 from "lucide-react/dist/esm/icons/trash-2";
 import {
   getWorkspaceSidebarAlias,
@@ -1890,6 +1891,17 @@ function SidebarImpl({
               <span className="sidebar-primary-nav-shortcut" aria-hidden>
                 {quickKanbanShortcutLabel}
               </span>
+            </button>
+            <button
+              type="button"
+              className="sidebar-primary-nav-item sidebar-primary-nav-subitem is-disabled"
+              onClick={handleOpenSkillsComingSoon}
+              title={t("sidebar.plugins")}
+              aria-label={t("sidebar.plugins")}
+              data-tauri-drag-region="false"
+            >
+              <Puzzle className="sidebar-primary-nav-icon" aria-hidden size={20} strokeWidth={1.8} />
+              <span className="sidebar-primary-nav-text">{t("sidebar.plugins")}</span>
             </button>
             <button
               type="button"

@@ -981,6 +981,72 @@ async fn send_message_settles_turn_when_child_holds_stdout_open_after_result() {
     );
 }
 
+/// Companion to the stdout case above, for the *stderr* drain — the second,
+/// subtler wedge. A descendant that escapes the CLI's process group (setsid)
+/// and keeps ONLY the inherited stderr write end open (stdout closed) lets
+/// stdout EOF normally — so there is no post-result grace at all — yet the
+/// stderr reader task would hang on EOF forever, so `TurnCompleted` never fired
+/// and the UI stayed stuck on "generating…". CLAUDE_POST_RESULT_STDERR_DRAIN
+/// now bounds that drain. Because the escapee lives in its own session, killpg
+/// cannot reach it, so this exercises the abort path — not the group kill.
+///
+/// ponytail: unix-only, and relies on `perl` (present on macOS and typical CI)
+/// for POSIX::setsid. If perl is missing the backgrounded child exits
+/// immediately, stderr EOFs, and the turn still settles (degrades to a no-op
+/// rather than a false failure). Bounded well under the 20s outer timeout.
+#[cfg(unix)]
+#[tokio::test]
+async fn send_message_settles_turn_when_escaped_child_holds_stderr_open_after_result() {
+    let script_body = concat!(
+        "#!/bin/sh\n",
+        "echo '{\"type\":\"result\",\"session_id\":\"11111111-1111-4111-8111-111111111111\",\"message\":{\"content\":[{\"type\":\"text\",\"text\":\"final answer\"}]}}'\n",
+        "# Detach a child into its own session (escapes the process group, so\n",
+        "# killpg cannot reach it) that keeps ONLY the inherited stderr write end\n",
+        "# open. stdout EOFs normally; the stderr reader would hang forever\n",
+        "# without the bounded drain.\n",
+        "perl -e 'use POSIX qw(setsid); setsid(); close STDOUT; sleep 30' &\n",
+        "exit 0\n",
+    );
+    let (root, workspace_path, script_path) = create_fake_claude_script(script_body);
+
+    let session = ClaudeSession::new(
+        "test-workspace".to_string(),
+        workspace_path,
+        Some(EngineConfig {
+            bin_path: Some(script_path.to_string_lossy().to_string()),
+            home_dir: None,
+            custom_args: None,
+            default_model: None,
+        }),
+    );
+    let mut receiver = session.subscribe();
+    let mut params = SendMessageParams::default();
+    params.text = "hello".to_string();
+
+    // A regression hangs on `stderr_handle.await` (stderr never EOFs) until this
+    // outer timeout fires and fails the test.
+    let response = tokio::time::timeout(
+        std::time::Duration::from_secs(20),
+        session.send_message(params, "turn-stderr-drain"),
+    )
+    .await
+    .expect("send_message must settle within the stderr drain, not hang")
+    .expect("stderr-drain-settled turn should report success");
+
+    let events = drain_turn_events(&mut receiver);
+    let _ = std::fs::remove_dir_all(&root);
+
+    assert_eq!(response, "final answer");
+    assert_eq!(
+        events
+            .iter()
+            .filter(|event| matches!(event.event, EngineEvent::TurnCompleted { .. }))
+            .count(),
+        1,
+        "exactly one TurnCompleted must be emitted once the stderr drain settles the turn",
+    );
+}
+
 #[tokio::test]
 async fn send_message_reports_exit_metadata_when_claude_fails_without_output() {
     #[cfg(windows)]

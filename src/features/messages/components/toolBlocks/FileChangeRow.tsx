@@ -87,34 +87,19 @@ interface FileChangeRowProps {
 }
 
 function renderDiffLines(preview: FileChangeDiffPreview): ReactNode {
+  // hunk 头（@@ …@@）不在内联预览中展示——去掉顶部噪音区。
+  const lines = preview.lines.filter((line) => line.kind !== 'hunk');
   return (
     <div className="tool-change-inline-diff edit-diff-viewer">
-      {preview.lines.map((line, index) => {
+      {lines.map((line, index) => {
         const lineClass =
           line.kind === 'del'
             ? 'is-deleted'
             : line.kind === 'add'
               ? 'is-added'
-              : line.kind === 'hunk'
-                ? 'is-hunk'
-                : '';
+              : '';
         const signNode =
-          line.kind === 'hunk' ? (
-            <span
-              className="codicon codicon-diff tool-change-hunk-icon"
-              aria-hidden
-            />
-          ) : line.kind === 'del' ? (
-            '-'
-          ) : line.kind === 'add' ? (
-            '+'
-          ) : (
-            ' '
-          );
-        const content =
-          line.kind === 'hunk'
-            ? line.text.replace(/^@@\s*/, '').replace(/\s*@@$/, '')
-            : line.text;
+          line.kind === 'del' ? '-' : line.kind === 'add' ? '+' : ' ';
         return (
           <div
             key={`${line.kind}-${index}`}
@@ -122,7 +107,7 @@ function renderDiffLines(preview: FileChangeDiffPreview): ReactNode {
           >
             <div className="edit-diff-gutter" />
             <div className={`edit-diff-sign ${lineClass}`}>{signNode}</div>
-            <pre className="edit-diff-content">{content}</pre>
+            <pre className="edit-diff-content">{line.text}</pre>
           </div>
         );
       })}

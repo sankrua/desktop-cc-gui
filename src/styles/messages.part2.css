@@ -43,12 +43,6 @@
   opacity: 0.8;
 }
 
-.thinking-glyph {
-  flex: 0 0 auto;
-  font-size: 13px;
-  color: color-mix(in srgb, var(--text-muted) 92%, transparent);
-}
-
 .thinking-icon {
   flex: 0 0 auto;
   font-size: 10px;
@@ -58,7 +52,7 @@
 
 .thinking-content {
   margin-top: 8px;
-  color: var(--text-tertiary);
+  color: var(--text-faint);
   font-family: inherit;
   font-size: var(--message-caption-font-size);
   line-height: 1.5;
@@ -89,7 +83,7 @@
 .reasoning-markdown {
   font-size: var(--message-thinking-font-size, 11px);
   line-height: 1.5;
-  color: var(--text-tertiary);
+  color: var(--text-faint);
 }
 
 .reasoning-markdown > * {

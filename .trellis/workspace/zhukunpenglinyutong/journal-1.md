@@ -625,3 +625,56 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 11: 收敛对话/设置/侧栏 UI 细节并写死思考常开
+
+**Date**: 2026-07-05
+**Task**: 收敛对话/设置/侧栏 UI 细节并写死思考常开
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+一次性提交 UI 重构分支上 10 个文件的界面细节收敛与思考写死常开
+
+### Main Changes
+
+| 范围 | 变更 |
+|------|------|
+| app-shell | 思考可见性写死常开、忽略下游上报，避免设置读取时机把它翻回 false |
+| git 面板 | 移除提交区折叠开关、隐藏仓库根路径入口，工具组靠右对齐 |
+| 思考块 | 移除标题图标 glyph，正文颜色降到 text-faint |
+| 会话雷达历史 | 默认折叠展开区 |
+| 设置页 | 修复 Radix ScrollArea 宽内容导致整页右移，长文本改内部滚动 |
+| 侧栏 | 统一标题/线程标题的字重、字号与颜色令牌 |
+
+**Updated Files**:
+- `src/app-shell.tsx`
+- `src/features/git/components/GitDiffPanel.tsx`
+- `src/features/messages/components/MessagesRows.tsx`
+- `src/features/settings/components/SessionRadarHistoryManagementSection.tsx`
+- `src/styles/diff.css`
+- `src/styles/messages.part2.css`
+- `src/styles/settings.part1.css`
+- `src/styles/settings.part2.css`
+- `src/styles/sidebar.css`
+- `src/styles/sidebar.footer.css`
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `00bed0a8` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

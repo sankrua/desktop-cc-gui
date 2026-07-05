@@ -1466,6 +1466,7 @@
 
 .history-item-text {
   flex: 1;
+  min-width: 0;
   font-size: 13px;
   color: var(--text-default);
   overflow: hidden;

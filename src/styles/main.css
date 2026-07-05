@@ -809,6 +809,18 @@ body[data-panel-resizing="true"] .main {
   margin-right: var(--titlebar-toggle-side-gap, 12px);
 }
 
+/* Windows 自绘窗口控制（—/▢/✕）是绝对悬浮在窗口右上角的图层。右侧面板未 swap、
+   未折叠时紧贴窗口右缘，其工具栏图标（PanelTabs）会被窗口控制盖住而重叠。
+   macOS 不渲染该悬浮层（红绿灯在左），故仅 Windows 需要为窗口控制保留区让位。
+   宽度用变量计算，面板宽度可调时依然适配。 */
+.app.windows-desktop:not(.layout-swapped):not(.right-panel-collapsed)
+  .right-panel-toolbar {
+  padding-right: calc(
+    var(--titlebar-window-controls-width, 116px) +
+      var(--titlebar-toggle-side-gap, 12px)
+  );
+}
+
 .app.reduced-transparency .main-topbar {
   backdrop-filter: none;
 }

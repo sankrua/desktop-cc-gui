@@ -151,8 +151,6 @@ describe("GitDiffPanel", () => {
         ]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     const commitButton = screen.getByRole("button", { name: "Commit" });
     expect((commitButton as HTMLButtonElement).disabled).toBe(true);
     expect(screen.getByText("Select files to commit first")).toBeTruthy();
@@ -371,8 +369,6 @@ describe("GitDiffPanel", () => {
         unstagedFiles={[{ path: "file.txt", status: "M", additions: 1, deletions: 0 }]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     await chooseCodexEnglishCommitMessage();
 
     await waitFor(() => {
@@ -390,8 +386,6 @@ describe("GitDiffPanel", () => {
         unstagedFiles={[{ path: "file.txt", status: "M", additions: 1, deletions: 0 }]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Toggle commit selection: file.txt" }),
     );
@@ -414,8 +408,6 @@ describe("GitDiffPanel", () => {
         stagedFiles={[{ path: "file.txt", status: "M", additions: 1, deletions: 0 }]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     fireEvent.click(
       screen.getByRole("checkbox", { name: "Toggle commit selection: file.txt" }),
     );
@@ -436,8 +428,6 @@ describe("GitDiffPanel", () => {
         unstagedFiles={[{ path: "file.txt", status: "M", additions: 1, deletions: 0 }]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     const selectionToggle = screen.getByRole("checkbox", {
       name: "Toggle commit selection: file.txt",
     });
@@ -459,8 +449,6 @@ describe("GitDiffPanel", () => {
         unstagedFiles={[{ path: "file.txt", status: "M", additions: 1, deletions: 0 }]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     expect(document.querySelector(".commit-message-engine-icon--spinning")).toBeTruthy();
   });
 
@@ -609,11 +597,8 @@ describe("GitDiffPanel", () => {
       />,
     );
 
-    const flatButton = screen.getAllByRole("button", { name: "Flat" })[0];
-    if (!flatButton) {
-      throw new Error("Flat button not found");
-    }
-    flatButton.focus();
+    const focusAnchor = screen.getByRole("button", { name: "Git panel view" });
+    focusAnchor.focus();
     fireEvent.keyDown(window, { key: "V", altKey: true, shiftKey: true });
     expect(onGitDiffListViewChange).toHaveBeenCalledWith("tree");
   });
@@ -632,11 +617,8 @@ describe("GitDiffPanel", () => {
       />,
     );
 
-    const flatButton = screen.getAllByRole("button", { name: "Flat" })[0];
-    if (!flatButton) {
-      throw new Error("Flat button not found");
-    }
-    flatButton.focus();
+    const focusAnchor = screen.getByRole("button", { name: "Git panel view" });
+    focusAnchor.focus();
     fireEvent.keyDown(window, { key: "V", altKey: true, shiftKey: true });
     expect(onGitDiffListViewChange).not.toHaveBeenCalled();
 
@@ -658,11 +640,8 @@ describe("GitDiffPanel", () => {
       />,
     );
 
-    const flatButton = screen.getAllByRole("button", { name: "Flat" })[0];
-    if (!flatButton) {
-      throw new Error("Flat button not found");
-    }
-    flatButton.focus();
+    const focusAnchor = screen.getByRole("button", { name: "Git panel view" });
+    focusAnchor.focus();
     fireEvent.keyDown(window, { key: "V", altKey: true, shiftKey: true });
     expect(onGitDiffListViewChange).not.toHaveBeenCalled();
   });
@@ -681,8 +660,6 @@ describe("GitDiffPanel", () => {
         ]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     const textarea = screen.getAllByPlaceholderText("Commit message...")[0];
     if (!textarea) {
       throw new Error("Commit textarea not found");
@@ -704,7 +681,8 @@ describe("GitDiffPanel", () => {
       />,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: "Hub" }));
+    fireEvent.click(screen.getByRole("button", { name: "Git panel view" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Hub" }));
     expect(onOpenGitHistoryPanel).toHaveBeenCalledTimes(1);
   });
 
@@ -946,8 +924,6 @@ describe("GitDiffPanel", () => {
         ]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Toggle commit selection: file.txt" }));
     expect(onStageFile).not.toHaveBeenCalled();
     expect(screen.getByText("1 file selected for commit")).toBeTruthy();
@@ -994,8 +970,6 @@ describe("GitDiffPanel", () => {
       }),
     );
     expect(onStageFile).not.toHaveBeenCalled();
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     fireEvent.click(screen.getByRole("button", { name: "Commit" }));
 
     await waitFor(() => {
@@ -1042,8 +1016,6 @@ describe("GitDiffPanel", () => {
         ]}
       />,
     );
-
-    fireEvent.click(screen.getByRole("button", { name: "Toggle commit section" }));
     expect(screen.getByText("1 file selected for commit")).toBeTruthy();
   });
 

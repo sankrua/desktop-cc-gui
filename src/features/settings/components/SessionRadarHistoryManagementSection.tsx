@@ -73,7 +73,7 @@ export function SessionRadarHistoryManagementSection({
   const [deleteArmed, setDeleteArmed] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [notice, setNotice] = useState<NoticeState>(null);
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
 
   const orderedEntries = useMemo(
     () => [...entries].sort((left, right) => (right.completedAt ?? right.updatedAt) - (left.completedAt ?? left.updatedAt)),

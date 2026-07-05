@@ -1722,6 +1722,25 @@
   padding: 18px 30px 44px;
 }
 
+/*
+ * Radix ScrollArea wraps children in a `display:table; min-width:100%` layer,
+ * which shrink-to-fits to a descendant's max-content width. A wide unbreakable
+ * child (Codex config <pre>, long history text) then stretches that layer past
+ * 100%, so the `margin-inline:auto` centered blocks re-center in the widened
+ * space and drift right with a blank gutter on the left.
+ *
+ * `display:block` alone is not enough: inside an `overflow:scroll` viewport
+ * WebKit still sizes the block's `width:auto` to its max-content, so the layer
+ * keeps growing. Pin the width to the viewport so it can never exceed 100%;
+ * genuinely wide content (e.g. the Codex config <pre>) then scrolls inside its
+ * own overflow box instead of dragging the whole page sideways.
+ */
+.settings-content [data-slot="scroll-area-viewport"] > div {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
 .settings-section,
 .settings-workspace-picker,
 .vendor-settings-panel {

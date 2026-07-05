@@ -12,8 +12,6 @@ import ArrowLeftRight from "lucide-react/dist/esm/icons/arrow-left-right";
 import Check from "lucide-react/dist/esm/icons/check";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import ChevronRight from "lucide-react/dist/esm/icons/chevron-right";
-import ChevronsDownUp from "lucide-react/dist/esm/icons/chevrons-down-up";
-import ChevronsUpDown from "lucide-react/dist/esm/icons/chevrons-up-down";
 import FolderTree from "lucide-react/dist/esm/icons/folder-tree";
 import GitPullRequest from "lucide-react/dist/esm/icons/git-pull-request";
 import HardDrive from "lucide-react/dist/esm/icons/hard-drive";
@@ -39,6 +37,7 @@ import {
   type DiffFile,
   type DiffSectionProps,
   getTreeLineOpacity,
+  GitFileTreeIcon,
   renderSectionIndicator,
   TREE_INDENT_STEP,
 } from "./GitDiffPanelFileSections";
@@ -403,8 +402,8 @@ function DiffTreeSection({
                 <span className="diff-tree-folder-spacer" />
               )}
             </span>
-            <FileIcon
-              filePath={folder.name}
+            <GitFileTreeIcon
+              name={folder.name}
               isFolder
               isOpen={!isCollapsed}
               className="diff-tree-folder-icon"
@@ -507,8 +506,8 @@ function DiffTreeSection({
                   <span className="diff-tree-folder-spacer" />
                 )}
               </span>
-              <FileIcon
-                filePath={rootFolderName}
+              <GitFileTreeIcon
+                name={rootFolderName}
                 isFolder
                 isOpen={!rootCollapsed}
                 className="diff-tree-summary-root-icon"
@@ -581,8 +580,8 @@ function DiffTreeSection({
               <span className="diff-tree-folder-toggle" aria-hidden>
                 {rootCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
               </span>
-              <FileIcon
-                filePath={rootFolderName}
+              <GitFileTreeIcon
+                name={rootFolderName}
                 isFolder
                 isOpen={!rootCollapsed}
                 className="diff-tree-folder-icon"
@@ -880,7 +879,6 @@ export function GitDiffPanel({
   const deferredCommitLanguageMenuTimerRef = useRef<number | null>(null);
   const gitStatusRefreshSpinTimerRef = useRef<number | null>(null);
   const gitStatusRefreshSpinRafRef = useRef<number | null>(null);
-  const [isCommitSectionCollapsed, setIsCommitSectionCollapsed] = useState(true);
   const [isGitStatusRefreshing, setIsGitStatusRefreshing] = useState(false);
   const [previewFile, setPreviewFile] = useState<(DiffFile & { section: "staged" | "unstaged" }) | null>(
     null,
@@ -990,6 +988,13 @@ export function GitDiffPanel({
         description: t("git.changesModeDescription"),
       },
     [mode, modeOptions, t],
+  );
+  const layoutOptions = useMemo(
+    () => [
+      { value: "flat" as const, label: t("git.listFlat"), icon: LayoutGrid },
+      { value: "tree" as const, label: t("git.listTree"), icon: FolderTree },
+    ],
+    [t],
   );
 
   const handleModeSelect = useCallback(
@@ -1745,60 +1750,6 @@ export function GitDiffPanel({
     <aside className="diff-panel diff-panel--floating-git-actions" ref={panelRef}>
       <div className="git-panel-header git-panel-header--hover-actions">
         <div className="git-panel-actions" role="group" aria-label="Git panel">
-          {mode === "diff" && (
-            <div className="diff-list-view-toggle" role="group" aria-label={t("git.listView")}>
-              <button
-                type="button"
-                className={`diff-list-view-button ${gitDiffListView === "flat" ? "active" : ""}`}
-                onClick={() => onGitDiffListViewChange?.("flat")}
-                aria-pressed={gitDiffListView === "flat"}
-              >
-                <LayoutGrid size={13} aria-hidden />
-                <span>{t("git.listFlat")}</span>
-              </button>
-              <button
-                type="button"
-                className={`diff-list-view-button ${gitDiffListView === "tree" ? "active" : ""}`}
-                onClick={() => onGitDiffListViewChange?.("tree")}
-                aria-pressed={gitDiffListView === "tree"}
-              >
-                <FolderTree size={13} aria-hidden />
-                <span>{t("git.listTree")}</span>
-              </button>
-              {showGenerateCommitMessage ? (
-                <button
-                  type="button"
-                  className={`diff-list-view-collapse-toggle ${!isCommitSectionCollapsed ? "active" : ""}`}
-                  onClick={() => setIsCommitSectionCollapsed((value) => !value)}
-                  aria-label={t("git.toggleCommitSection")}
-                  aria-expanded={!isCommitSectionCollapsed}
-                  title={
-                    isCommitSectionCollapsed
-                      ? t("git.expandCommitSection")
-                      : t("git.collapseCommitSection")
-                  }
-                >
-                  {isCommitSectionCollapsed ? (
-                    <ChevronsUpDown size={13} aria-hidden />
-                  ) : (
-                    <ChevronsDownUp size={13} aria-hidden />
-                  )}
-                  <span>{t("git.commit")}</span>
-                </button>
-              ) : null}
-            </div>
-          )}
-          <button
-            type="button"
-            className={`git-panel-history-button${isGitHistoryOpen ? " is-active" : ""}`}
-            onClick={onOpenGitHistoryPanel}
-            aria-label={t("git.historyQuickAction")}
-            title={t("git.historyQuickAction")}
-            aria-pressed={isGitHistoryOpen}
-          >
-            <History size={12} aria-hidden />
-            <span>{t("git.historyQuickAction")}</span>
-          </button>
           <div className="git-panel-select">
             <button
               ref={modeTriggerRef}
@@ -1857,6 +1808,69 @@ export function GitDiffPanel({
                     </button>
                   );
                 })}
+                {mode === "diff" && onGitDiffListViewChange ? (
+                  <>
+                    <div className="git-panel-select-menu-divider" role="separator" />
+                    <div className="git-panel-select-menu-title">{t("git.listView")}</div>
+                    {layoutOptions.map((option) => {
+                      const isActive = gitDiffListView === option.value;
+                      const OptionIcon = option.icon;
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          className={`git-panel-select-option${isActive ? " is-active" : ""}`}
+                          role="menuitemradio"
+                          aria-checked={isActive}
+                          onClick={() => {
+                            onGitDiffListViewChange?.(option.value);
+                            setIsModeMenuOpen(false);
+                          }}
+                        >
+                          <span className="git-panel-select-option-text">
+                            <span className="git-panel-select-option-icon" aria-hidden>
+                              <OptionIcon size={13} />
+                            </span>
+                            <span className="git-panel-select-option-copy">
+                              <span className="git-panel-select-option-label">{option.label}</span>
+                            </span>
+                          </span>
+                          <span
+                            className={`git-panel-select-option-check${isActive ? " is-active" : ""}`}
+                            aria-hidden
+                          >
+                            ✓
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </>
+                ) : null}
+                {onOpenGitHistoryPanel ? (
+                  <>
+                    <div className="git-panel-select-menu-divider" role="separator" />
+                    <button
+                      type="button"
+                      className={`git-panel-select-option${isGitHistoryOpen ? " is-active" : ""}`}
+                      role="menuitem"
+                      onClick={() => {
+                        setIsModeMenuOpen(false);
+                        onOpenGitHistoryPanel?.();
+                      }}
+                    >
+                      <span className="git-panel-select-option-text">
+                        <span className="git-panel-select-option-icon" aria-hidden>
+                          <History size={13} />
+                        </span>
+                        <span className="git-panel-select-option-copy">
+                          <span className="git-panel-select-option-label">
+                            {t("git.historyQuickAction")}
+                          </span>
+                        </span>
+                      </span>
+                    </button>
+                  </>
+                ) : null}
               </div>
             )}
           </div>
@@ -2029,7 +2043,7 @@ export function GitDiffPanel({
               )}
             </div>
           )}
-          {showGenerateCommitMessage && !isCommitSectionCollapsed && (
+          {showGenerateCommitMessage && (
             <div className="commit-message-section">
               <div className="commit-message-input-wrapper">
                 <textarea

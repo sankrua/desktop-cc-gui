@@ -191,6 +191,15 @@ const CLAUDE_STREAM_DIAGNOSTIC_SAMPLE_LIMIT: usize = 800;
 // processes or hooks keep the CLI alive, the UI would otherwise stay stuck on
 // "generating…" indefinitely. This grace caps how long we wait after `result`.
 const CLAUDE_POST_RESULT_GRACE: Duration = Duration::from_secs(5);
+// Draining the stderr reader must be bounded for the same reason as the stdout
+// wait above: a descendant that escaped the CLI's process group (e.g. an MCP
+// server or Stop hook that called setsid) keeps the inherited stderr write end
+// open, so the reader task never sees EOF and `force_kill_process_group`
+// (a process-group kill) cannot reach it. stderr is only diagnostic, so cap the
+// drain and abort the reader rather than wedge the turn on "generating…"
+// forever — TurnCompleted must still fire. Mirrors the startup-timeout path's
+// stderr handling.
+const CLAUDE_POST_RESULT_STDERR_DRAIN: Duration = Duration::from_secs(2);
 const CLAUDE_REASONING_EFFORTS: &[&str] = &["low", "medium", "high", "xhigh", "max"];
 
 #[derive(Debug, Default)]
@@ -1292,7 +1301,7 @@ impl ClaudeSession {
         let stderr_reader = BufReader::new(stderr);
         let _workspace_id_clone = self.workspace_id.clone();
         let stderr_diagnostic_sample = Arc::clone(&stream_diagnostic_sample);
-        let stderr_handle = tokio::spawn(async move {
+        let mut stderr_handle = tokio::spawn(async move {
             let mut lines = stderr_reader.lines();
             let mut stderr_text = String::new();
             while let Ok(Some(line)) = lines.next_line().await {
@@ -1629,8 +1638,20 @@ impl ClaudeSession {
             None
         };
 
-        // Get stderr
-        let stderr_text = stderr_handle.await.unwrap_or_default();
+        // Get stderr, but bound the drain: if a descendant escaped the CLI's
+        // process group (setsid) and still holds the inherited stderr write end
+        // open, the reader task never sees EOF and `force_kill_process_group`
+        // cannot reach it. stderr is diagnostic-only, so abort the reader rather
+        // than hang the turn on "generating…" forever — TurnCompleted must still
+        // fire (see CLAUDE_POST_RESULT_STDERR_DRAIN).
+        let stderr_text =
+            match tokio::time::timeout(CLAUDE_POST_RESULT_STDERR_DRAIN, &mut stderr_handle).await {
+                Ok(joined) => joined.unwrap_or_default(),
+                Err(_) => {
+                    stderr_handle.abort();
+                    String::new()
+                }
+            };
         if !stderr_text.trim().is_empty() {
             error_output.push_str(&stderr_text);
         }

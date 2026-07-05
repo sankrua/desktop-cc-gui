@@ -148,6 +148,7 @@ const zhPart1 = {
     mcpSkillsMarket: "MCP & Skills 市场",
     longTermMemory: "长期记忆",
     pluginMarket: "插件市场",
+    plugins: "插件",
     specHub: "Spec Hub",
     comingSoon: "即将推出",
     comingSoonMessage: "功能开发中，敬请期待",

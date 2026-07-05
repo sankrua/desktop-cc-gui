@@ -1734,7 +1734,6 @@ export const ReasoningRow = memo(function ReasoningRow({
         onClick={() => onToggle(item.id)}
       >
         <span className="thinking-header-copy">
-          <span className="codicon codicon-thinking thinking-glyph" aria-hidden />
           <span className="thinking-title">{title}</span>
           {provenanceLabel ? (
             <span className="message-provenance-badge thinking-provenance-badge">
