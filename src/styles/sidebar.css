@@ -52,6 +52,18 @@
   color: var(--text-strong);
 }
 
+/* 置灰但仍可点击（点击弹「即将开放」提示） */
+.sidebar-primary-nav-item.is-disabled {
+  color: var(--text-faint);
+  opacity: 0.6;
+  cursor: default;
+}
+
+.sidebar-primary-nav-item.is-disabled:hover,
+.sidebar-primary-nav-item.is-disabled:focus-visible {
+  background: transparent;
+}
+
 .sidebar-primary-nav-item-bottom {
   width: 32px;
   height: 32px;
