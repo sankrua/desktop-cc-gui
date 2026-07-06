@@ -772,3 +772,59 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 14: Large-file 新增文件 800 行棘轮
+
+**Date**: 2026-07-06
+**Task**: Large-file 新增文件 800 行棘轮
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+新增 large-file new-file ratchet baseline，后续缺席快照且超过 800 行的 governed 文件会在 gate 中失败。
+
+### Main Changes
+
+## 完成本轮目标
+
+- 新增 `newFileFailThreshold: 800`，并把 large-file scanner 扩展为双账本：
+  - `docs/architecture/large-file-baseline.*` 继续记录 legacy hard-debt（当前 0 entries）。
+  - `docs/architecture/large-file-new-file-baseline.*` 记录当前 276 个 800+ governed files，作为新增文件 ratchet 快照。
+- `npm run check:large-files` / `check:large-files:ci` / `check:large-files:gate` 加载 `--new-file-baseline-file`，缺席快照且超过 800 行的文件会输出 `status=new, threshold=new-file-ratchet` 并阻断 gate。
+- 新增 `npm run check:large-files:new-file-baseline` 用于有意刷新 ratchet 快照。
+- 新增 OpenSpec change `ratchet-large-file-new-files`，同步 playbook 与 parser tests。
+
+## 验证
+
+- `node --test scripts/check-large-files.test.mjs` — 18 tests pass。
+- `npm run check:large-files:new-file-baseline` — generated 276-entry ratchet baseline。
+- `npm run check:large-files` — found=0。
+- `npm run check:large-files:gate` — found=0。
+- `npm run check:large-files:near-threshold` — 39 advisory warnings, non-blocking。
+- `npm run typecheck` — pass。
+- `npm run lint` — 0 errors, 1 existing `react-hooks/exhaustive-deps` warning in `src/features/messages/components/MessagesRows.tsx:914`。
+- `openspec validate ratchet-large-file-new-files --strict --no-interactive` — pass。
+
+## 注意
+
+- 不要随手刷新 `large-file-new-file-baseline.*` 来接纳新的 800+ 文件；只有明确治理例外、重命名/移动或阈值策略变化时才更新。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `e8a203c9` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
