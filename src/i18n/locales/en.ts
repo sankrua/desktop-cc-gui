@@ -6,6 +6,7 @@ import enPart4 from "./en.part4";
 import enPart5 from "./en.part5";
 import enPart6 from "./en.part6";
 import enPart7 from "./en.part7";
+import enRuntimeNotice from "./en.runtimeNotice";
 import enModes from "./en.modes";
 import enModels from "./en.models";
 
@@ -28,6 +29,7 @@ const en = {
   ...enPart1Base,
   ...enPart1,
   ...enPart2,
+  ...enRuntimeNotice,
   ...enPart3,
   ...enPart4,
   ...enPart5,

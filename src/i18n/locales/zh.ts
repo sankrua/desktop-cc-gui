@@ -6,6 +6,7 @@ import zhPart5 from "./zh.part5";
 import zhPart6 from "./zh.part6";
 import zhPart7 from "./zh.part7";
 import zhPart8 from "./zh.part8";
+import zhRuntimeNotice from "./zh.runtimeNotice";
 import zhModes from "./zh.modes";
 import zhModels from "./zh.models";
 
@@ -23,6 +24,7 @@ const zhPart7Messages =
 const zh = {
   ...zhPart1,
   ...zhPart2,
+  ...zhRuntimeNotice,
   ...zhPart3,
   ...zhPart4,
   ...zhPart5,
