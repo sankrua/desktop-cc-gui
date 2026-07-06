@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { CodexUnifiedExecExternalStatus } from "../../types";
+import type { AppSettings, CodexUnifiedExecExternalStatus } from "../../types";
 
 export interface CodexRuntimeReloadResult {
   status: string;
@@ -10,6 +10,14 @@ export interface CodexRuntimeReloadResult {
 
 export async function getCodexConfigPath(): Promise<string> {
   return invoke<string>("get_codex_config_path");
+}
+
+export async function getAppSettings(): Promise<AppSettings> {
+  return invoke<AppSettings>("get_app_settings");
+}
+
+export async function updateAppSettings(settings: AppSettings): Promise<AppSettings> {
+  return invoke<AppSettings>("update_app_settings", { settings });
 }
 
 export async function getCodexUnifiedExecExternalStatus(): Promise<CodexUnifiedExecExternalStatus> {

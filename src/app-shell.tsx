@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useWorkspaceDropZone } from "./features/workspaces/hooks/useWorkspaceDropZone";
 import { useThreads } from "./features/threads/hooks/useThreads";
-import { useWindowDrag } from "./features/layout/hooks/useWindowDrag";
 import { useGitPanelController } from "./features/app/hooks/useGitPanelController";
 import { useGitRemote } from "./features/git/hooks/useGitRemote";
 import { useGitRepoScan } from "./features/git/hooks/useGitRepoScan";
@@ -20,8 +19,6 @@ import { useWorkspaceRefreshOnFocus } from "./features/workspaces/hooks/useWorks
 import { useWorkspaceRestore } from "./features/workspaces/hooks/useWorkspaceRestore";
 import { useOpenPaths } from "./features/workspaces/hooks/useOpenPaths";
 import { useLayoutController } from "./features/app/hooks/useLayoutController";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-import { isMacPlatform, isWindowsPlatform } from "./utils/platform";
 import { useAppSettingsController } from "./features/app/hooks/useAppSettingsController";
 import { useUpdaterController } from "./features/app/hooks/useUpdaterController";
 import { useGitHistoryPanelResize } from "./features/app/hooks/useGitHistoryPanelResize";
@@ -57,26 +54,16 @@ import {
   buildDetachedFileExplorerSession,
   openOrFocusDetachedFileExplorer,
 } from "./features/files/detachedFileExplorer";
-import { pickWorkspacePath, updateAppSettings } from "./services/tauri";
+import { pickWorkspacePath } from "./services/tauri";
 import type {
-  AccessMode,
   AppMode,
   ComposerEditorSettings,
-  ComposerEnginePrefs,
-  EngineType,
 } from "./types";
-import { resolveRestoredAccessMode } from "./app-shell-parts/composerEnginePrefs";
 import { resolveThreadEngine } from "./app-shell-parts/selectedComposerSession";
-import {
-  getComposerEnginePrefForEngine,
-  getComposerEnginePrefsSnapshot,
-  seedComposerEnginePrefs,
-  setComposerEnginePref,
-} from "./features/composer/hooks/composerEnginePrefsStore";
+import { getComposerEnginePrefForEngine } from "./features/composer/hooks/composerEnginePrefsStore";
 import { useCodeCssVars } from "./features/app/hooks/useCodeCssVars";
 import { useAccountSwitching } from "./features/app/hooks/useAccountSwitching";
 import { pushErrorToast } from "./services/toasts";
-import { requestVendorModelManager } from "./features/vendors/modelManagerRequest";
 import {
   extractPlanFromTimelineItems,
   resolveThreadScopedCollaborationModeSync,
@@ -109,6 +96,10 @@ import {
   reuseStableAppShellDomainContexts,
   type AppShellDomainContexts,
 } from "./app-shell-parts/appShellDomainContexts";
+import { useAppShellComposerPrefsPersistence } from "./app-shell-parts/useAppShellComposerPrefsPersistence";
+import { useAppShellAccessModeSection } from "./app-shell-parts/useAppShellAccessModeSection";
+import { useAppShellDesktopChrome } from "./app-shell-parts/useAppShellDesktopChrome";
+import { useAppShellModelSettingsAction } from "./app-shell-parts/useAppShellModelSettingsAction";
 
 export function AppShell() {
   const { t } = useTranslation();
@@ -142,80 +133,14 @@ export function AppShell() {
     queueSaveSettings,
   } = useAppSettingsController();
   useCodeCssVars(appSettings);
-  // Keep the latest full settings for the debounced prefs writer below, which persists
-  // to disk imperatively (no setState) and therefore needs the other settings fields.
-  const appSettingsRef = useRef(appSettings);
-  useEffect(() => {
-    appSettingsRef.current = appSettings;
-  }, [appSettings]);
-
-  // Durable per-engine composer preferences (model / effort / permission / plan mode)
-  // so a brand-new conversation reopens with the user's last choices after restart.
-  // These live in an external store (composerEnginePrefsStore) so a switch-button click
-  // never re-renders the 2600-line app-shell root. Disk persistence still goes through
-  // AppSettings (the backend replaces the whole file), so we debounce a write that
-  // overlays the live snapshot onto the current settings — WITHOUT setSettings, which
-  // would re-render the root a second time. saveSettings applies the same overlay so
-  // unrelated settings saves cannot clobber newer prefs on disk.
-  const prefsPersistTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const flushPersistEnginePrefs = useCallback(() => {
-    void updateAppSettings({
-      ...appSettingsRef.current,
-      lastComposerPrefsByEngine: getComposerEnginePrefsSnapshot(),
-    }).catch(() => undefined);
-  }, []);
-  const schedulePersistEnginePrefs = useCallback(() => {
-    if (prefsPersistTimerRef.current) {
-      clearTimeout(prefsPersistTimerRef.current);
-    }
-    prefsPersistTimerRef.current = setTimeout(() => {
-      prefsPersistTimerRef.current = null;
-      flushPersistEnginePrefs();
-    }, 400);
-  }, [flushPersistEnginePrefs]);
-  useEffect(
-    () => () => {
-      if (prefsPersistTimerRef.current) {
-        clearTimeout(prefsPersistTimerRef.current);
-        flushPersistEnginePrefs();
-      }
-    },
-    [flushPersistEnginePrefs],
-  );
-  const persistComposerEnginePref = useCallback(
-    (engine: EngineType, patch: Partial<ComposerEnginePrefs>) => {
-      if (!setComposerEnginePref(engine, patch)) {
-        return;
-      }
-      schedulePersistEnginePrefs();
-    },
-    [schedulePersistEnginePrefs],
-  );
-  const activeEngineRef = useRef<EngineType>("claude");
-  const persistClaudeCollaborationMode = useCallback(
-    (modeId: string | null) => {
-      if (activeEngineRef.current !== "claude") {
-        return;
-      }
-      persistComposerEnginePref("claude", {
-        collaborationModeId: modeId === "plan" ? "plan" : "code",
-      });
-    },
-    [persistComposerEnginePref],
-  );
-
-  // Seed the per-engine prefs store once, after settings finish loading. The reads below
-  // (access-mode restore, new-session default selection, claude plan/code default) pull
-  // from the store imperatively, so this effect is declared before them to seed first on
-  // the load-complete commit.
-  const prefsSeededRef = useRef(false);
-  useEffect(() => {
-    if (appSettingsLoading || prefsSeededRef.current) {
-      return;
-    }
-    seedComposerEnginePrefs(appSettings.lastComposerPrefsByEngine);
-    prefsSeededRef.current = true;
-  }, [appSettingsLoading, appSettings.lastComposerPrefsByEngine]);
+  const {
+    activeEngineRef,
+    persistClaudeCollaborationMode,
+    persistComposerEnginePref,
+  } = useAppShellComposerPrefsPersistence({
+    appSettings,
+    appSettingsLoading,
+  });
   const {
     dictationModel,
     dictationState,
@@ -242,8 +167,6 @@ export function AppShell() {
     reduceTransparency,
     onDebug: addDebugEntry,
   });
-  const [accessMode, setAccessMode] = useState<AccessMode>("full-access");
-  const claudeAccessModeRef = useRef<AccessMode>("full-access");
   const [activeTab, setActiveTab] = useState<
     "projects" | "codex" | "spec" | "git" | "log"
   >("codex");
@@ -395,19 +318,7 @@ export function AppShell() {
     t,
   });
 
-  const handleOpenModelSettings = useCallback(
-    (providerId?: string) => {
-      const target =
-        providerId === "codex"
-          ? "codex"
-          : providerId === "gemini"
-            ? "gemini"
-            : "claude";
-      requestVendorModelManager({ target, addMode: true });
-      openSettings("providers");
-    },
-    [openSettings],
-  );
+  const handleOpenModelSettings = useAppShellModelSettingsAction(openSettings);
 
   const [isSearchPaletteOpen, setIsSearchPaletteOpen] = useState(false);
   const [searchScope, setSearchScope] =
@@ -651,6 +562,17 @@ export function AppShell() {
     onDebug: addDebugEntry,
   });
   activeEngineRef.current = activeEngine;
+  const {
+    accessMode,
+    claudeAccessModeRef,
+    handleSetAccessMode,
+    setAccessMode,
+  } = useAppShellAccessModeSection({
+    activeEngine,
+    appSettingsLoading,
+    defaultAccessMode: appSettings.defaultAccessMode,
+    persistComposerEnginePref,
+  });
   const { handleRefreshModelConfig, isModelConfigRefreshing } =
     useModelConfigRefresh({
       activeEngine,
@@ -692,47 +614,6 @@ export function AppShell() {
     deleteTask: kanbanDeleteTask,
     reorderTask: kanbanReorderTask,
   } = useKanbanStore(workspaces);
-
-  // Sync accessMode when switching engines. Codex forces full-access; non-codex
-  // engines restore the permission the user last chose for that engine (persisted
-  // across restart), falling back to the configured defaultAccessMode.
-  useEffect(() => {
-    if (activeEngine === "codex") {
-      setAccessMode((prev) => {
-        if (prev !== "full-access") {
-          claudeAccessModeRef.current = prev;
-        }
-        return "full-access";
-      });
-      return;
-    }
-    const storedAccessMode =
-      getComposerEnginePrefForEngine(activeEngine).accessMode;
-    const restored = resolveRestoredAccessMode(
-      activeEngine,
-      storedAccessMode,
-      appSettings.defaultAccessMode,
-    );
-    claudeAccessModeRef.current = restored;
-    setAccessMode(restored);
-  }, [
-    activeEngine,
-    appSettingsLoading,
-    appSettings.defaultAccessMode,
-  ]);
-
-  // Remember the permission the user picks on a non-codex engine so future
-  // conversations (and app restarts) reopen with the same access mode.
-  const handleSetAccessMode = useCallback(
-    (mode: AccessMode) => {
-      setAccessMode(mode);
-      if (activeEngine !== "codex") {
-        claudeAccessModeRef.current = mode;
-        persistComposerEnginePref(activeEngine, { accessMode: mode });
-      }
-    },
-    [activeEngine, persistComposerEnginePref],
-  );
 
   const {
     prompts,
@@ -1846,21 +1727,8 @@ export function AppShell() {
     }
   }, [activeTab, isTablet]);
 
-  useWindowDrag("titlebar");
-
-  const isWindowsDesktop = useMemo(() => isWindowsPlatform(), []);
-  const isMacDesktop = useMemo(() => isMacPlatform(), []);
-
-  useEffect(() => {
-    const title = activeWorkspace ? `ccgui - ${activeWorkspace.name}` : "ccgui";
-    try {
-      void getCurrentWindow()
-        .setTitle(title)
-        .catch(() => {});
-    } catch {
-      // 普通浏览器没有 Tauri window internals，dev-server 预览时跳过窗口标题同步。
-    }
-  }, [activeWorkspace]);
+  const { isMacDesktop, isWindowsDesktop } =
+    useAppShellDesktopChrome(activeWorkspace);
 
   useWorkspaceRestore({
     workspaces,

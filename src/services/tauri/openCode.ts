@@ -1,0 +1,294 @@
+import { invoke } from "@tauri-apps/api/core";
+import { traceStartupCommand, type StartupWorkspaceScope } from "../../features/startup-orchestration/utils/startupTrace";
+
+function workspaceScope(workspaceId: string): StartupWorkspaceScope {
+  return { workspaceId };
+}
+
+function traceStartupInvoke<T>(
+  commandLabel: string,
+  scope: StartupWorkspaceScope,
+  run: () => Promise<T>,
+) {
+  return traceStartupCommand(commandLabel, scope, run);
+}
+
+export async function getOpenCodeSessionList(workspaceId: string) {
+  return traceStartupInvoke(
+    "opencode_session_list",
+    workspaceScope(workspaceId),
+    async () => {
+      try {
+        return await invoke<
+          Array<{
+            sessionId: string;
+            title: string;
+            updatedLabel: string;
+            updatedAt?: number | null;
+          }>
+        >("opencode_session_list", { workspaceId });
+      } catch (error) {
+        if (
+          String(error).includes(
+            "OpenCode CLI is disabled in CLI validation settings",
+          )
+        ) {
+          return [];
+        }
+        throw error;
+      }
+    },
+  );
+}
+
+export async function getOpenCodeStats(workspaceId: string, days?: number | null) {
+  return invoke<string>("opencode_stats", {
+    workspaceId,
+    days: days ?? null,
+  });
+}
+
+export async function exportOpenCodeSession(workspaceId: string, sessionId: string, outputPath?: string | null) {
+  return invoke<{ sessionId: string; filePath: string }>("opencode_export_session", {
+    workspaceId,
+    sessionId,
+    outputPath: outputPath ?? null,
+  });
+}
+
+export async function importOpenCodeSession(workspaceId: string, source: string) {
+  return invoke<{ sessionId?: string | null; source: string; output: string }>("opencode_import_session", {
+    workspaceId,
+    source,
+  });
+}
+
+export async function shareOpenCodeSession(workspaceId: string, sessionId: string) {
+  return invoke<{ sessionId: string; url: string }>("opencode_share_session", {
+    workspaceId,
+    sessionId,
+  });
+}
+
+export async function getOpenCodeMcpStatus(workspaceId: string) {
+  return invoke<{ text: string }>("opencode_mcp_status", { workspaceId });
+}
+
+export async function getOpenCodeProviderHealth(workspaceId: string, provider?: string | null) {
+  return invoke<{
+    provider: string;
+    connected: boolean;
+    credentialCount: number;
+    matched: boolean;
+    authenticatedProviders?: string[];
+    error?: string | null;
+  }>("opencode_provider_health", {
+    workspaceId,
+    provider: provider ?? null,
+  });
+}
+
+export async function getOpenCodeProviderCatalog(workspaceId: string) {
+  return invoke<
+    Array<{
+      id: string;
+      label: string;
+      description?: string | null;
+      category: "popular" | "other";
+      recommended: boolean;
+    }>
+  >("opencode_provider_catalog", { workspaceId });
+}
+
+export async function connectOpenCodeProvider(workspaceId: string, providerId?: string | null) {
+  return invoke<{
+    started: boolean;
+    providerId?: string | null;
+    command?: string | null;
+  }>("opencode_provider_connect", {
+    workspaceId,
+    providerId: providerId ?? null,
+  });
+}
+
+export async function getOpenCodeStatusSnapshot(input: { workspaceId: string; threadId?: string | null; model?: string | null; agent?: string | null; variant?: string | null }) {
+  return invoke<{
+    sessionId?: string | null;
+    model?: string | null;
+    agent?: string | null;
+    variant?: string | null;
+    provider?: string | null;
+    providerHealth: {
+      provider: string;
+      connected: boolean;
+      credentialCount: number;
+      matched: boolean;
+      authenticatedProviders?: string[];
+      error?: string | null;
+    };
+    mcpEnabled: boolean;
+    mcpServers: Array<{
+      name: string;
+      enabled: boolean;
+      status?: string | null;
+      permissionHint?: string | null;
+    }>;
+    mcpRaw: string;
+    managedToggles: boolean;
+    tokenUsage?: number | null;
+    contextWindow?: number | null;
+  }>("opencode_status_snapshot", {
+    workspaceId: input.workspaceId,
+    threadId: input.threadId ?? null,
+    model: input.model ?? null,
+    agent: input.agent ?? null,
+    variant: input.variant ?? null,
+  });
+}
+
+export async function setOpenCodeMcpToggle(
+  workspaceId: string,
+  input: {
+    serverName?: string | null;
+    enabled?: boolean | null;
+    globalEnabled?: boolean | null;
+  },
+) {
+  return invoke<{
+    workspaceId: string;
+    mcpEnabled: boolean;
+    serverStates: Record<string, boolean>;
+    managedToggles: boolean;
+  }>("opencode_mcp_toggle", {
+    workspaceId,
+    serverName: input.serverName ?? null,
+    enabled: input.enabled ?? null,
+    globalEnabled: input.globalEnabled ?? null,
+  });
+}
+
+export async function getOpenCodeLspDiagnostics(workspaceId: string, filePath: string) {
+  return invoke<{ filePath: string; result: unknown }>("opencode_lsp_diagnostics", {
+    workspaceId,
+    filePath,
+  });
+}
+
+export async function getOpenCodeLspSymbols(workspaceId: string, query: string) {
+  return invoke<{ query: string; result: unknown }>("opencode_lsp_symbols", {
+    workspaceId,
+    query,
+  });
+}
+
+export async function getOpenCodeLspDocumentSymbols(workspaceId: string, fileUri: string) {
+  return invoke<{ fileUri: string; result: unknown }>("opencode_lsp_document_symbols", {
+    workspaceId,
+    fileUri,
+  });
+}
+
+export async function getCodeIntelDefinition(
+  workspaceId: string,
+  input: {
+    filePath: string;
+    line: number;
+    character: number;
+  },
+) {
+  return invoke<{
+    filePath: string;
+    line: number;
+    character: number;
+    result: unknown;
+  }>("code_intel_definition", {
+    workspaceId,
+    filePath: input.filePath,
+    line: input.line,
+    character: input.character,
+  });
+}
+
+export async function getCodeIntelReferences(
+  workspaceId: string,
+  input: {
+    filePath: string;
+    line: number;
+    character: number;
+    includeDeclaration?: boolean;
+  },
+) {
+  return invoke<{
+    filePath: string;
+    line: number;
+    character: number;
+    includeDeclaration: boolean;
+    result: unknown;
+  }>("code_intel_references", {
+    workspaceId,
+    filePath: input.filePath,
+    line: input.line,
+    character: input.character,
+    includeDeclaration: input.includeDeclaration ?? false,
+  });
+}
+
+export type LspPosition = {
+  line: number;
+  character: number;
+};
+
+export type LspRange = {
+  start: LspPosition;
+  end: LspPosition;
+};
+
+export type LspLocation = {
+  uri: string;
+  range: LspRange;
+};
+
+export async function getOpenCodeLspDefinition(
+  workspaceId: string,
+  input: {
+    fileUri: string;
+    line: number;
+    character: number;
+  },
+) {
+  return invoke<{
+    fileUri: string;
+    line: number;
+    character: number;
+    result: unknown;
+  }>("opencode_lsp_definition", {
+    workspaceId,
+    fileUri: input.fileUri,
+    line: input.line,
+    character: input.character,
+  });
+}
+
+export async function getOpenCodeLspReferences(
+  workspaceId: string,
+  input: {
+    fileUri: string;
+    line: number;
+    character: number;
+    includeDeclaration?: boolean;
+  },
+) {
+  return invoke<{
+    fileUri: string;
+    line: number;
+    character: number;
+    includeDeclaration: boolean;
+    result: unknown;
+  }>("opencode_lsp_references", {
+    workspaceId,
+    fileUri: input.fileUri,
+    line: input.line,
+    character: input.character,
+    includeDeclaration: input.includeDeclaration ?? false,
+  });
+}
