@@ -678,3 +678,50 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 12: 大文件拆分首批收口
+
+**Date**: 2026-07-06
+**Task**: 大文件拆分首批收口
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| app-shell | 将 composer prefs persistence、access mode sync、desktop chrome、model settings action 拆入 `src/app-shell-parts/*`，使 `src/app-shell.tsx` 降到 2600 行 gate 以下。 |
+| tauri bridge | 将 `src/services/tauri.ts` 收口为 facade barrel，把 inline wrapper 按领域拆入 `src/services/tauri/*`，公共 import path 与 invoke payload 保持不变。 |
+| large-file governance | `src/services/tauri.ts` 降到 537 行；新增 tauri 子模块均低于 800 行；`app-shell.tsx` 降到 2597 行。 |
+
+**验证**:
+- `npm run typecheck`
+- `npm run check:large-files:gate`
+- `node node_modules/vitest/vitest.mjs run --maxWorkers 1 --minWorkers 1 src/services/tauri.test.ts src/app-shell-parts/appShellDomainContexts.test.ts src/app-shell-parts/composerEnginePrefs.test.ts src/app-shell-parts/useAppShellLayoutNodesSection.test.ts src/app-shell-parts/useAppShellSearchAndComposerSection.test.tsx`
+- `npm run lint`（0 errors；保留既有 `MessagesRows.tsx` warning）
+
+**后续建议**:
+- 下一刀适合进入 `src/types.ts` barrel 化；它是纯 type export，风险低且调用面大。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `a21ed6d1` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete
