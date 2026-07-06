@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 15
+- **Total Sessions**: 29
 - **Last Active**: 2026-07-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~888 | Active |
+| `journal-1.md` | ~1400 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,20 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 29 | 2026-07-06 | 汇总 Trellis 会话记录 | `33e7c9b7` | `-` |
+| 28 | 2026-07-06 | 抽出 i18n 任务输出文案命名空间 | `2e70ec60` | `feat/ui-refactoring` |
+| 27 | 2026-07-06 | 抽出 i18n 审批提问文案命名空间 | `c11ae71f` | `feat/ui-refactoring` |
+| 26 | 2026-07-06 | 抽出 i18n 运行时提示文案命名空间 | `d0933bd7` | `feat/ui-refactoring` |
+| 25 | 2026-07-06 | 抽出 i18n 权限模式文案命名空间 | `7d2e2807` | `feat/ui-refactoring` |
+| 24 | 2026-07-06 | 抽出 i18n 模型文案命名空间 | `75adc037` | `feat/ui-refactoring` |
+| 23 | 2026-07-06 | 抽出 threadItems 计划条目工具 | `ebc53145` | `feat/ui-refactoring` |
+| 22 | 2026-07-06 | 抽出 threadItems 生成图片条目工具 | `0964db3c` | `feat/ui-refactoring` |
+| 21 | 2026-07-06 | 归并 threadItems 用户消息模式工具 | `4b77a338` | `feat/ui-refactoring` |
+| 20 | 2026-07-06 | 抽出 threadItems 时间元数据工具 | `0e9c132c` | `feat/ui-refactoring` |
+| 19 | 2026-07-06 | 抽出 threadItems 用户消息清理工具 | `65c3ce5d` | `feat/ui-refactoring` |
+| 18 | 2026-07-06 | Markdown 纯 helper 低风险拆分 | `cd5ca733` | `feat/ui-refactoring` |
+| 17 | 2026-07-06 | AppShell 低风险 section 继续拆分 | `2e0b3658` | `feat/ui-refactoring` |
+| 16 | 2026-07-06 | AppShell 编辑器布局 section 拆分 | `e6fe8634` | `feat/ui-refactoring` |
 | 15 | 2026-07-06 | 修复聊天滚动回顶与 Windows 拖拽滞后 | `b20cf0cc` | `feat/ui-refactoring` |
 | 14 | 2026-07-06 | Large-file 新增文件 800 行棘轮 | `e8a203c9` | `feat/ui-refactoring` |
 | 13 | 2026-07-06 | 拆分全局类型桶 | `6d532993` | `feat/ui-refactoring` |
