@@ -8,6 +8,7 @@ import enPart6 from "./en.part6";
 import enPart7 from "./en.part7";
 import enRuntimeNotice from "./en.runtimeNotice";
 import enApproval from "./en.approval";
+import enEngineTaskOutput from "./en.engineTaskOutput";
 import enModes from "./en.modes";
 import enModels from "./en.models";
 
@@ -32,6 +33,7 @@ const en = {
   ...enPart2,
   ...enRuntimeNotice,
   ...enApproval,
+  ...enEngineTaskOutput,
   ...enPart3,
   ...enPart4,
   ...enPart5,
