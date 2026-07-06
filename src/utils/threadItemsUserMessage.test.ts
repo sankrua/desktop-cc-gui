@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  extractCollaborationModeFromUserMessageItem,
   extractFallbackUserMessagePayload,
   extractLatestUserInputTextPreserveFormatting,
   extractModeFallbackMode,
   extractSelectedAgentIconFromUserMessageItem,
   extractSelectedAgentNameFromUserMessageItem,
   normalizeUserMessageText,
+  previewThreadName,
   stripAgentPromptBlockFromTail,
   stripInjectedPrefixLines,
 } from "./threadItemsUserMessage";
@@ -89,6 +91,19 @@ describe("threadItemsUserMessage", () => {
     expect(extractSelectedAgentIconFromUserMessageItem({}, text)).toBe("agent-robot-04");
   });
 
+  it("previews default thread names from the visible user request", () => {
+    const text = [
+      "[System] internal",
+      "[User Input] 请帮我继续拆分模块吧",
+      "",
+      "## Agent Role and Instructions",
+      "",
+      "Agent Name: 前端架构师",
+    ].join("\n");
+
+    expect(previewThreadName(text, "Agent 1")).toBe("请帮我继续拆分模块吧");
+  });
+
   it("builds fallback user message payload from direct text and image fields", () => {
     const payload = extractFallbackUserMessagePayload({
       text: "Collaboration mode: code.\n\nUser request: 继续实现",
@@ -100,5 +115,23 @@ describe("threadItemsUserMessage", () => {
       collaborationMode: "code",
       images: ["/tmp/a.png", "https://example.com/b.png"],
     });
+  });
+
+  it("extracts collaboration mode from user message metadata with fallback", () => {
+    expect(
+      extractCollaborationModeFromUserMessageItem(
+        { metadata: { collaboration_mode: "plan" } },
+        "code",
+      ),
+    ).toBe("plan");
+    expect(
+      extractCollaborationModeFromUserMessageItem(
+        { selectedUiMode: { id: "default" } },
+        null,
+      ),
+    ).toBe("code");
+    expect(
+      extractCollaborationModeFromUserMessageItem({ mode: "unknown" }, "plan"),
+    ).toBe("plan");
   });
 });

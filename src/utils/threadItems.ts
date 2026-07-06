@@ -27,19 +27,12 @@ import {
 } from "./generatedImageArtifacts";
 import { normalizeAskUserQuestionHistoryItems } from "./threadItemsAskUserQuestion";
 import {
-  MAX_DEFAULT_THREAD_TITLE_CHARS,
-  clipByChars,
+  extractCollaborationModeFromUserMessageItem,
   extractFallbackUserMessagePayload,
-  extractLatestUserInputTextPreserveFormatting,
   extractModeFallbackMode,
   extractSelectedAgentIconFromUserMessageItem,
   extractSelectedAgentNameFromUserMessageItem,
   normalizeUserMessageText,
-  stripAgentPromptBlockFromTail,
-  stripInjectedPrefixLines,
-  stripInjectedProjectMemoryBlock,
-  stripModeFallbackBlock,
-  stripSharedSessionContextSyncBlock,
 } from "./threadItemsUserMessage";
 import {
   extractAssistantFinalFlag,
@@ -54,6 +47,7 @@ export {
   stripClaudeApprovalResumeArtifacts,
 } from "./threadItemsAssistantText";
 export { getThreadTimestamp } from "./threadItemsTiming";
+export { previewThreadName } from "./threadItemsUserMessage";
 
 export const MAX_ITEM_TEXT = 20000;
 const TOOL_OUTPUT_RECENT_ITEMS = 12;
@@ -129,64 +123,6 @@ function buildGeneratedImageConversationItem(
     fallbackText: artifact.fallbackText,
     images: artifact.images,
   };
-}
-
-function normalizeCollaborationMode(value: unknown): "plan" | "code" | null {
-  if (typeof value !== "string") {
-    return null;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (normalized === "default") {
-    return "code";
-  }
-  return normalized === "plan" || normalized === "code"
-    ? normalized
-    : null;
-}
-function parseCollaborationModeValue(value: unknown): "plan" | "code" | null {
-  const direct = normalizeCollaborationMode(value);
-  if (direct) {
-    return direct;
-  }
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
-    return null;
-  }
-  const record = value as Record<string, unknown>;
-  return (
-    normalizeCollaborationMode(record.mode) ??
-    normalizeCollaborationMode(record.id) ??
-    normalizeCollaborationMode(record.name) ??
-    null
-  );
-}
-
-function extractCollaborationModeFromUserMessageItem(
-  item: Record<string, unknown>,
-  fallbackMode: "plan" | "code" | null,
-): "plan" | "code" | null {
-  const metadata =
-    item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata)
-      ? (item.metadata as Record<string, unknown>)
-      : null;
-  const candidates: unknown[] = [
-    item.collaborationMode,
-    item.collaboration_mode,
-    item.selectedUiMode,
-    item.selected_ui_mode,
-    item.effectiveUiMode,
-    item.effective_ui_mode,
-    item.mode,
-    metadata?.collaborationMode,
-    metadata?.collaboration_mode,
-    metadata?.mode,
-  ];
-  for (const candidate of candidates) {
-    const mode = parseCollaborationModeValue(candidate);
-    if (mode) {
-      return mode;
-    }
-  }
-  return fallbackMode;
 }
 
 function asNumber(value: unknown) {
@@ -864,21 +800,6 @@ export function upsertItem(list: ConversationItem[], item: ConversationItem) {
   }
   next[index] = mergeSameKindItem(existing, item);
   return next;
-}
-
-export function previewThreadName(text: string, fallback: string) {
-  const strippedAgentPrompt = stripAgentPromptBlockFromTail(text);
-  const strippedModeFallback = stripModeFallbackBlock(strippedAgentPrompt);
-  const strippedMemory = stripInjectedProjectMemoryBlock(strippedModeFallback);
-  const strippedSharedSync = stripSharedSessionContextSyncBlock(strippedMemory);
-  const extractedUserInput = extractLatestUserInputTextPreserveFormatting(strippedSharedSync);
-  const strippedInjectedPrefix = stripInjectedPrefixLines(extractedUserInput);
-  const collapsed = strippedInjectedPrefix.replace(/\s+/g, " ").trim();
-  if (!collapsed) {
-    return fallback;
-  }
-  const clipped = clipByChars(collapsed, MAX_DEFAULT_THREAD_TITLE_CHARS).trim();
-  return clipped || fallback;
 }
 
 export function buildConversationItem(

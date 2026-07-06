@@ -42,6 +42,62 @@ export function extractModeFallbackMode(text: string): "plan" | "code" | null {
   return /^execution policy \(plan mode\):/i.test(trimmed) ? "plan" : "code";
 }
 
+function normalizeCollaborationMode(value: unknown): "plan" | "code" | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "default") {
+    return "code";
+  }
+  return normalized === "plan" || normalized === "code"
+    ? normalized
+    : null;
+}
+
+function parseCollaborationModeValue(value: unknown): "plan" | "code" | null {
+  const direct = normalizeCollaborationMode(value);
+  if (direct) {
+    return direct;
+  }
+  const record = asRecord(value);
+  if (!record) {
+    return null;
+  }
+  return (
+    normalizeCollaborationMode(record.mode) ??
+    normalizeCollaborationMode(record.id) ??
+    normalizeCollaborationMode(record.name) ??
+    null
+  );
+}
+
+export function extractCollaborationModeFromUserMessageItem(
+  item: Record<string, unknown>,
+  fallbackMode: "plan" | "code" | null,
+): "plan" | "code" | null {
+  const metadata = asRecord(item.metadata);
+  const candidates: unknown[] = [
+    item.collaborationMode,
+    item.collaboration_mode,
+    item.selectedUiMode,
+    item.selected_ui_mode,
+    item.effectiveUiMode,
+    item.effective_ui_mode,
+    item.mode,
+    metadata?.collaborationMode,
+    metadata?.collaboration_mode,
+    metadata?.mode,
+  ];
+  for (const candidate of candidates) {
+    const mode = parseCollaborationModeValue(candidate);
+    if (mode) {
+      return mode;
+    }
+  }
+  return fallbackMode;
+}
+
 export function stripInjectedProjectMemoryBlock(text: string) {
   if (!text) {
     return "";
@@ -294,6 +350,21 @@ export function stripInjectedPrefixLines(text: string): string {
 
 export function clipByChars(text: string, maxChars: number): string {
   return Array.from(text).slice(0, maxChars).join("");
+}
+
+export function previewThreadName(text: string, fallback: string) {
+  const strippedAgentPrompt = stripAgentPromptBlockFromTail(text);
+  const strippedModeFallback = stripModeFallbackBlock(strippedAgentPrompt);
+  const strippedMemory = stripInjectedProjectMemoryBlock(strippedModeFallback);
+  const strippedSharedSync = stripSharedSessionContextSyncBlock(strippedMemory);
+  const extractedUserInput = extractLatestUserInputTextPreserveFormatting(strippedSharedSync);
+  const strippedInjectedPrefix = stripInjectedPrefixLines(extractedUserInput);
+  const collapsed = strippedInjectedPrefix.replace(/\s+/g, " ").trim();
+  if (!collapsed) {
+    return fallback;
+  }
+  const clipped = clipByChars(collapsed, MAX_DEFAULT_THREAD_TITLE_CHARS).trim();
+  return clipped || fallback;
 }
 
 export function normalizeUserMessageText(text: string): string {
