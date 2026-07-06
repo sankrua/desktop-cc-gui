@@ -725,3 +725,50 @@
 ### Next Steps
 
 - None - task complete
+
+
+## Session 13: 拆分全局类型桶
+
+**Date**: 2026-07-06
+**Task**: 拆分全局类型桶
+**Branch**: `feat/ui-refactoring`
+
+### Summary
+
+(Add summary)
+
+### Main Changes
+
+| Area | Summary |
+|------|---------|
+| type facade | 将 `src/types.ts` 收口为 14 行 `export type *` barrel，保留 `src/types` / `@/types` 公共导入路径。 |
+| domain split | 新增 `src/types/workspace.ts`、`engine.ts`、`conversation.ts`、`settings.ts`、`computerUse.ts`、`email.ts`、`runtime.ts`、`diagnostics.ts`、`interaction.ts`、`git.ts`、`usage.ts`、`planning.ts`、`catalog.ts`、`misc.ts`。 |
+| large-file governance | 原 `src/types.ts` 2295 行降到 14 行；最大新类型文件 `conversation.ts` 371 行，所有 type domain 文件均低于 800 行。 |
+
+**验证**:
+- `npm run typecheck`
+- `npm run check:large-files:gate`
+- `node node_modules/vitest/vitest.mjs run --maxWorkers 1 --minWorkers 1 src/services/tauri.test.ts src/features/settings/hooks/useAppSettings.test.ts src/services/events.test.ts src/features/context-ledger/cost/costProjection.test.ts src/utils/threadItems.test.ts`
+- `npm run lint`（0 errors；保留既有 `MessagesRows.tsx` warning）
+
+**后续建议**:
+- 下一刀可按计划进入 i18n namespace 重切，或先做治理棘轮“新文件 800 行 fail”以防新 debt 反弹。
+
+
+### Git Commits
+
+| Hash | Message |
+|------|---------|
+| `6d532993` | (see git log) |
+
+### Testing
+
+- [OK] (Add test results)
+
+### Status
+
+[OK] **Completed**
+
+### Next Steps
+
+- None - task complete

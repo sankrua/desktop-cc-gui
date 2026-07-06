@@ -8,7 +8,7 @@
 
 <!-- @@@auto:current-status -->
 - **Active File**: `journal-1.md`
-- **Total Sessions**: 12
+- **Total Sessions**: 13
 - **Last Active**: 2026-07-06
 <!-- @@@/auto:current-status -->
 
@@ -19,7 +19,7 @@
 <!-- @@@auto:active-documents -->
 | File | Lines | Status |
 |------|-------|--------|
-| `journal-1.md` | ~727 | Active |
+| `journal-1.md` | ~774 | Active |
 <!-- @@@/auto:active-documents -->
 
 ---
@@ -29,6 +29,7 @@
 <!-- @@@auto:session-history -->
 | # | Date | Title | Commits | Branch |
 |---|------|-------|---------|--------|
+| 13 | 2026-07-06 | 拆分全局类型桶 | `6d532993` | `feat/ui-refactoring` |
 | 12 | 2026-07-06 | 大文件拆分首批收口 | `a21ed6d1` | `feat/ui-refactoring` |
 | 11 | 2026-07-05 | 收敛对话/设置/侧栏 UI 细节并写死思考常开 | `00bed0a8` | `feat/ui-refactoring` |
 | 10 | 2026-07-04 | 压制长对话流式渲染的 O(L²) 与全历史开销 | `5f7ac804` | `feat/ui-refactoring` |
