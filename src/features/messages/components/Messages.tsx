@@ -2023,14 +2023,18 @@ export const Messages = memo(function Messages({
     if (isHistoryLoading || timelinePresentationItems.length === 0) {
       return undefined;
     }
-    initialBottomPinScopeRef.current = scope;
-    if (isWorking || isThinking || pendingJumpMessageId) {
+    if (pendingJumpMessageId) {
+      initialBottomPinScopeRef.current = scope;
+      return undefined;
+    }
+    if (isWorking || isThinking) {
       return undefined;
     }
     const target = bottomRef.current;
     if (!target) {
       return undefined;
     }
+    initialBottomPinScopeRef.current = scope;
     autoScrollRef.current = true;
     target.scrollIntoView({ behavior: "instant", block: "end" });
     if (typeof window === "undefined") {

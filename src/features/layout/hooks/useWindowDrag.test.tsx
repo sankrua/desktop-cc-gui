@@ -94,4 +94,45 @@ describe("useWindowDrag", () => {
     expect(isFullscreen).toHaveBeenCalledTimes(1);
     expect(startDragging).not.toHaveBeenCalled();
   });
+
+  it("starts Windows titlebar dragging on first movement without a fixed delay", async () => {
+    mocks.isWindowsPlatform.mockReturnValue(true);
+    const isFullscreen = vi.fn().mockResolvedValue(false);
+    const startDragging = vi.fn().mockResolvedValue(undefined);
+    mocks.getCurrentWindow.mockReturnValue({
+      isFullscreen,
+      startDragging,
+    });
+    const topbar = document.createElement("div");
+    topbar.className = "main-topbar";
+    document.body.appendChild(topbar);
+
+    renderHook(() => useWindowDrag("titlebar"));
+
+    topbar.dispatchEvent(
+      new MouseEvent("mousedown", {
+        bubbles: true,
+        button: 0,
+        buttons: 1,
+        clientX: 10,
+        clientY: 10,
+        detail: 1,
+      }),
+    );
+    await flushMicrotasks();
+    expect(isFullscreen).not.toHaveBeenCalled();
+
+    document.dispatchEvent(
+      new MouseEvent("mousemove", {
+        bubbles: true,
+        buttons: 1,
+        clientX: 14,
+        clientY: 10,
+      }),
+    );
+    await flushMicrotasks();
+
+    expect(isFullscreen).toHaveBeenCalledTimes(1);
+    expect(startDragging).toHaveBeenCalledTimes(1);
+  });
 });

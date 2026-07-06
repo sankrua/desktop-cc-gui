@@ -926,6 +926,51 @@ describe("Messages live behavior", () => {
     scrollSpy.mockRestore();
   });
 
+  it("pins to the bottom after a long streaming tail restores full history", async () => {
+    window.localStorage.setItem("ccgui.messages.live.autoFollow", "0");
+    const scrollSpy = vi
+      .spyOn(HTMLElement.prototype, "scrollIntoView")
+      .mockImplementation(() => {});
+    const longStreamingItems: ConversationItem[] = [
+      {
+        id: "streaming-tail-user-latest",
+        kind: "message",
+        role: "user",
+        text: "请继续分析这个长会话",
+      },
+      ...Array.from({ length: 150 }, (_, index) => ({
+        id: `streaming-tail-assistant-${index}`,
+        kind: "message" as const,
+        role: "assistant" as const,
+        text: `长回复片段 ${index}`,
+        isFinal: index === 149 ? true : undefined,
+      })),
+    ];
+    const renderMessages = (isThinking: boolean) => (
+      <Messages
+        items={longStreamingItems}
+        threadId="thread-long-streaming-tail-bottom-pin"
+        workspaceId="ws-1"
+        isThinking={isThinking}
+        processingStartedAt={Date.now() - 1_000}
+        activeEngine="codex"
+        openTargets={[]}
+        selectedOpenAppId=""
+      />
+    );
+    const { rerender } = render(renderMessages(true));
+
+    expect(scrollSpy).not.toHaveBeenCalled();
+    scrollSpy.mockClear();
+
+    rerender(renderMessages(false));
+
+    await waitFor(() => {
+      expect(scrollSpy).toHaveBeenCalledWith({ behavior: "instant", block: "end" });
+    });
+    scrollSpy.mockRestore();
+  });
+
   it("resets to the revealed history head when expanding collapsed history", async () => {
     const items: ConversationItem[] = Array.from({ length: 32 }, (_, index) => ({
       id: `history-reveal-${index + 1}`,

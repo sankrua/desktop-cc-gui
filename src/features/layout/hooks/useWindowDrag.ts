@@ -7,13 +7,12 @@ export function useWindowDrag(targetId: string) {
     const isWindowsDesktop = isWindowsPlatform();
 
     if (isWindowsDesktop) {
-      let pendingDragTimer: number | null = null;
+      const WINDOWS_DRAG_MOVE_THRESHOLD_PX = 2;
+      let pendingDragStart: { clientX: number; clientY: number } | null = null;
+      let dragStartInFlight = false;
 
-      const clearPendingDragTimer = () => {
-        if (pendingDragTimer !== null) {
-          window.clearTimeout(pendingDragTimer);
-          pendingDragTimer = null;
-        }
+      const clearPendingDragStart = () => {
+        pendingDragStart = null;
       };
 
       const getTitlebarHeight = () => {
@@ -83,23 +82,51 @@ export function useWindowDrag(targetId: string) {
         if (shouldIgnoreTarget(event.target)) {
           return;
         }
-        clearPendingDragTimer();
-        pendingDragTimer = window.setTimeout(() => {
-          void (async () => {
-            try {
-              const windowHandle = getCurrentWindow();
-              const fullscreen = await windowHandle.isFullscreen();
-              if (fullscreen) {
-                return;
-              }
-              await windowHandle.startDragging();
-            } catch {
-              // Ignore in non-Tauri test/runtime cases.
-            } finally {
-              pendingDragTimer = null;
+        pendingDragStart = {
+          clientX: event.clientX,
+          clientY: event.clientY,
+        };
+      };
+
+      const startWindowDrag = () => {
+        if (dragStartInFlight) {
+          return;
+        }
+        dragStartInFlight = true;
+        clearPendingDragStart();
+        void (async () => {
+          try {
+            const windowHandle = getCurrentWindow();
+            const fullscreen = await windowHandle.isFullscreen();
+            if (fullscreen) {
+              return;
             }
-          })();
-        }, 140);
+            await windowHandle.startDragging();
+          } catch {
+            // Ignore in non-Tauri test/runtime cases.
+          } finally {
+            dragStartInFlight = false;
+          }
+        })();
+      };
+
+      const onMouseMove = (event: MouseEvent) => {
+        if (!pendingDragStart) {
+          return;
+        }
+        if (event.buttons !== 1) {
+          clearPendingDragStart();
+          return;
+        }
+        const deltaX = event.clientX - pendingDragStart.clientX;
+        const deltaY = event.clientY - pendingDragStart.clientY;
+        const movedEnough =
+          deltaX * deltaX + deltaY * deltaY >=
+          WINDOWS_DRAG_MOVE_THRESHOLD_PX * WINDOWS_DRAG_MOVE_THRESHOLD_PX;
+        if (!movedEnough) {
+          return;
+        }
+        startWindowDrag();
       };
 
       const onDoubleClick = (event: MouseEvent) => {
@@ -114,7 +141,7 @@ export function useWindowDrag(targetId: string) {
         if (shouldIgnoreTarget(event.target)) {
           return;
         }
-        clearPendingDragTimer();
+        clearPendingDragStart();
         void (async () => {
           try {
             const windowHandle = getCurrentWindow();
@@ -134,15 +161,17 @@ export function useWindowDrag(targetId: string) {
         if (event.button !== 0) {
           return;
         }
-        clearPendingDragTimer();
+        clearPendingDragStart();
       };
 
       document.addEventListener("mousedown", onMouseDown);
+      document.addEventListener("mousemove", onMouseMove);
       document.addEventListener("dblclick", onDoubleClick);
       document.addEventListener("mouseup", onMouseUp);
       return () => {
-        clearPendingDragTimer();
+        clearPendingDragStart();
         document.removeEventListener("mousedown", onMouseDown);
+        document.removeEventListener("mousemove", onMouseMove);
         document.removeEventListener("dblclick", onDoubleClick);
         document.removeEventListener("mouseup", onMouseUp);
       };

@@ -57,3 +57,9 @@ The conversation surface MUST scope deferred snapshots, virtualizer measurement 
 - **AND** the renderer is showing a full or collapsed live tail window
 - **THEN** the presentation scope MUST be distinct from static restored-history scopes for the same conversation
 - **AND** live auto-follow MUST NOT reuse stale full-history or expanded-history measurement state that can cause row overlap or up/down scroll tug-of-war
+
+#### Scenario: completed realtime tail restores full history at the latest message
+- **WHEN** a long conversation is actively streaming through a bounded live tail window
+- **AND** the turn completes and the renderer restores the full static history for the same `workspaceId + threadId`
+- **THEN** the initial bottom-pin scope MUST NOT have been consumed by the earlier working/thinking render
+- **AND** the restored static history MUST land at the latest message unless an explicit jump-to-message action owns the scroll position
